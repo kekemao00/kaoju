@@ -19,6 +19,7 @@
 | [`docs/brief.md`](docs/brief.md) | 题目：定位、默认决定、各阶段要回答的问题、验证方式 |
 | [`docs/research/phase1-report.md`](docs/research/phase1-report.md) | 第一阶段研究报告：竞品拆解、来源普查 |
 | [`docs/decisions/README.md`](docs/decisions/README.md) | 已定的决策、代价和被否决的方案 |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md) | 交接记录：当前状态、待办、还没验证的事、踩过的坑 |
 | [`research/`](research/) | 报告背后的脚本和数据，可重新生成 |
 | [`research/fieldtest/`](research/fieldtest/) | 第一阶段 1B 的实测工具，以及事先写定的测量方案 |
 
