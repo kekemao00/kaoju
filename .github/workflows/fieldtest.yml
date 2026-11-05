@@ -1,0 +1,85 @@
+# 实测工具 fieldtest 的检查：格式、静态检查、带竞态检测的测试、模糊测试、端到端测试、部署包构建。
+# 第三方 action 按提交哈希固定；sing-box 按 SHA-256 核对。
+name: fieldtest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fieldtest-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.24.7"
+  SB_VER: "1.14.4"
+  SB_SHA256: 699a1b510aa4396b2176d32d1181920399ebf1e267835da6f3b598d0f7c24968
+
+defaults:
+  run:
+    working-directory: research/fieldtest
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: 格式与静态检查
+        run: |
+          test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+          go vet ./...
+          sh -n deploy/install.sh deploy/uninstall.sh deploy/build-bundle.sh test/e2e.sh
+          python3 -m py_compile test/e2e_check.py
+
+      - name: 下载 sing-box 并核对 SHA-256
+        run: |
+          t="sing-box-${SB_VER}-linux-amd64"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$t.tar.gz" \
+            "https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/$t.tar.gz"
+          echo "${SB_SHA256}  $RUNNER_TEMP/$t.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$t.tar.gz" -C "$RUNNER_TEMP"
+          echo "SINGBOX=$RUNNER_TEMP/$t/sing-box" >> "$GITHUB_ENV"
+
+      - name: 测试（竞态检测，含仪器自检）
+        run: FIELDTEST_SINGBOX="$SINGBOX" go test -race -count=1 ./...
+
+      - name: 模糊测试（每项 20 秒）
+        run: |
+          go test ./internal/wire  -run '^$' -fuzz '^FuzzHandshakes$' -fuzztime 20s
+          go test ./internal/lists -run '^$' -fuzz '^FuzzParse$' -fuzztime 20s
+          go test ./internal/nodes -run '^$' -fuzz '^FuzzParse$' -fuzztime 20s
+
+      - name: 端到端测试（竞态检测）
+        run: E2E_BUILD_FLAGS=-race ./test/e2e.sh "$RUNNER_TEMP/e2e"
+
+      - name: 构建部署包
+        run: |
+          ./deploy/build-bundle.sh "$RUNNER_TEMP/dist"
+          cat "$RUNNER_TEMP/dist/fieldtest-bundle/SHA256SUMS"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fieldtest-bundle
+          path: ${{ runner.temp }}/dist/fieldtest-bundle.tar.gz
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: e2e-output
+          path: |
+            ${{ runner.temp }}/e2e/*.out
+            ${{ runner.temp }}/e2e/data/summary.*
+          if-no-files-found: ignore
