@@ -45,5 +45,6 @@
   ```
 
   sing-box 用官方 1.14.4，SHA-256 在 `deploy/install.sh` 和 `.github/workflows/fieldtest.yml` 里。
-- 改了会进部署包的文件就要升版本号重新打包（`VERSION=x.y.z-YYYYMMDD ./deploy/build-bundle.sh`），
-  并告诉用户换包。
+- 改了会进部署包的文件就要升版本号重新打包：版本号只写在 `research/fieldtest/VERSION`，
+  改它再运行 `./deploy/build-bundle.sh`（构建脚本和 CI 都从这个文件读），并告诉用户换包。
+- 每个发给用户的包都要在构建它的提交上打标签 `fieldtest-vX.Y.Z`，并把包和两个二进制的 SHA-256 记进 `docs/HANDOFF.md`。

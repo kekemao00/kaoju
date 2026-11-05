@@ -11,6 +11,9 @@
 | D5 | 语言 Go，单静态二进制，内嵌 SQLite，不依赖 Redis | 2026-11-05 | jhao104/proxy_pool 38% 的未关闭 issue 是安装、启动、部署问题 |
 | D6 | 节点协议由进程内嵌入的 sing-box 出站实现；项目许可证 GPL-3.0-or-later；不使用 sing-box 的名称 | 2026-11-05 | 你的确认；Resin 已证明这种嵌入方式可行 |
 | D7 | 项目名 `kaoju`（考据），仓库 `kekemao00/kaoju` | 2026-11-06 | 你的选择；2026-11-05 查 npm、PyPI、crates.io 和网页搜索没有发现重名 |
+| D8 | fieldtest 的版本号只写在 `research/fieldtest/VERSION`，构建脚本和 CI 都从它读；每个发给用户的包在构建它的提交上打标签 `fieldtest-vX.Y.Z`，包和二进制的 SHA-256 记进 HANDOFF | 2026-11-06 | 你的决定；原来构建脚本默认 `0.1.0`、CI 不传版本号，CI 产物与发给你的 0.1.1 包版本号不同 |
+| D9 | 72 小时从最终版本的探测器启动时算起；换版本或清空状态就从头算，之前的数据标为试运行；只是重启不重新算，中断时段写进报告 | 2026-11-06 | 你的决定；写进 `research/fieldtest/PROTOCOL.md` 第 1.1 版 |
+| D10 | 1B 与三篇文献对账：Mani 等（ACSAC 2018）、Tsirantonakis 等（NDSS 2018）、Mehanna 等（MADWeb 2024） | 2026-11-06 | 你的决定；数字写进 1B 报告前对原文核一遍 |
 
 ### D6 的已知代价
 
@@ -55,6 +58,15 @@
 
 ## 工程约束
 
-- 云端工作区连不上 Go 的模块代理（proxy.golang.org、sum.golang.org），只能访问 GitHub 和 npm、PyPI 等包仓库。
-  实测工具因此只用 Go 标准库。到了实现网关、要嵌入 sing-box 的时候，依赖得从 GitHub 上的镜像仓库获取，
-  或者放行这两个域名，或者交给 CI 构建。哪条路可行还没有验证。
+- **出口策略因会话而异，每个新会话先试再定。**
+  - 2026-11-05（UTC）的会话实测：`proxy.golang.org` 能访问（`@v/list`、`@latest` 正常），
+    `go mod download github.com/sagernet/sing-box@v1.14.4` 成功并经 `sum.golang.org` 校验；
+    Go 工具链自动下载也能走通。`go.dev`、`dl.google.com`、`goproxy.cn` 连不上。GitHub（含 release）能访问。
+  - 更早的会话连不上 Go 的模块代理，fieldtest 因此只用标准库；这条规矩保留不变（见 `CLAUDE.md`）。
+  - 用户服务器能否访问这些地址：上一个会话记录为不能，本会话没有验证。
+  - 遇到出口策略拒绝，不换工具绕过，直接告诉用户。
+- **Go 版本。** sing-box v1.14.4 的 `go.mod` 写的是 `go 1.25.5`，项目和 CI 现在固定 Go 1.24.7。
+  fieldtest 在 72 小时实测结束前保持 Go 1.24.7 不动；升级 Go 放到实现网关、嵌入 sing-box 那一步，
+  届时重新验证可复现构建。
+- 嵌入 sing-box 时依赖从哪里取（模块代理、GitHub 镜像、CI 构建）：模块代理在 2026-11-05 的会话里走通了下载，
+  但还没有真正编译过嵌入 sing-box 的程序，未验证。
