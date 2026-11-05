@@ -2,11 +2,22 @@
 # 构建部署包：两种架构的 fieldtest、安装脚本、说明和全部源码。
 #   ./deploy/build-bundle.sh [输出目录]
 # 产物是 <输出目录>/fieldtest-bundle.tar.gz。只需要 Go 工具链，没有第三方依赖。
-# 同一份源码、同一个 Go 版本、同一个 VERSION，构建出的二进制逐字节相同。
+# 同一份源码、同一个 Go 版本、同一个 VERSION 文件，构建出的二进制逐字节相同。
 set -eu
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${1:-"$HERE/dist"}
-VERSION=${VERSION:-"0.1.0-$(date -u +%Y%m%d)"}
+# 版本号只有一个来源：research/fieldtest/VERSION。改版本就改这个文件。
+# 环境变量 VERSION 只能用来核对，与文件不一致时拒绝构建，免得包上的版本号和文件各说各的。
+FILE_VERSION=$(tr -d ' \t\r\n' < "$HERE/VERSION")
+echo "$FILE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}$' || {
+	echo "VERSION 文件的格式不对: '$FILE_VERSION'（应为 x.y.z-YYYYMMDD）" >&2
+	exit 1
+}
+if [ -n "${VERSION:-}" ] && [ "$VERSION" != "$FILE_VERSION" ]; then
+	echo "环境变量 VERSION=$VERSION 与 VERSION 文件的 $FILE_VERSION 不一致；改版本请改文件" >&2
+	exit 1
+fi
+VERSION=$FILE_VERSION
 B="$OUT/fieldtest-bundle"
 rm -rf "$B"
 mkdir -p "$B/bin" "$B/deploy" "$B/src"

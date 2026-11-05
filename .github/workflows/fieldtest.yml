@@ -64,14 +64,20 @@ jobs:
       - name: 端到端测试（竞态检测）
         run: E2E_BUILD_FLAGS=-race ./test/e2e.sh "$RUNNER_TEMP/e2e"
 
+      # 版本号从 VERSION 文件读，构建脚本也从它读；这里再核对二进制里写进去的是不是同一个值。
       - name: 构建部署包
+        id: bundle
         run: |
+          v=$(tr -d ' \t\r\n' < VERSION)
           ./deploy/build-bundle.sh "$RUNNER_TEMP/dist"
+          got=$("$RUNNER_TEMP/dist/fieldtest-bundle/bin/fieldtest-linux-amd64" version)
+          [ "$got" = "$v" ] || { echo "二进制的版本号是 $got，VERSION 文件是 $v" >&2; exit 1; }
           cat "$RUNNER_TEMP/dist/fieldtest-bundle/SHA256SUMS"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: fieldtest-bundle
+          name: fieldtest-bundle-${{ steps.bundle.outputs.version }}
           path: ${{ runner.temp }}/dist/fieldtest-bundle.tar.gz
           if-no-files-found: error
 
