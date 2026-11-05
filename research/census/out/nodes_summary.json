@@ -1,0 +1,564 @@
+{
+ "sources": [
+  {
+   "name": "barry-far/V2ray-config",
+   "uri_lines": 9169,
+   "unparsed": 54,
+   "unique_nodes": 5223,
+   "unique_endpoints": 3343,
+   "unique_hosts": 3091,
+   "ip_literal_host_pct": 71.2,
+   "by_scheme": {
+    "vless": 3947,
+    "trojan": 519,
+    "ss": 462,
+    "vmess": 253,
+    "hysteria2": 41,
+    "ssr": 1
+   },
+   "tls_nodes": 3826,
+   "tls_insecure_flag": 161,
+   "tls_insecure_pct": 4.2,
+   "cloudflare_ip_host_pct": 15.9,
+   "top_asn": "Cloudflare, Inc.",
+   "top_asn_pct": 15.9,
+   "workers_pages_hosts": 13,
+   "exclusive": 2727,
+   "exclusive_pct": 52.2
+  },
+  {
+   "name": "MatinGhanbari/v2ray-configs",
+   "uri_lines": 3999,
+   "unparsed": 12,
+   "unique_nodes": 3884,
+   "unique_endpoints": 3324,
+   "unique_hosts": 2579,
+   "ip_literal_host_pct": 72.4,
+   "by_scheme": {
+    "vmess": 2455,
+    "ss": 829,
+    "trojan": 354,
+    "vless": 220,
+    "ssr": 26
+   },
+   "tls_nodes": 1592,
+   "tls_insecure_flag": 487,
+   "tls_insecure_pct": 30.6,
+   "cloudflare_ip_host_pct": 23.7,
+   "top_asn": "Cloudflare, Inc.",
+   "top_asn_pct": 23.7,
+   "workers_pages_hosts": 5,
+   "exclusive": 947,
+   "exclusive_pct": 24.4
+  },
+  {
+   "name": "mahdibland/V2RayAggregator",
+   "uri_lines": 4614,
+   "unparsed": 2,
+   "unique_nodes": 4513,
+   "unique_endpoints": 4254,
+   "unique_hosts": 2694,
+   "ip_literal_host_pct": 86.4,
+   "by_scheme": {
+    "ss": 1880,
+    "vmess": 1783,
+    "trojan": 770,
+    "ssr": 58,
+    "http": 22
+   },
+   "tls_nodes": 1829,
+   "tls_insecure_flag": 981,
+   "tls_insecure_pct": 53.6,
+   "cloudflare_ip_host_pct": 25.9,
+   "top_asn": "Cloudflare, Inc.",
+   "top_asn_pct": 25.9,
+   "workers_pages_hosts": 2,
+   "exclusive": 1628,
+   "exclusive_pct": 36.1
+  },
+  {
+   "name": "mheidari98/.proxy",
+   "uri_lines": 14580,
+   "unparsed": 2,
+   "unique_nodes": 14544,
+   "unique_endpoints": 7850,
+   "unique_hosts": 6924,
+   "ip_literal_host_pct": 72.6,
+   "by_scheme": {
+    "vless": 8330,
+    "vmess": 2935,
+    "trojan": 1993,
+    "hysteria2": 713,
+    "ss": 503,
+    "ssr": 51,
+    "tuic": 12,
+    "hysteria": 7
+   },
+   "tls_nodes": 11071,
+   "tls_insecure_flag": 1990,
+   "tls_insecure_pct": 18.0,
+   "cloudflare_ip_host_pct": 34.8,
+   "top_asn": "Cloudflare, Inc.",
+   "top_asn_pct": 34.8,
+   "workers_pages_hosts": 43,
+   "exclusive": 9665,
+   "exclusive_pct": 66.5
+  },
+  {
+   "name": "peasoft/NoMoreWalls",
+   "uri_lines": 491,
+   "unparsed": 1,
+   "unique_nodes": 487,
+   "unique_endpoints": 466,
+   "unique_hosts": 398,
+   "ip_literal_host_pct": 83.2,
+   "by_scheme": {
+    "vless": 301,
+    "ss": 60,
+    "hysteria2": 52,
+    "trojan": 32,
+    "https": 22,
+    "vmess": 20
+   },
+   "tls_nodes": 350,
+   "tls_insecure_flag": 125,
+   "tls_insecure_pct": 35.7,
+   "cloudflare_ip_host_pct": 6.3,
+   "top_asn": "未匹配",
+   "top_asn_pct": 8.5,
+   "workers_pages_hosts": 0,
+   "exclusive": 0,
+   "exclusive_pct": 0.0
+  },
+  {
+   "name": "chengaopan/AutoMergePublicNodes",
+   "uri_lines": 491,
+   "unparsed": 1,
+   "unique_nodes": 487,
+   "unique_endpoints": 466,
+   "unique_hosts": 398,
+   "ip_literal_host_pct": 83.2,
+   "by_scheme": {
+    "vless": 301,
+    "ss": 60,
+    "hysteria2": 52,
+    "trojan": 32,
+    "https": 22,
+    "vmess": 20
+   },
+   "tls_nodes": 350,
+   "tls_insecure_flag": 125,
+   "tls_insecure_pct": 35.7,
+   "cloudflare_ip_host_pct": 6.3,
+   "top_asn": "未匹配",
+   "top_asn_pct": 8.5,
+   "workers_pages_hosts": 0,
+   "exclusive": 0,
+   "exclusive_pct": 0.0
+  },
+  {
+   "name": "mfuu/v2ray",
+   "uri_lines": 143,
+   "unparsed": 1,
+   "unique_nodes": 84,
+   "unique_endpoints": 84,
+   "unique_hosts": 81,
+   "ip_literal_host_pct": 74.1,
+   "by_scheme": {
+    "trojan": 42,
+    "ss": 21,
+    "vmess": 21
+   },
+   "tls_nodes": 46,
+   "tls_insecure_flag": 40,
+   "tls_insecure_pct": 87.0,
+   "cloudflare_ip_host_pct": 53.3,
+   "top_asn": "Cloudflare, Inc.",
+   "top_asn_pct": 53.3,
+   "workers_pages_hosts": 0,
+   "exclusive": 25,
+   "exclusive_pct": 29.8
+  },
+  {
+   "name": "aiboboxx/v2rayfree",
+   "uri_lines": 100,
+   "unparsed": 0,
+   "unique_nodes": 88,
+   "unique_endpoints": 29,
+   "unique_hosts": 28,
+   "ip_literal_host_pct": 64.3,
+   "by_scheme": {
+    "vless": 73,
+    "ss": 11,
+    "vmess": 4
+   },
+   "tls_nodes": 76,
+   "tls_insecure_flag": 0,
+   "tls_insecure_pct": 0.0,
+   "cloudflare_ip_host_pct": 5.6,
+   "top_asn": "Tumpi Networks Srls",
+   "top_asn_pct": 55.6,
+   "workers_pages_hosts": 0,
+   "exclusive": 63,
+   "exclusive_pct": 71.6
+  },
+  {
+   "name": "Pawdroid/Free-servers",
+   "uri_lines": 9,
+   "unparsed": 0,
+   "unique_nodes": 9,
+   "unique_endpoints": 9,
+   "unique_hosts": 9,
+   "ip_literal_host_pct": 66.7,
+   "by_scheme": {
+    "vless": 5,
+    "ss": 4
+   },
+   "tls_nodes": 4,
+   "tls_insecure_flag": 0,
+   "tls_insecure_pct": 0.0,
+   "cloudflare_ip_host_pct": 16.7,
+   "top_asn": "Tumpi Networks Srls",
+   "top_asn_pct": 50.0,
+   "workers_pages_hosts": 0,
+   "exclusive": 3,
+   "exclusive_pct": 33.3
+  },
+  {
+   "name": "snakem982/proxypool",
+   "uri_lines": 44,
+   "unparsed": 0,
+   "unique_nodes": 44,
+   "unique_endpoints": 43,
+   "unique_hosts": 39,
+   "ip_literal_host_pct": 79.5,
+   "by_scheme": {
+    "vless": 18,
+    "trojan": 15,
+    "vmess": 5,
+    "ss": 5,
+    "hysteria2": 1
+   },
+   "tls_nodes": 31,
+   "tls_insecure_flag": 16,
+   "tls_insecure_pct": 51.6,
+   "cloudflare_ip_host_pct": 3.2,
+   "top_asn": "Tumpi Networks Srls",
+   "top_asn_pct": 9.7,
+   "workers_pages_hosts": 0,
+   "exclusive": 32,
+   "exclusive_pct": 72.7
+  },
+  {
+   "name": "roosterkid/openproxylist (V2RAY)",
+   "uri_lines": 150,
+   "unparsed": 0,
+   "unique_nodes": 136,
+   "unique_endpoints": 133,
+   "unique_hosts": 133,
+   "ip_literal_host_pct": 87.2,
+   "by_scheme": {
+    "vless": 84,
+    "ss": 28,
+    "trojan": 19,
+    "vmess": 5
+   },
+   "tls_nodes": 95,
+   "tls_insecure_flag": 9,
+   "tls_insecure_pct": 9.5,
+   "cloudflare_ip_host_pct": 3.4,
+   "top_asn": "Tumpi Networks Srls",
+   "top_asn_pct": 8.6,
+   "workers_pages_hosts": 0,
+   "exclusive": 31,
+   "exclusive_pct": 22.8
+  }
+ ],
+ "transport": {
+  "nodes_vless_vmess_trojan": 18266,
+  "by_scheme": {
+   "vless": {
+    "ws": 4727,
+    "tcp": 4385,
+    "xhttp": 990,
+    "grpc": 570,
+    "httpupgrade": 79,
+    "kcp": 5,
+    "other": 4,
+    "http": 3,
+    "none": 1
+   },
+   "trojan": {
+    "ws": 1483,
+    "tcp": 1310,
+    "grpc": 12,
+    "xhttp": 5,
+    "httpupgrade": 4,
+    "other": 1
+   },
+   "vmess": {
+    "ws": 3394,
+    "tcp": 1065,
+    "http": 71,
+    "httpupgrade": 60,
+    "grpc": 54,
+    "xhttp": 30,
+    "none": 7,
+    "other": 3,
+    "h2": 2,
+    "udp": 1
+   }
+  },
+  "total": {
+   "ws": 9604,
+   "tcp": 6760,
+   "xhttp": 1025,
+   "grpc": 636,
+   "httpupgrade": 143,
+   "http": 74,
+   "other": 8,
+   "none": 8,
+   "kcp": 5,
+   "h2": 2,
+   "udp": 1
+  },
+  "not_in_singbox": {
+   "nodes": 1047,
+   "pct_of_vless_vmess_trojan": 5.7,
+   "pct_of_all_nodes": 4.9,
+   "by_transport": {
+    "xhttp": 1025,
+    "other": 8,
+    "none": 8,
+    "kcp": 5,
+    "udp": 1
+   }
+  },
+  "vless_encryption_not_none": 346,
+  "out_of_reach_for_singbox": {
+   "nodes": 1310,
+   "pct_of_vless_vmess_trojan": 7.2,
+   "pct_of_all_nodes": 6.1
+  },
+  "reality_nodes": 3864,
+  "vision_flow_nodes": 2914
+ },
+ "pool": {
+  "sum_of_sizes": 29499,
+  "unique_nodes": 21532,
+  "unique_endpoints": 12607,
+  "unique_hosts": 10053,
+  "ip_literal_hosts": 7434,
+  "by_scheme": {
+   "vless": 10764,
+   "vmess": 4687,
+   "trojan": 2815,
+   "ss": 2402,
+   "hysteria2": 741,
+   "ssr": 60,
+   "https": 22,
+   "http": 22,
+   "tuic": 12,
+   "hysteria": 7
+  },
+  "tls_nodes": 14553,
+  "tls_insecure_flag": 2492,
+  "tls_insecure_pct": 17.1,
+  "top_asn_of_ip_hosts": [
+   {
+    "asn": "13335",
+    "name": "Cloudflare, Inc.",
+    "hosts": 1836,
+    "share_pct": 24.7
+   },
+   {
+    "asn": "?",
+    "name": "未匹配",
+    "hosts": 304,
+    "share_pct": 4.1
+   },
+   {
+    "asn": "16509",
+    "name": "Amazon.com, Inc.",
+    "hosts": 283,
+    "share_pct": 3.8
+   },
+   {
+    "asn": "63023",
+    "name": "GTHost",
+    "hosts": 260,
+    "share_pct": 3.5
+   },
+   {
+    "asn": "16276",
+    "name": "OVH SAS",
+    "hosts": 256,
+    "share_pct": 3.4
+   },
+   {
+    "asn": "209242",
+    "name": "Cloudflare London, LLC",
+    "hosts": 218,
+    "share_pct": 2.9
+   },
+   {
+    "asn": "24940",
+    "name": "Hetzner Online GmbH",
+    "hosts": 176,
+    "share_pct": 2.4
+   },
+   {
+    "asn": "31898",
+    "name": "Oracle Corporation",
+    "hosts": 150,
+    "share_pct": 2.0
+   }
+  ],
+  "workers_pages_hosts": 44
+ },
+ "overlap_pct_row_in_col": {
+  "barry-far/V2ray-config": {
+   "barry-far/V2ray-config": 100.0,
+   "MatinGhanbari/v2ray-configs": 5.2,
+   "mahdibland/V2RayAggregator": 4.4,
+   "mheidari98/.proxy": 45.1,
+   "peasoft/NoMoreWalls": 1.2,
+   "chengaopan/AutoMergePublicNodes": 1.2,
+   "mfuu/v2ray": 0.3,
+   "aiboboxx/v2rayfree": 0.2,
+   "Pawdroid/Free-servers": 0.1,
+   "snakem982/proxypool": 0.1,
+   "roosterkid/openproxylist (V2RAY)": 0.8
+  },
+  "MatinGhanbari/v2ray-configs": {
+   "barry-far/V2ray-config": 7.0,
+   "MatinGhanbari/v2ray-configs": 100.0,
+   "mahdibland/V2RayAggregator": 51.9,
+   "mheidari98/.proxy": 39.8,
+   "peasoft/NoMoreWalls": 0.9,
+   "chengaopan/AutoMergePublicNodes": 0.9,
+   "mfuu/v2ray": 0.3,
+   "aiboboxx/v2rayfree": 0.2,
+   "Pawdroid/Free-servers": 0.1,
+   "snakem982/proxypool": 0.1,
+   "roosterkid/openproxylist (V2RAY)": 0.4
+  },
+  "mahdibland/V2RayAggregator": {
+   "barry-far/V2ray-config": 5.1,
+   "MatinGhanbari/v2ray-configs": 44.6,
+   "mahdibland/V2RayAggregator": 100.0,
+   "mheidari98/.proxy": 34.1,
+   "peasoft/NoMoreWalls": 1.4,
+   "chengaopan/AutoMergePublicNodes": 1.4,
+   "mfuu/v2ray": 0.4,
+   "aiboboxx/v2rayfree": 0.3,
+   "Pawdroid/Free-servers": 0.1,
+   "snakem982/proxypool": 0.1,
+   "roosterkid/openproxylist (V2RAY)": 0.6
+  },
+  "mheidari98/.proxy": {
+   "barry-far/V2ray-config": 16.2,
+   "MatinGhanbari/v2ray-configs": 10.6,
+   "mahdibland/V2RayAggregator": 10.6,
+   "mheidari98/.proxy": 100.0,
+   "peasoft/NoMoreWalls": 2.6,
+   "chengaopan/AutoMergePublicNodes": 2.6,
+   "mfuu/v2ray": 0.4,
+   "aiboboxx/v2rayfree": 0.2,
+   "Pawdroid/Free-servers": 0.0,
+   "snakem982/proxypool": 0.1,
+   "roosterkid/openproxylist (V2RAY)": 0.6
+  },
+  "peasoft/NoMoreWalls": {
+   "barry-far/V2ray-config": 13.3,
+   "MatinGhanbari/v2ray-configs": 7.2,
+   "mahdibland/V2RayAggregator": 12.7,
+   "mheidari98/.proxy": 77.4,
+   "peasoft/NoMoreWalls": 100.0,
+   "chengaopan/AutoMergePublicNodes": 100.0,
+   "mfuu/v2ray": 2.5,
+   "aiboboxx/v2rayfree": 2.1,
+   "Pawdroid/Free-servers": 0.6,
+   "snakem982/proxypool": 1.6,
+   "roosterkid/openproxylist (V2RAY)": 8.6
+  },
+  "chengaopan/AutoMergePublicNodes": {
+   "barry-far/V2ray-config": 13.3,
+   "MatinGhanbari/v2ray-configs": 7.2,
+   "mahdibland/V2RayAggregator": 12.7,
+   "mheidari98/.proxy": 77.4,
+   "peasoft/NoMoreWalls": 100.0,
+   "chengaopan/AutoMergePublicNodes": 100.0,
+   "mfuu/v2ray": 2.5,
+   "aiboboxx/v2rayfree": 2.1,
+   "Pawdroid/Free-servers": 0.6,
+   "snakem982/proxypool": 1.6,
+   "roosterkid/openproxylist (V2RAY)": 8.6
+  },
+  "mfuu/v2ray": {
+   "barry-far/V2ray-config": 17.9,
+   "MatinGhanbari/v2ray-configs": 15.5,
+   "mahdibland/V2RayAggregator": 19.0,
+   "mheidari98/.proxy": 66.7,
+   "peasoft/NoMoreWalls": 14.3,
+   "chengaopan/AutoMergePublicNodes": 14.3,
+   "mfuu/v2ray": 100.0,
+   "aiboboxx/v2rayfree": 14.3,
+   "Pawdroid/Free-servers": 4.8,
+   "snakem982/proxypool": 4.8,
+   "roosterkid/openproxylist (V2RAY)": 13.1
+  },
+  "aiboboxx/v2rayfree": {
+   "barry-far/V2ray-config": 12.5,
+   "MatinGhanbari/v2ray-configs": 9.1,
+   "mahdibland/V2RayAggregator": 14.8,
+   "mheidari98/.proxy": 27.3,
+   "peasoft/NoMoreWalls": 11.4,
+   "chengaopan/AutoMergePublicNodes": 11.4,
+   "mfuu/v2ray": 13.6,
+   "aiboboxx/v2rayfree": 100.0,
+   "Pawdroid/Free-servers": 4.5,
+   "snakem982/proxypool": 4.5,
+   "roosterkid/openproxylist (V2RAY)": 11.4
+  },
+  "Pawdroid/Free-servers": {
+   "barry-far/V2ray-config": 44.4,
+   "MatinGhanbari/v2ray-configs": 33.3,
+   "mahdibland/V2RayAggregator": 44.4,
+   "mheidari98/.proxy": 66.7,
+   "peasoft/NoMoreWalls": 33.3,
+   "chengaopan/AutoMergePublicNodes": 33.3,
+   "mfuu/v2ray": 44.4,
+   "aiboboxx/v2rayfree": 44.4,
+   "Pawdroid/Free-servers": 100.0,
+   "snakem982/proxypool": 11.1,
+   "roosterkid/openproxylist (V2RAY)": 33.3
+  },
+  "snakem982/proxypool": {
+   "barry-far/V2ray-config": 11.4,
+   "MatinGhanbari/v2ray-configs": 9.1,
+   "mahdibland/V2RayAggregator": 13.6,
+   "mheidari98/.proxy": 20.5,
+   "peasoft/NoMoreWalls": 18.2,
+   "chengaopan/AutoMergePublicNodes": 18.2,
+   "mfuu/v2ray": 9.1,
+   "aiboboxx/v2rayfree": 9.1,
+   "Pawdroid/Free-servers": 2.3,
+   "snakem982/proxypool": 100.0,
+   "roosterkid/openproxylist (V2RAY)": 13.6
+  },
+  "roosterkid/openproxylist (V2RAY)": {
+   "barry-far/V2ray-config": 30.9,
+   "MatinGhanbari/v2ray-configs": 10.3,
+   "mahdibland/V2RayAggregator": 18.4,
+   "mheidari98/.proxy": 63.2,
+   "peasoft/NoMoreWalls": 30.9,
+   "chengaopan/AutoMergePublicNodes": 30.9,
+   "mfuu/v2ray": 8.1,
+   "aiboboxx/v2rayfree": 7.4,
+   "Pawdroid/Free-servers": 2.2,
+   "snakem982/proxypool": 4.4,
+   "roosterkid/openproxylist (V2RAY)": 100.0
+  }
+ }
+}
