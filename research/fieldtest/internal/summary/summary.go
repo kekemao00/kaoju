@@ -344,6 +344,10 @@ func (b *builder) snapLine(line []byte) {
 		if json.Unmarshal(line, &r) != nil {
 			return
 		}
+		// 探测器重启后会把还在榜的节点再记一遍，同一个节点只数一次
+		if _, seen := b.nodeSch[r.ID]; seen {
+			return
+		}
 		b.s.Nodes.Known++
 		b.s.Nodes.ByScheme[r.Scheme]++
 		b.nodeSch[r.ID] = r.Scheme
