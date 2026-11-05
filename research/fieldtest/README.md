@@ -132,7 +132,11 @@ go build ./cmd/fieldtest
 go test ./...                                     # 含仪器自检
 FIELDTEST_SINGBOX=/path/to/sing-box go test ./... # 加上节点探测的自检和配置检查
 ./deploy/build-bundle.sh                          # 构建部署包
+SINGBOX=/path/to/sing-box ./test/e2e.sh           # 端到端测试，约 5 分钟，只连 127.0.0.0/8
 ```
+
+端到端测试把夹具当作“公开列表”，让 judge 和探测器照正式流程跑两轮（中间重启一次），
+再由 `test/e2e_check.py` 核对汇总。每次提交都在 GitHub Actions 上跑这些检查，见 `.github/workflows/fieldtest.yml`。
 
 另有三项要用到普查数据的核对，设置对应的环境变量才会运行：
 
