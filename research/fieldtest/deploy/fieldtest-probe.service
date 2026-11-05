@@ -1,0 +1,21 @@
+[Unit]
+Description=fieldtest list snapshots and prober
+After=network-online.target fieldtest-judge.service
+Wants=network-online.target fieldtest-judge.service
+
+[Service]
+User=fieldtest
+ExecStart=/usr/local/bin/fieldtest probe -c /etc/fieldtest/fieldtest.json
+# 到了配置的时长会正常退出，不再重启；异常退出才重启，重启后接着上次的状态跑
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=60
+LimitNOFILE=65536
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/fieldtest
+
+[Install]
+WantedBy=multi-user.target
