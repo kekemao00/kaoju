@@ -1,0 +1,12 @@
+{
+  "curl": {
+    "cmd": ["python3", "drivers/curl/driver.py", "--variant", "curl"],
+    "env": {},
+    "desc": "curl 命令行（/usr/bin/curl）：代理用 -x，凭据用 -U，信任测试 CA 用 --cacert"
+  },
+  "curl-anyauth": {
+    "cmd": ["python3", "drivers/curl/driver.py", "--variant", "curl-anyauth"],
+    "env": {},
+    "desc": "同 curl，每次传输另加 --proxy-anyauth"
+  }
+}
