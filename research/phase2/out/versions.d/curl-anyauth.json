@@ -1,0 +1,72 @@
+{
+ "cmd": [
+  "python3",
+  "drivers/curl/driver.py",
+  "--variant",
+  "curl-anyauth"
+ ],
+ "desc": "同 curl，每次传输另加 --proxy-anyauth",
+ "versions": {
+  "curl": "8.5.0",
+  "curl_version_line": "curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10",
+  "distro_packages": [
+   "curl 8.5.0-2ubuntu10.16",
+   "libcurl4t64 8.5.0-2ubuntu10.16"
+  ],
+  "features": [
+   "alt-svc",
+   "AsynchDNS",
+   "brotli",
+   "GSS-API",
+   "HSTS",
+   "HTTP2",
+   "HTTPS-proxy",
+   "IDN",
+   "IPv6",
+   "Kerberos",
+   "Largefile",
+   "libz",
+   "NTLM",
+   "PSL",
+   "SPNEGO",
+   "SSL",
+   "threadsafe",
+   "TLS-SRP",
+   "UnixSockets",
+   "zstd"
+  ],
+  "libcurl": "8.5.0",
+  "nghttp2": "1.59.0",
+  "openssl": "3.0.13",
+  "protocols": [
+   "dict",
+   "file",
+   "ftp",
+   "ftps",
+   "gopher",
+   "gophers",
+   "http",
+   "https",
+   "imap",
+   "imaps",
+   "ldap",
+   "ldaps",
+   "mqtt",
+   "pop3",
+   "pop3s",
+   "rtmp",
+   "rtsp",
+   "scp",
+   "sftp",
+   "smb",
+   "smbs",
+   "smtp",
+   "smtps",
+   "telnet",
+   "tftp"
+  ],
+  "python": "3.13.18",
+  "release_date": "2023-12-06, security patched: 8.5.0-2ubuntu10.16",
+  "zlib": "1.3"
+ }
+}

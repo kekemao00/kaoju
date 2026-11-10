@@ -1,0 +1,10 @@
+{
+ "cmd": [
+  "python3",
+  "drivers/rawref/driver.py"
+ ],
+ "desc": "参照客户端（仪器自检用）：裸套接字，策略写死，见 drivers/rawref/README.md；答案在 selfcheck_expected.json",
+ "versions": {
+  "rawref": "1"
+ }
+}

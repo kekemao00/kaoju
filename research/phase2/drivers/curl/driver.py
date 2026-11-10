@@ -58,6 +58,15 @@ def curl_versions():
     lines = out.splitlines()
     first = lines[0] if lines else ""
     v = {"curl": None, "curl_version_line": first, "python": platform.python_version()}
+    # 发行版的包可能带安全补丁，行为不一定等于上游同版本号的 curl：把包的版本也记下来
+    try:
+        pkg = subprocess.run(
+            ["dpkg-query", "-W", "-f", "${Package} ${Version}\\n", "curl", "libcurl4t64", "libcurl4"],
+            capture_output=True, text=True, timeout=20,
+        ).stdout.split("\n")
+        v["distro_packages"] = sorted(ln for ln in pkg if len(ln.split()) == 2) or None
+    except (OSError, subprocess.SubprocessError):
+        v["distro_packages"] = None
     m = re.match(r"curl (\S+)", first)
     if m:
         v["curl"] = m.group(1)
