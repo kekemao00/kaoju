@@ -1,0 +1,1564 @@
+{
+  "rfc": 9112,
+  "title": "HTTP/1.1",
+  "text_sha256": "e4f426bac6206b67fdf9e0da826154f70588db2133a0a86b15cde4ff725d8937",
+  "clauses": [
+    {
+      "id": "9112-2.2-1",
+      "section": "2.2",
+      "section_title": "Message Parsing",
+      "quote": "A recipient MUST parse an HTTP message as a sequence of octets in an encoding that is a superset of US-ASCII [USASCII].",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "入口解析请求、上游一侧解析响应，都按字节序列处理起始行和头部，不先把整条消息解码成 Unicode 字符串再切行。",
+      "rows": []
+    },
+    {
+      "id": "9112-2.2-2",
+      "section": "2.2",
+      "section_title": "Message Parsing",
+      "quote": "Although the line terminator for the start-line and fields is the sequence CRLF, a recipient MAY recognize a single LF as a line terminator and ignore any preceding CR.",
+      "level": "MAY",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "把单个 LF 当作行结束符是允许的，不是必须的；网关接受还是拒绝裸 LF 由自己定。",
+      "rows": []
+    },
+    {
+      "id": "9112-2.2-3",
+      "section": "2.2",
+      "section_title": "Message Parsing",
+      "quote": "A sender MUST NOT generate a bare CR (a CR character not immediately followed by LF) within any protocol elements other than the content. A recipient of such a bare CR MUST consider that element to be invalid or replace each bare CR with SP before processing the element or forwarding the message.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "收到的起始行或头部里有裸 CR 时，网关要么判该元素无效，要么先把每个裸 CR 换成空格再处理或转发；不能原样转给上游或客户端。第一句约束发送方：网关自己生成的消息里（正文之外）不能有裸 CR。",
+      "rows": []
+    },
+    {
+      "id": "9112-2.2-4",
+      "section": "2.2",
+      "section_title": "Message Parsing",
+      "quote": "An HTTP/1.1 user agent MUST NOT preface or follow a request with an extra CRLF.",
+      "level": "MUST NOT",
+      "binds": "client",
+      "side": "客户端",
+      "topic": "framing",
+      "gateway": "客户端不该在请求前后多发 CRLF；据此判断客户端在代理连接上发的第一个字节是否合规。",
+      "rows": [
+        "R23"
+      ]
+    },
+    {
+      "id": "9112-2.2-5",
+      "section": "2.2",
+      "section_title": "Message Parsing",
+      "quote": "In the interest of robustness, a server that is expecting to receive and parse a request-line SHOULD ignore at least one empty line (CRLF) received prior to the request-line.",
+      "level": "SHOULD",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "framing",
+      "gateway": "原文主语是 server。入口在等请求行时应当忽略至少一个前导空行。网关按首字节分流，持久连接上后续请求之前的 CRLF 要按这条跳过；连接的第一个字节就是 CR 时怎么分流，条款没有规定。",
+      "rows": [
+        "R23"
+      ]
+    },
+    {
+      "id": "9112-2.2-6",
+      "section": "2.2",
+      "section_title": "Message Parsing",
+      "quote": "A sender MUST NOT send whitespace between the start-line and the first header field.",
+      "level": "MUST NOT",
+      "binds": "sender",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "网关生成或转发的消息，起始行和第一个头之间不能有空白开头的行；也是判断客户端请求是否合规的依据。",
+      "rows": []
+    },
+    {
+      "id": "9112-2.2-7",
+      "section": "2.2",
+      "section_title": "Message Parsing",
+      "quote": "A recipient that receives whitespace between the start-line and the first header field MUST either reject the message as invalid or consume each whitespace-preceded line without further processing of it (i.e., ignore the entire line, along with any subsequent lines preceded by whitespace, until a properly formed header field is received or the header section is terminated).",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "起始行之后紧跟以空白开头的行时，网关要么拒绝整条消息，要么把这些行整行丢掉；不能把它们当成头部解释，也不能原样转发。",
+      "rows": []
+    },
+    {
+      "id": "9112-2.2-8",
+      "section": "2.2",
+      "section_title": "Message Parsing",
+      "quote": "When a server listening only for HTTP request messages, or processing what appears from the start-line to be an HTTP request message, receives a sequence of octets that does not match the HTTP-message grammar aside from the robustness exceptions listed above, the server SHOULD respond with a 400 (Bad Request) response and close the connection.",
+      "level": "SHOULD",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "status",
+      "gateway": "原文主语是 server。入口端口同时听 HTTP 和 SOCKS5，所以适用的是后半句：按首字节判为 HTTP 之后，收到不合语法的字节应当回 400 并关闭连接。",
+      "rows": [
+        "R23"
+      ]
+    },
+    {
+      "id": "9112-2.3-1",
+      "section": "2.3",
+      "section_title": "HTTP Version",
+      "quote": "Intermediaries that process HTTP messages (i.e., all intermediaries other than those acting as tunnels) MUST send their own HTTP-version in forwarded messages, unless it is purposefully downgraded as a workaround for an upstream issue.",
+      "level": "MUST",
+      "binds": "intermediary",
+      "side": "入口",
+      "topic": "hop-by-hop",
+      "gateway": "网关转发明文请求和响应时，起始行里的版本号写网关自己的，不照抄收到的；原文留了一个例外：为了绕开上游的问题而有意降低版本。CONNECT 建成隧道之后不适用。",
+      "rows": []
+    },
+    {
+      "id": "9112-3-1",
+      "section": "3",
+      "section_title": "Request Line",
+      "quote": "Although the request-line grammar rule requires that each of the component elements be separated by a single SP octet, recipients MAY instead parse on whitespace-delimited word boundaries and, aside from the CRLF terminator, treat any form of whitespace as the SP separator while ignoring preceding or trailing whitespace; such whitespace includes one or more of the following octets: SP, HTAB, VT (%x0B), FF (%x0C), or bare CR. However, lenient parsing can result in request smuggling security vulnerabilities if there are multiple recipients of the message and each has its own unique interpretation of robustness (see Section 11.2).",
+      "level": "MAY",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "请求行的宽松解析只是允许。网关之后还有上游代理和源站这些接收方，原文指出这种多个接收方的情形下宽松解析会带来请求走私的风险；网关可以只接受单个 SP 分隔的请求行。",
+      "rows": [
+        "R01",
+        "R03"
+      ]
+    },
+    {
+      "id": "9112-3-2",
+      "section": "3",
+      "section_title": "Request Line",
+      "quote": "A server that receives a request- target longer than any URI it wishes to parse MUST respond with a 414 (URI Too Long) status code (see Section 15.5.15 of [HTTP]).",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "status",
+      "gateway": "原文主语是 server。入口对请求目标设长度上限时，超限的请求回 414，不用别的状态码。",
+      "rows": []
+    },
+    {
+      "id": "9112-3-3",
+      "section": "3",
+      "section_title": "Request Line",
+      "quote": "It is RECOMMENDED that all HTTP senders and recipients support, at a minimum, request-line lengths of 8000 octets.",
+      "level": "RECOMMENDED",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "request-target",
+      "gateway": "网关给请求行设的上限建议不低于 8000 字节。",
+      "rows": []
+    },
+    {
+      "id": "9112-3-4",
+      "section": "3",
+      "section_title": "Request Line",
+      "quote": "A server that receives a method longer than any that it implements SHOULD respond with a 501 (Not Implemented) status code.",
+      "level": "SHOULD",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "status",
+      "gateway": "原文主语是 server。入口给方法名设长度上限时，超过它实现的任何方法的长度，应当回 501。与 9112-3-2（请求目标超长回 414）是相邻的两句。",
+      "rows": []
+    },
+    {
+      "id": "9112-3.1-1",
+      "section": "3.1",
+      "section_title": "Method",
+      "quote": "The request method is case-sensitive.",
+      "level": "statement",
+      "binds": "any",
+      "side": "入口",
+      "topic": "connect",
+      "gateway": "方法名区分大小写。入口按方法分流（CONNECT 建隧道，其余按明文转发）时按大小写敏感比较：connect、Connect 不是 CONNECT。",
+      "rows": [
+        "R03"
+      ]
+    },
+    {
+      "id": "9112-3.2-1",
+      "section": "3.2",
+      "section_title": "Request Target",
+      "quote": "Recipients of an invalid request-line SHOULD respond with either a 400 (Bad Request) error or a 301 (Moved Permanently) redirect with the request-target properly encoded. A recipient SHOULD NOT attempt to autocorrect and then process the request without a redirect, since the invalid request-line might be deliberately crafted to bypass security filters along the request chain.",
+      "level": "SHOULD NOT",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "request-target",
+      "gateway": "入口收到不合法的请求行（例如请求目标里有空白）应当回 400（或带正确编码的 301），不应当自己修好之后继续转发。",
+      "rows": [
+        "R01",
+        "R03"
+      ]
+    },
+    {
+      "id": "9112-3.2-2",
+      "section": "3.2",
+      "section_title": "Request Target",
+      "quote": "A client MUST send a Host header field (Section 7.2 of [HTTP]) in all HTTP/1.1 request messages. If the target URI includes an authority component, then a client MUST send a field value for Host that is identical to that authority component, excluding any userinfo subcomponent and its \"@\" delimiter (Section 4.2 of [HTTP]).",
+      "level": "MUST",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "request-target",
+      "gateway": "约束客户端：每个 HTTP/1.1 请求都要带 Host，值与目标 URI 的 authority 相同、不含 userinfo。网关向上游发请求时自己要遵守；也用来判断连到网关的客户端发的 Host 是否合规。",
+      "rows": [
+        "R01",
+        "R05"
+      ]
+    },
+    {
+      "id": "9112-3.2-3",
+      "section": "3.2",
+      "section_title": "Request Target",
+      "quote": "A server MUST respond with a 400 (Bad Request) status code to any HTTP/1.1 request message that lacks a Host header field and to any request message that contains more than one Host header field line or a Host header field with an invalid field value.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "request-target",
+      "gateway": "原文主语是 server。入口收到的 HTTP/1.1 请求（原文不分方法，CONNECT 也在内）没有 Host、有多行 Host 或 Host 值不合法时，回 400。这里的 server 是连接上收请求的一方，网关在入口一侧就是这个角色。",
+      "rows": [
+        "R01",
+        "R05"
+      ]
+    },
+    {
+      "id": "9112-3.2.1-1",
+      "section": "3.2.1",
+      "section_title": "origin-form",
+      "quote": "When making a request directly to an origin server, other than a CONNECT or server-wide OPTIONS request (as detailed below), a client MUST send only the absolute path and query components of the target URI as the request-target. If the target URI's path component is empty, the client MUST send \"/\" as the path within the origin-form of request-target.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "上游",
+      "topic": "request-target",
+      "gateway": "网关自己直接对源站发明文请求时（上游是 SOCKS5 代理，网关与源站之间没有 HTTP 代理），请求目标要从收到的 absolute-form 改成 origin-form，空路径写成 \"/\"。",
+      "rows": [
+        "R01"
+      ]
+    },
+    {
+      "id": "9112-3.2.2-1",
+      "section": "3.2.2",
+      "section_title": "absolute-form",
+      "quote": "When making a request to a proxy, other than a CONNECT or server-wide OPTIONS request (as detailed below), a client MUST send the target URI in \"absolute-form\" as the request-target.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "request-target",
+      "gateway": "约束客户端：发给代理的非 CONNECT 请求用 absolute-form。入口据此判断客户端的明文请求是否合规；网关把明文请求发给上游 HTTP 代理时自己也要用 absolute-form。",
+      "rows": [
+        "R01",
+        "R17",
+        "R21"
+      ]
+    },
+    {
+      "id": "9112-3.2.2-2",
+      "section": "3.2.2",
+      "section_title": "absolute-form",
+      "quote": "A client MUST send a Host header field in an HTTP/1.1 request even if the request-target is in the absolute-form, since this allows the Host information to be forwarded through ancient HTTP/1.0 proxies that might not have implemented Host.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "request-target",
+      "gateway": "absolute-form 的请求也必须带 Host。网关向上游 HTTP 代理发请求时照做；也用来判断客户端的明文请求是否合规。",
+      "rows": [
+        "R01"
+      ]
+    },
+    {
+      "id": "9112-3.2.2-3",
+      "section": "3.2.2",
+      "section_title": "absolute-form",
+      "quote": "When a proxy receives a request with an absolute-form of request- target, the proxy MUST ignore the received Host header field (if any) and instead replace it with the host information of the request- target. A proxy that forwards such a request MUST generate a new Host field value based on the received request-target rather than forward the received Host field value.",
+      "level": "MUST",
+      "binds": "proxy",
+      "side": "入口",
+      "topic": "request-target",
+      "gateway": "入口收到 absolute-form 的请求时，目标主机只取自请求目标，忽略收到的 Host；转发时按请求目标重新生成 Host，不转发客户端给的 Host 值。Host 与请求目标不一致时按请求目标走；这种不一致能不能作为拒绝的理由，原文没有说（没有 Host、多行 Host 或 Host 值不合法仍按 9112-3.2-3 回 400）。",
+      "rows": [
+        "R01"
+      ]
+    },
+    {
+      "id": "9112-3.2.2-4",
+      "section": "3.2.2",
+      "section_title": "absolute-form",
+      "quote": "A server MUST accept the absolute-form in requests even though most HTTP/1.1 clients will only send the absolute-form to a proxy.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "request-target",
+      "gateway": "原文主语是 server。收请求的一方必须接受 absolute-form；对入口来说这本来就是明文代理请求的正常形式。",
+      "rows": [
+        "R01"
+      ]
+    },
+    {
+      "id": "9112-3.2.3-1",
+      "section": "3.2.3",
+      "section_title": "authority-form",
+      "quote": "The \"authority-form\" of request-target is only used for CONNECT requests (Section 9.3.6 of [HTTP]). It consists of only the uri-host and port number of the tunnel destination, separated by a colon (\":\").",
+      "level": "statement",
+      "binds": "any",
+      "side": "入口",
+      "topic": "connect",
+      "gateway": "背景：CONNECT 的请求目标是“主机:端口”，端口不可省；入口按这个语法解析 CONNECT 的目标，别的方法不用这种形式。",
+      "rows": [
+        "R03"
+      ]
+    },
+    {
+      "id": "9112-3.2.3-2",
+      "section": "3.2.3",
+      "section_title": "authority-form",
+      "quote": "When making a CONNECT request to establish a tunnel through one or more proxies, a client MUST send only the host and port of the tunnel destination as the request-target. The client obtains the host and port from the target URI's authority component, except that it sends the scheme's default port if the target URI elides the port.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "connect",
+      "gateway": "约束客户端：CONNECT 的请求目标只有主机和端口，URI 省略端口时填方案的默认端口。入口据此判断客户端的 CONNECT 请求行；网关向上游 HTTP 代理发 CONNECT 时自己也这样写。",
+      "rows": [
+        "R03",
+        "R18",
+        "R22"
+      ]
+    },
+    {
+      "id": "9112-3.2.4-1",
+      "section": "3.2.4",
+      "section_title": "asterisk-form",
+      "quote": "If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component, then the last proxy on the request chain MUST send a request-target of \"*\" when it forwards the request to the indicated origin server.",
+      "level": "MUST",
+      "binds": "proxy",
+      "side": "入口",
+      "topic": "request-target",
+      "gateway": "网关是请求链上最后一个代理（经 SOCKS5 上游直接对源站说话）时，收到路径为空、没有查询的 absolute-form OPTIONS，转发时请求目标写 \"*\"，不能写成 \"/\"。上游是 HTTP 代理时网关不是最后一个代理，这条不适用。",
+      "rows": []
+    },
+    {
+      "id": "9112-3.3-1",
+      "section": "3.3",
+      "section_title": "Reconstructing the Target URI",
+      "quote": "The target URI is the request-target when the request-target is in absolute-form.",
+      "level": "statement",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "request-target",
+      "gateway": "原文主语是 server。背景：absolute-form 的请求，目标 URI 就是请求目标本身，不需要用 Host 重建。",
+      "rows": [
+        "R01"
+      ]
+    },
+    {
+      "id": "9112-3.3-2",
+      "section": "3.3",
+      "section_title": "Reconstructing the Target URI",
+      "quote": "If the request-target is in authority-form, the target URI's authority component is the request-target. Otherwise, the target URI's authority component is the field value of the Host header field.",
+      "level": "statement",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "request-target",
+      "gateway": "原文主语是 server。CONNECT 的隧道目标取自请求目标，不取自 Host；只有 origin-form、asterisk-form 的请求才用 Host 确定 authority。",
+      "rows": [
+        "R03",
+        "R05"
+      ]
+    },
+    {
+      "id": "9112-3.3-3",
+      "section": "3.3",
+      "section_title": "Reconstructing the Target URI",
+      "quote": "If the target URI's authority component is empty and its URI scheme requires a non-empty authority (as is the case for \"http\" and \"https\"), the server can reject the request or determine whether a configured default applies that is consistent with the incoming connection's context.",
+      "level": "statement",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "request-target",
+      "gateway": "原文主语是 server。背景：重建出的目标 URI 没有 authority 时（例如发到代理端口的 origin-form 请求又没有可用的 Host），原文允许拒绝；没有规定状态码。",
+      "rows": []
+    },
+    {
+      "id": "9112-4-1",
+      "section": "4",
+      "section_title": "Status Line",
+      "quote": "A client SHOULD ignore the reason-phrase content because it is not a reliable channel for information (it might be translated for a given locale, overwritten by intermediaries, or discarded when the message is forwarded via other versions of HTTP).",
+      "level": "SHOULD",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "status",
+      "gateway": "网关解析上游的响应（包括对 CONNECT 的应答）只看状态码，不看原因短语；网关自己给客户端的错误信息也不能只放在原因短语里，客户端可以忽略它。",
+      "rows": [
+        "R80",
+        "R82",
+        "R86"
+      ]
+    },
+    {
+      "id": "9112-4-2",
+      "section": "4",
+      "section_title": "Status Line",
+      "quote": "A server MUST send the space that separates the status-code from the reason-phrase even when the reason-phrase is absent (i.e., the status-line would end with the space).",
+      "level": "MUST",
+      "binds": "sender",
+      "side": "入口",
+      "topic": "status",
+      "gateway": "原文主语是 server。网关自己生成的状态行（407、502、对 CONNECT 的 200 等），状态码后面的空格不能省，即使不写原因短语。",
+      "rows": []
+    },
+    {
+      "id": "9112-5.1-1",
+      "section": "5.1",
+      "section_title": "Field Line Parsing",
+      "quote": "A server MUST reject, with a response status code of 400 (Bad Request), any received request message that contains whitespace between a header field name and colon.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "原文主语是 server。入口收到头名和冒号之间有空白的请求，回 400 拒绝；不能去掉空白后继续转发。",
+      "rows": []
+    },
+    {
+      "id": "9112-5.1-2",
+      "section": "5.1",
+      "section_title": "Field Line Parsing",
+      "quote": "A proxy MUST remove any such whitespace from a response message before forwarding the message downstream.",
+      "level": "MUST",
+      "binds": "proxy",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "上游回来的响应里头名和冒号之间有空白时，网关转给客户端之前必须去掉这些空白（“such whitespace”指上一句说的头名与冒号之间的空白）。",
+      "rows": []
+    },
+    {
+      "id": "9112-5.2-1",
+      "section": "5.2",
+      "section_title": "Obsolete Line Folding",
+      "quote": "A sender MUST NOT generate a message that includes line folding (i.e., that has any field line value that contains a match to the obs-fold rule) unless the message is intended for packaging within the \"message/http\" media type.",
+      "level": "MUST NOT",
+      "binds": "sender",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "网关发出的消息（转发的和自己生成的）里不能有折行的头。",
+      "rows": []
+    },
+    {
+      "id": "9112-5.2-2",
+      "section": "5.2",
+      "section_title": "Obsolete Line Folding",
+      "quote": "A server that receives an obs-fold in a request message that is not within a \"message/http\" container MUST either reject the message by sending a 400 (Bad Request), preferably with a representation explaining that obsolete line folding is unacceptable, or replace each received obs-fold with one or more SP octets prior to interpreting the field value or forwarding the message downstream.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "原文主语是 server。入口收到带折行头的请求，两条路二选一：回 400；或者先把每处折行换成空格，再解释头值、再转发。不能原样转给上游。",
+      "rows": []
+    },
+    {
+      "id": "9112-5.2-3",
+      "section": "5.2",
+      "section_title": "Obsolete Line Folding",
+      "quote": "A proxy or gateway that receives an obs-fold in a response message that is not within a \"message/http\" container MUST either discard the message and replace it with a 502 (Bad Gateway) response, preferably with a representation explaining that unacceptable line folding was received, or replace each received obs-fold with one or more SP octets prior to interpreting the field value or forwarding the message downstream.",
+      "level": "MUST",
+      "binds": "proxy",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "上游回来的响应里有折行的头时，网关要么丢弃该响应、给客户端回 502，要么先把折行换成空格再解释和转发。",
+      "rows": []
+    },
+    {
+      "id": "9112-6-1",
+      "section": "6",
+      "section_title": "Message Body",
+      "quote": "The presence of a message body in a request is signaled by a Content-Length or Transfer-Encoding header field. Request message framing is independent of method semantics.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "判断请求有没有正文只看 Content-Length 和 Transfer-Encoding，不看方法：GET 带这两个头之一也有正文，POST 两个都没有就没有正文。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.1-1",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "A recipient MUST be able to parse the chunked transfer coding (Section 7.1) because it plays a crucial role in framing messages when the content size is not known in advance.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "入口必须能解析分块的请求正文，上游一侧必须能解析分块的响应正文。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.1-2",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "If any transfer coding other than chunked is applied to a request's content, the sender MUST apply chunked as the final transfer coding to ensure that the message is properly framed. If any transfer coding other than chunked is applied to a response's content, the sender MUST either apply chunked as the final transfer coding or terminate the message by closing the connection.",
+      "level": "MUST",
+      "binds": "sender",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "约束发送方：请求里用了别的传输编码时，最后一层必须是 chunked；响应里则是 chunked 收尾或者以关闭连接结束。网关发出的消息要满足；收到的请求不满足时按 6.3 第 4 项处理。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.1-3",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "Unlike Content-Encoding (Section 8.4.1 of [HTTP]), Transfer-Encoding is a property of the message, not of the representation. Any recipient along the request/response chain MAY decode the received transfer coding(s) or apply additional transfer coding(s) to the message body, assuming that corresponding changes are made to the Transfer-Encoding field value.",
+      "level": "MAY",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "网关可以在转发时拆掉或加上传输编码（例如把分块的请求重新分块，或收齐后改成 Content-Length），前提是 Transfer-Encoding 头跟着改。所以正文的分帧方式是逐跳的，源站看到的分帧不一定是客户端发出的那一种。",
+      "rows": [
+        "R19",
+        "R24"
+      ]
+    },
+    {
+      "id": "9112-6.1-4",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content). A server MUST NOT send a Transfer-Encoding header field in any 2xx (Successful) response to a CONNECT request (Section 9.3.6 of [HTTP]).",
+      "level": "MUST NOT",
+      "binds": "sender",
+      "side": "入口",
+      "topic": "connect",
+      "gateway": "原文主语是 server。网关对 CONNECT 回的 2xx，以及它生成的 1xx、204 响应，都不能带 Transfer-Encoding。上游代理对网关的 CONNECT 回 2xx 时带了这个头属于上游违规。",
+      "rows": [
+        "R84",
+        "R85"
+      ]
+    },
+    {
+      "id": "9112-6.1-5",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "A server that receives a request message with a transfer coding it does not understand SHOULD respond with 501 (Not Implemented).",
+      "level": "SHOULD",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "framing",
+      "gateway": "原文主语是 server。入口遇到自己不认识的传输编码应当回 501，不要猜着处理。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.1-6",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "A client MUST NOT send a request containing Transfer-Encoding unless it knows the server will handle HTTP/1.1 requests (or later minor revisions); such knowledge might be in the form of specific user configuration or by remembering the version of a prior received response.",
+      "level": "MUST NOT",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "约束客户端。网关向上游转发带 Transfer-Encoding 的请求之前，要知道下一跳能处理 HTTP/1.1（配置或之前收到过的响应版本）；也用来判断客户端的明文 POST 用分块是否合规。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.1-7",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "A server MUST NOT send a response containing Transfer- Encoding unless the corresponding request indicates HTTP/1.1 (or later minor revisions).",
+      "level": "MUST NOT",
+      "binds": "sender",
+      "side": "入口",
+      "topic": "framing",
+      "gateway": "原文主语是 server。客户端的请求是 HTTP/1.0 时，网关回给它的响应不能带 Transfer-Encoding（上游回来的分块响应要先解掉，或者以关闭连接定界）。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.1-8",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "A server MAY reject a request that contains both Content-Length and Transfer-Encoding or process such a request in accordance with the Transfer-Encoding alone. Regardless, the server MUST close the connection after responding to such a request to avoid the potential attacks.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "原文主语是 server。入口收到同时带 Content-Length 和 Transfer-Encoding 的请求：可以拒绝，也可以只按 Transfer-Encoding 处理；不管选哪种，回完响应必须关闭这条客户端连接。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.1-9",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "A server or client that receives an HTTP/1.0 message containing a Transfer-Encoding header field MUST treat the message as if the framing is faulty, even if a Content-Length is present, and close the connection after processing the message.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "入口收到的 HTTP/1.0 请求、上游回来的 HTTP/1.0 响应只要带 Transfer-Encoding，就按分帧有问题处理，处理完关闭那条连接，不复用。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.1-10",
+      "section": "6.1",
+      "section_title": "Transfer-Encoding",
+      "quote": "A sender MUST NOT apply the chunked transfer coding more than once to a message body (i.e., chunking an already chunked message is not allowed).",
+      "level": "MUST NOT",
+      "binds": "sender",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "网关按 9112-6.1-3 给消息加传输编码时，不得在已经分块的正文外面再套一层 chunked。反过来，收到 Transfer-Encoding 里 chunked 出现不止一次的消息，是发送方违规；接收方该怎么办这句没有说。这一句在原文里排在 9112-6.1-2 之前。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.2-1",
+      "section": "6.2",
+      "section_title": "Content-Length",
+      "quote": "A sender MUST NOT send a Content-Length header field in any message that contains a Transfer-Encoding header field.",
+      "level": "MUST NOT",
+      "binds": "sender",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "网关发出的任何消息不能同时带 Content-Length 和 Transfer-Encoding；客户端这样发属于违规。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.3-1",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "Any response to a HEAD request and any response with a 1xx (Informational), 204 (No Content), or 304 (Not Modified) status code is always terminated by the first empty line after the header fields, regardless of the header fields present in the message, and thus cannot contain a message body or trailer section.",
+      "level": "statement",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "判定规则第 1 项（优先级最高）：网关读上游的响应时，对 HEAD 的响应和 1xx、204、304 一律到头部结束为止，不管它带什么 Content-Length 或 Transfer-Encoding。所以网关必须记住每个响应对应的请求方法。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.3-2",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "Any 2xx (Successful) response to a CONNECT request implies that the connection will become a tunnel immediately after the empty line that concludes the header fields. A client MUST ignore any Content-Length or Transfer-Encoding header fields received in such a message.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "connect",
+      "gateway": "判定规则第 2 项：网关向上游 HTTP 代理发 CONNECT、收到 2xx 后，空行之后的字节全部是隧道数据，必须忽略其中的 Content-Length 和 Transfer-Encoding。客户端对网关回的 2xx 也应当这样处理。",
+      "rows": [
+        "R84",
+        "R85"
+      ]
+    },
+    {
+      "id": "9112-6.3-3",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If a message is received with both a Transfer-Encoding and a Content-Length header field, the Transfer-Encoding overrides the Content-Length. Such a message might indicate an attempt to perform request smuggling (Section 11.2) or response splitting (Section 11.1) and ought to be handled as an error. An intermediary that chooses to forward the message MUST first remove the received Content-Length field and process the Transfer-Encoding (as described below) prior to forwarding the message downstream.",
+      "level": "MUST",
+      "binds": "intermediary",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "判定规则第 3 项：两个头都有时以 Transfer-Encoding 为准，原文说这种消息应当按错误处理（ought to，不是规范性关键词）。网关如果选择转发，必须先删掉 Content-Length 并按 Transfer-Encoding 处理正文；请求和响应两个方向都适用。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.3-4",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If a Transfer-Encoding header field is present and the chunked transfer coding (Section 7.1) is the final encoding, the message body length is determined by reading and decoding the chunked data until the transfer coding indicates the data is complete.",
+      "level": "statement",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "判定规则第 4 项之一：最后一层是 chunked 时，正文到分块编码自己宣告结束为止。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.3-5",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If a Transfer-Encoding header field is present in a response and the chunked transfer coding is not the final encoding, the message body length is determined by reading the connection until it is closed by the server.",
+      "level": "statement",
+      "binds": "recipient",
+      "side": "上游",
+      "topic": "framing",
+      "gateway": "判定规则第 4 项之二：上游的响应带 Transfer-Encoding 而最后一层不是 chunked，正文读到对方关闭连接为止；这条上游连接不能再复用。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.3-6",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If a Transfer-Encoding header field is present in a request and the chunked transfer coding is not the final encoding, the message body length cannot be determined reliably; the server MUST respond with the 400 (Bad Request) status code and then close the connection.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "原文主语是 server。判定规则第 4 项之三：入口收到带 Transfer-Encoding 而最后一层不是 chunked 的请求，必须回 400 并关闭连接，不转发。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.3-7",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If a message is received without Transfer-Encoding and with an invalid Content-Length header field, then the message framing is invalid and the recipient MUST treat it as an unrecoverable error, unless the field value can be successfully parsed as a comma-separated list (Section 5.6.1 of [HTTP]), all values in the list are valid, and all values in the list are the same (in which case, the message is processed with that single value used as the Content-Length field value).",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "判定规则第 5 项：没有 Transfer-Encoding 而 Content-Length 不合法（非数字、多个值不一致）时，分帧无效，按不可恢复的错误处理。唯一的例外是逗号分隔的列表里每个值都合法并且全部相同，这时按那一个值处理。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.3-8",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If the unrecoverable error is in a request message, the server MUST respond with a 400 (Bad Request) status code and then close the connection.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "原文主语是 server。接上一条：请求的 Content-Length 不合法时，入口回 400 并关闭客户端连接。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.3-9",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If it is in a response message received by a proxy, the proxy MUST close the connection to the server, discard the received response, and send a 502 (Bad Gateway) response to the client.",
+      "level": "MUST",
+      "binds": "proxy",
+      "side": "入口",
+      "topic": "smuggling",
+      "gateway": "接上一条：上游回来的响应 Content-Length 不合法时，网关必须关闭那条上游连接、丢弃该响应，并给客户端回 502。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.3-10",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If a valid Content-Length header field is present without Transfer-Encoding, its decimal value defines the expected message body length in octets. If the sender closes the connection or the recipient times out before the indicated number of octets are received, the recipient MUST consider the message to be incomplete and close the connection.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "判定规则第 6 项：按 Content-Length 读正文；没读够对方就关了连接或者超时，必须把消息当作不完整并关闭连接，不能把收到的部分当作完整的消息。",
+      "rows": [
+        "R24"
+      ]
+    },
+    {
+      "id": "9112-6.3-11",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If this is a request message and none of the above are true, then the message body length is zero (no message body is present).",
+      "level": "statement",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "framing",
+      "gateway": "判定规则第 7 项：请求既没有 Transfer-Encoding 也没有 Content-Length 就是没有正文；头部之后的字节属于下一个请求，入口不能把它们当作这个请求的正文。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.3-12",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "Otherwise, this is a response message without a declared message body length, so the message body length is determined by the number of octets received prior to the server closing the connection.",
+      "level": "statement",
+      "binds": "recipient",
+      "side": "上游",
+      "topic": "framing",
+      "gateway": "判定规则第 8 项：上游的响应没有声明长度时，正文读到对方关闭连接为止；这条上游连接不能复用，网关也分辨不出正文是否被截断。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.3-13",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "A server MAY reject a request that contains a message body but not a Content-Length by responding with 411 (Length Required).",
+      "level": "MAY",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "framing",
+      "gateway": "原文主语是 server。入口可以用 411 拒绝只用分块、不带 Content-Length 的请求；这是允许，不是要求。源站或上游也可能这样做。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.3-14",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "Unless a transfer coding other than chunked has been applied, a client that sends a request containing a message body SHOULD use a valid Content-Length header field if the message body length is known in advance, rather than the chunked transfer coding, since some existing services respond to chunked with a 411 (Length Required) status code even though they understand the chunked transfer coding.",
+      "level": "SHOULD",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "约束客户端：正文长度事先知道时应当用 Content-Length 而不是分块。用来判断客户端的明文 POST 怎么分帧；网关向上游转发已知长度的正文时也应当用 Content-Length。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.3-15",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "A user agent that sends a request that contains a message body MUST send either a valid Content-Length header field or use the chunked transfer coding.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "客户端",
+      "topic": "framing",
+      "gateway": "约束用户代理：带正文的请求必须有合法的 Content-Length 或用分块，二者必居其一。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-6.3-16",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "If the final response to the last request on a connection has been completely received and there remains additional data to read, a user agent MAY discard the remaining data or attempt to determine if that data belongs as part of the prior message body, which might be the case if the prior message's Content-Length value is incorrect. A client MUST NOT process, cache, or forward such extra data as a separate response, since such behavior would be vulnerable to cache poisoning.",
+      "level": "MUST NOT",
+      "binds": "client",
+      "side": "上游",
+      "topic": "smuggling",
+      "gateway": "上游连接上最后一个响应收完之后还有多余的数据时，网关不能把它当作另一个响应去处理或转发给客户端。",
+      "rows": []
+    },
+    {
+      "id": "9112-6.3-17",
+      "section": "6.3",
+      "section_title": "Message Body Length",
+      "quote": "Since there is no way to distinguish a successfully completed, close- delimited response message from a partially received message interrupted by network failure, a server SHOULD generate encoding or length-delimited messages whenever possible.",
+      "level": "SHOULD",
+      "binds": "sender",
+      "side": "入口",
+      "topic": "framing",
+      "gateway": "原文主语是 server。靠关闭连接定界的响应，客户端分不清是发完了还是中途断了。网关自己生成的响应，以及把上游“读到关闭为止”的响应（9112-6.3-12）转给客户端时，应当尽量用 Content-Length 或分块来定界。",
+      "rows": []
+    },
+    {
+      "id": "9112-7.1-1",
+      "section": "7.1",
+      "section_title": "Chunked Transfer Coding",
+      "quote": "The chunk-size field is a string of hex digits indicating the size of the chunk-data in octets. The chunked transfer coding is complete when a chunk with a chunk-size of zero is received, possibly followed by a trailer section, and finally terminated by an empty line.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "背景：分块长度是十六进制；收到长度为零的块、可选的尾部字段和最后的空行才算结束。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-7.1-2",
+      "section": "7.1",
+      "section_title": "Chunked Transfer Coding",
+      "quote": "Therefore, recipients MUST anticipate potentially large hexadecimal numerals and prevent parsing errors due to integer conversion overflows or precision loss due to integer representation.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "网关解析 chunk-size 时要防整数溢出和精度损失：超出所用整数类型范围的值按错误处理，不能回绕成一个小数字。",
+      "rows": []
+    },
+    {
+      "id": "9112-7.1-3",
+      "section": "7.1",
+      "section_title": "Chunked Transfer Coding",
+      "quote": "The chunked coding does not define any parameters. Their presence SHOULD be treated as an error.",
+      "level": "SHOULD",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "Transfer-Encoding 里的 chunked 带了参数时应当按错误处理。",
+      "rows": []
+    },
+    {
+      "id": "9112-7.1.1-1",
+      "section": "7.1.1",
+      "section_title": "Chunk Extensions",
+      "quote": "The chunked coding is specific to each connection and is likely to be removed or recoded by each recipient (including intermediaries) before any higher-level application would have a chance to inspect the extensions.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "hop-by-hop",
+      "gateway": "背景：分块编码是逐连接的，中间方可以拆掉或重新分块，块的边界和扩展不保证原样到达对端。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-7.1.1-2",
+      "section": "7.1.1",
+      "section_title": "Chunk Extensions",
+      "quote": "A recipient MUST ignore unrecognized chunk extensions. A server ought to limit the total length of chunk extensions received in a request to an amount reasonable for the services provided, in the same way that it applies length limitations and timeouts for other parts of a message, and generate an appropriate 4xx (Client Error) response if that amount is exceeded.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "网关解析分块正文时必须能跳过不认识的块扩展，不能因为有扩展就解析失败。第二句（ought to，不是规范性关键词）建议入口给块扩展的总长度设上限，超限回 4xx。",
+      "rows": []
+    },
+    {
+      "id": "9112-7.1.2-1",
+      "section": "7.1.2",
+      "section_title": "Chunked Trailer Section",
+      "quote": "A recipient that removes the chunked coding from a message MAY selectively retain or discard the received trailer fields. A recipient that retains a received trailer field MUST either store/ forward the trailer field separately from the received header fields or merge the received trailer field into the header section. A recipient MUST NOT merge a received trailer field into the header section unless its corresponding header field definition explicitly permits and instructs how the trailer field value can be safely merged.",
+      "level": "MUST NOT",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "网关拆掉分块编码时可以丢弃尾部字段；保留的话要与头部分开转发，不能把尾部字段并进头部，除非该字段的定义明确允许。",
+      "rows": []
+    },
+    {
+      "id": "9112-7.4-1",
+      "section": "7.4",
+      "section_title": "Negotiating Transfer Codings",
+      "quote": "A client MUST NOT send the chunked transfer coding name in TE; chunked is always acceptable for HTTP/1.1 recipients.",
+      "level": "MUST NOT",
+      "binds": "client",
+      "side": "客户端",
+      "topic": "hop-by-hop",
+      "gateway": "约束客户端：TE 里不写 chunked。用来判断客户端请求里与连接有关的头是否合规。",
+      "rows": [
+        "R02"
+      ]
+    },
+    {
+      "id": "9112-7.4-2",
+      "section": "7.4",
+      "section_title": "Negotiating Transfer Codings",
+      "quote": "Since the TE header field only applies to the immediate connection, a sender of TE MUST also send a \"TE\" connection option within the Connection header field (Section 7.6.1 of [HTTP]) in order to prevent the TE header field from being forwarded by intermediaries that do not support its semantics.",
+      "level": "MUST",
+      "binds": "sender",
+      "side": "两侧",
+      "topic": "hop-by-hop",
+      "gateway": "TE 只对紧邻的一跳有效。约束的是 TE 的发送方：客户端发 TE 必须同时在 Connection 里列出 TE；网关自己向上游发 TE 时也一样。",
+      "rows": [
+        "R02"
+      ]
+    },
+    {
+      "id": "9112-8-1",
+      "section": "8",
+      "section_title": "Handling Incomplete Messages",
+      "quote": "A server that receives an incomplete request message, usually due to a canceled request or a triggered timeout exception, MAY send an error response prior to closing the connection.",
+      "level": "MAY",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "原文主语是 server。入口收到不完整的请求（客户端中途取消或超时）时，可以先回一个错误响应再关闭连接；不回直接关也不违规。",
+      "rows": []
+    },
+    {
+      "id": "9112-8-2",
+      "section": "8",
+      "section_title": "Handling Incomplete Messages",
+      "quote": "A client that receives an incomplete response message, which can occur when a connection is closed prematurely or when decoding a supposedly chunked transfer coding fails, MUST record the message as incomplete.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "上游",
+      "topic": "framing",
+      "gateway": "上游的响应没收完（连接提前关闭、分块解码失败）时，网关必须把它记为不完整，不能当成完整的响应。",
+      "rows": [
+        "R24"
+      ]
+    },
+    {
+      "id": "9112-8-3",
+      "section": "8",
+      "section_title": "Handling Incomplete Messages",
+      "quote": "A message body that uses the chunked transfer coding is incomplete if the zero-sized chunk that terminates the encoding has not been received. A message that uses a valid Content-Length is incomplete if the size of the message body received (in octets) is less than the value given by Content-Length.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "framing",
+      "gateway": "“不完整”的定义：分块的没收到长度为零的结束块；按 Content-Length 的收到的字节数不够。网关按这个定义判断请求正文和上游响应是否完整。",
+      "rows": [
+        "R24"
+      ]
+    },
+    {
+      "id": "9112-9.2-1",
+      "section": "9.2",
+      "section_title": "Associating a Response to a Request",
+      "quote": "HTTP/1.1 does not include a request identifier for associating a given request message with its corresponding one or more response messages. Hence, it relies on the order of response arrival to correspond exactly to the order in which requests are made on the same connection.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "背景：HTTP/1.1 的请求和响应只靠同一条连接上的先后顺序对应。任何一侧的分帧判断出错都会让后面的响应错位，这是走私和响应拆分能成立的前提。",
+      "rows": []
+    },
+    {
+      "id": "9112-9.2-2",
+      "section": "9.2",
+      "section_title": "Associating a Response to a Request",
+      "quote": "A client that has more than one outstanding request on a connection MUST maintain a list of outstanding requests in the order sent and MUST associate each received response message on that connection to the first outstanding request that has not yet received a final (non- 1xx) response.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "上游",
+      "topic": "connection",
+      "gateway": "网关在一条上游连接上同时有多个未应答的请求时，必须按发送顺序把响应对应到最早那个还没收到最终响应的请求；1xx 不算最终响应。",
+      "rows": []
+    },
+    {
+      "id": "9112-9.2-3",
+      "section": "9.2",
+      "section_title": "Associating a Response to a Request",
+      "quote": "If a client receives data on a connection that doesn't have outstanding requests, the client MUST NOT consider that data to be a valid response; the client SHOULD close the connection, since message delimitation is now ambiguous, unless the data consists only of one or more CRLF (which can be discarded per Section 2.2).",
+      "level": "MUST NOT",
+      "binds": "client",
+      "side": "上游",
+      "topic": "smuggling",
+      "gateway": "空闲的上游连接上收到数据（只有 CRLF 的除外）时，网关不能把它当作有效的响应，并且应当关闭这条连接，不放回连接池。",
+      "rows": []
+    },
+    {
+      "id": "9112-9.3-1",
+      "section": "9.3",
+      "section_title": "Persistence",
+      "quote": "HTTP/1.1 defaults to the use of \"persistent connections\", allowing multiple requests and responses to be carried over a single connection. HTTP implementations SHOULD support persistent connections.",
+      "level": "SHOULD",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "网关在入口和上游两侧都应当支持持久连接；HTTP/1.1 的消息默认连接保持。",
+      "rows": [
+        "R02",
+        "R11",
+        "R13"
+      ]
+    },
+    {
+      "id": "9112-9.3-2",
+      "section": "9.3",
+      "section_title": "Persistence",
+      "quote": "A recipient determines whether a connection is persistent or not based on the protocol version and Connection header field (Section 7.6.1 of [HTTP]) in the most recently received message, if any: * If the \"close\" connection option is present (Section 9.6), the connection will not persist after the current response; else, * If the received protocol is HTTP/1.1 (or later), the connection will persist after the current response; else, * If the received protocol is HTTP/1.0, the \"keep-alive\" connection option is present, either the recipient is not a proxy or the message is a response, and the recipient wishes to honor the HTTP/1.0 \"keep-alive\" mechanism, the connection will persist after the current response; otherwise, * The connection will close after the current response.",
+      "level": "statement",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "连接是否保持的判定顺序：最近一条消息里有 close 就不保持；否则 HTTP/1.1 保持；HTTP/1.0 只有带 keep-alive 且“接收方不是代理或者消息是响应”时才可以保持；其余关闭。网关在入口一侧是代理，所以客户端的 HTTP/1.0 请求即使带 keep-alive 也不保持；上游的 HTTP/1.0 响应带 keep-alive 时可以保持。",
+      "rows": [
+        "R02",
+        "R34",
+        "R35"
+      ]
+    },
+    {
+      "id": "9112-9.3-3",
+      "section": "9.3",
+      "section_title": "Persistence",
+      "quote": "A client that does not support persistent connections MUST send the \"close\" connection option in every request message.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "约束客户端：不支持持久连接就每个请求都带 close。网关对上游不复用连接时自己要照做；也用来解释客户端请求里的 Connection 头。",
+      "rows": [
+        "R02"
+      ]
+    },
+    {
+      "id": "9112-9.3-4",
+      "section": "9.3",
+      "section_title": "Persistence",
+      "quote": "A server that does not support persistent connections MUST send the \"close\" connection option in every response message that does not have a 1xx (Informational) status code.",
+      "level": "MUST",
+      "binds": "sender",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "原文主语是 server。入口如果不让客户端复用连接，每个非 1xx 的响应都必须带 close。",
+      "rows": []
+    },
+    {
+      "id": "9112-9.3-5",
+      "section": "9.3",
+      "section_title": "Persistence",
+      "quote": "A client MAY send additional requests on a persistent connection until it sends or receives a \"close\" connection option or receives an HTTP/1.0 response without a \"keep-alive\" connection option.",
+      "level": "MAY",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "在发出或收到 close 之前，客户端可以在同一条连接上继续发请求，包括收到 407 之后的重试；这是允许，客户端另开连接也合规。网关对上游连接的复用也以此为界。",
+      "rows": [
+        "R11",
+        "R13",
+        "R32",
+        "R33",
+        "R36",
+        "R88"
+      ]
+    },
+    {
+      "id": "9112-9.3-6",
+      "section": "9.3",
+      "section_title": "Persistence",
+      "quote": "A server MUST read the entire request message body or close the connection after sending its response; otherwise, the remaining data on a persistent connection would be misinterpreted as the next request. Likewise, a client MUST read the entire response message body if it intends to reuse the same connection for a subsequent request.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "原文主语是 server。入口在请求正文读完之前就回了响应（例如对带正文的 POST 回 407）时，要么把剩下的正文读完，要么回完就关闭连接，否则剩下的正文会被当成下一个请求。第二句约束客户端角色：网关要复用上游连接，就得先把上一个响应的正文读完。",
+      "rows": [
+        "R34",
+        "R43"
+      ]
+    },
+    {
+      "id": "9112-9.3-7",
+      "section": "9.3",
+      "section_title": "Persistence",
+      "quote": "A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client (see Appendix C.2.2 for information and discussion of the problems with the Keep-Alive header field implemented by many HTTP/1.0 clients).",
+      "level": "MUST NOT",
+      "binds": "proxy",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "客户端的请求是 HTTP/1.0 时，入口回完响应就关闭连接，不理会它带的 keep-alive。",
+      "rows": []
+    },
+    {
+      "id": "9112-9.3-8",
+      "section": "9.3",
+      "section_title": "Persistence",
+      "quote": "In order to remain persistent, all messages on a connection need to have a self-defined message length (i.e., one not defined by closure of the connection), as described in Section 6.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "连接要保持下去，上面的每条消息都得自带长度，不能靠关闭连接来定界。入口自己生成的 407、403、502 等响应，想让客户端在原连接上接着发请求，就要带 Content-Length 或用分块；上游一侧收到靠关闭定界的响应，那条上游连接不能复用。",
+      "rows": [
+        "R32",
+        "R33",
+        "R88"
+      ]
+    },
+    {
+      "id": "9112-9.3.1-1",
+      "section": "9.3.1",
+      "section_title": "Retrying Requests",
+      "quote": "Connections can be closed at any time, with or without intention. Implementations ought to anticipate the need to recover from asynchronous close events. The conditions under which a client can automatically retry a sequence of outstanding requests are defined in Section 9.2.2 of [HTTP].",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "retry",
+      "gateway": "背景：连接随时可能被关闭，实现要准备好从中恢复；什么情况下可以自动重试不在这里规定，在 RFC 9110 的 9.2.2 节。",
+      "rows": [
+        "R90",
+        "R91",
+        "R92",
+        "R93",
+        "R94",
+        "R95",
+        "R96",
+        "R97",
+        "R98",
+        "R99"
+      ]
+    },
+    {
+      "id": "9112-9.3.2-1",
+      "section": "9.3.2",
+      "section_title": "Pipelining",
+      "quote": "A client that supports persistent connections MAY \"pipeline\" its requests (i.e., send multiple requests without waiting for each response). A server MAY process a sequence of pipelined requests in parallel if they all have safe methods (Section 9.2.1 of [HTTP]), but it MUST send the corresponding responses in the same order that the requests were received.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "原文主语是 server。客户端可以不等响应就在一条连接上连发请求，入口不能假定一次只来一个；响应必须按收到请求的顺序发回。并行处理只对全是安全方法的序列允许。",
+      "rows": []
+    },
+    {
+      "id": "9112-9.3.2-2",
+      "section": "9.3.2",
+      "section_title": "Pipelining",
+      "quote": "An intermediary that receives pipelined requests MAY pipeline those requests when forwarding them inbound, since it can rely on the outbound user agent(s) to determine what requests can be safely pipelined. If the inbound connection fails before receiving a response, the pipelining intermediary MAY attempt to retry a sequence of requests that have yet to receive a response if the requests all have idempotent methods; otherwise, the pipelining intermediary SHOULD forward any received responses and then close the corresponding outbound connection(s) so that the outbound user agent(s) can recover accordingly.",
+      "level": "MAY",
+      "binds": "intermediary",
+      "side": "入口",
+      "topic": "retry",
+      "gateway": "只说管线化转发的中间方：上游连接在收到响应之前断开时，未应答的请求全是幂等方法才可以由网关重试；否则应当把已收到的响应转给客户端，然后关闭客户端连接，让客户端自己恢复。网关不向上游做管线化时，这条不直接适用。",
+      "rows": [
+        "R92",
+        "R93"
+      ]
+    },
+    {
+      "id": "9112-9.3.2-3",
+      "section": "9.3.2",
+      "section_title": "Pipelining",
+      "quote": "A client that pipelines requests SHOULD retry unanswered requests if the connection closes before it receives all of the corresponding responses.",
+      "level": "SHOULD",
+      "binds": "client",
+      "side": "客户端",
+      "topic": "retry",
+      "gateway": "背景：做管线化的客户端，在连接关闭而响应没收全时，应当重试没有得到应答的请求。入口关闭连接之后同一个请求再次到达，可能出于这一条；不做管线化的客户端不受它约束。",
+      "rows": []
+    },
+    {
+      "id": "9112-9.4-1",
+      "section": "9.4",
+      "section_title": "Concurrency",
+      "quote": "Previous revisions of HTTP gave a specific number of connections as a ceiling, but this was found to be impractical for many applications. As a result, this specification does not mandate a particular maximum number of connections but, instead, encourages clients to be conservative when opening multiple connections.",
+      "level": "statement",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "背景：规范不规定客户端的并发连接数上限，只鼓励保守。客户端并发时开几条代理连接都不违规；网关对上游开多少条连接同样没有硬性上限。",
+      "rows": [
+        "R14",
+        "R15",
+        "R16"
+      ]
+    },
+    {
+      "id": "9112-9.4-2",
+      "section": "9.4",
+      "section_title": "Concurrency",
+      "quote": "Note that a server might reject traffic that it deems abusive or characteristic of a denial-of-service attack, such as an excessive number of open connections from a single client.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "原文主语是 server。背景：收连接的一方可以拒绝它认为滥用的流量（例如单个客户端的连接过多）。入口可以限制每个客户端的连接数；上游也可能这样对待网关。",
+      "rows": [
+        "R14",
+        "R15",
+        "R16"
+      ]
+    },
+    {
+      "id": "9112-9.5-1",
+      "section": "9.5",
+      "section_title": "Failures and Timeouts",
+      "quote": "The use of persistent connections places no requirements on the length (or existence) of this timeout for either the client or the server.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "背景：空闲连接的超时多长、有没有，规范都不规定；入口和上游两侧的空闲超时由网关自己定，也不能假定上游的超时是多少。",
+      "rows": [
+        "R90",
+        "R91"
+      ]
+    },
+    {
+      "id": "9112-9.5-2",
+      "section": "9.5",
+      "section_title": "Failures and Timeouts",
+      "quote": "A client or server that wishes to time out SHOULD issue a graceful close on the connection. Implementations SHOULD constantly monitor open connections for a received closure signal and respond to it as appropriate, since prompt closure of both sides of a connection enables allocated system resources to be reclaimed.",
+      "level": "SHOULD",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "网关因超时关闭连接时应当正常关闭（不是复位）；应当持续监视空闲连接上对方的关闭信号并及时关掉自己这一侧，连接池里的上游连接也一样。",
+      "rows": [
+        "R90",
+        "R91"
+      ]
+    },
+    {
+      "id": "9112-9.5-3",
+      "section": "9.5",
+      "section_title": "Failures and Timeouts",
+      "quote": "A client, server, or proxy MAY close the transport connection at any time. For example, a client might have started to send a new request at the same time that the server has decided to close the \"idle\" connection.",
+      "level": "MAY",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "retry",
+      "gateway": "任何一方随时可以关闭连接，所以“新请求刚发出、对方正好关掉空闲连接”的竞争必然存在。网关在复用的上游连接上发请求要处理这种情况；客户端在复用的代理连接上也会遇到。",
+      "rows": [
+        "R90",
+        "R91",
+        "R92",
+        "R93",
+        "R98"
+      ]
+    },
+    {
+      "id": "9112-9.5-4",
+      "section": "9.5",
+      "section_title": "Failures and Timeouts",
+      "quote": "A server SHOULD sustain persistent connections, when possible, and allow the underlying transport's flow-control mechanisms to resolve temporary overloads rather than terminate connections with the expectation that clients will retry.",
+      "level": "SHOULD",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "原文主语是 server。入口过载时应当靠传输层的流量控制顶住，而不是断开客户端连接、指望客户端重试。",
+      "rows": []
+    },
+    {
+      "id": "9112-9.5-5",
+      "section": "9.5",
+      "section_title": "Failures and Timeouts",
+      "quote": "A client sending a message body SHOULD monitor the network connection for an error response while it is transmitting the request. If the client sees a response that indicates the server does not wish to receive the message body and is closing the connection, the client SHOULD immediately cease transmitting the body and close its side of the connection.",
+      "level": "SHOULD",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "约束客户端：发正文的同时应当留意错误响应，看到对方不收正文并且要关连接，就应当停发并关闭自己这一侧。网关向上游转发正文时应当这样做；也用来解释客户端发带正文的 POST 遇到 407 时的行为。",
+      "rows": [
+        "R20",
+        "R43"
+      ]
+    },
+    {
+      "id": "9112-9.6-1",
+      "section": "9.6",
+      "section_title": "Tear-down",
+      "quote": "The \"close\" connection option is defined as a signal that the sender will close this connection after completion of the response. A sender SHOULD send a Connection header field (Section 7.6.1 of [HTTP]) containing the \"close\" connection option when it intends to close a connection.",
+      "level": "SHOULD",
+      "binds": "sender",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "网关打算在某个响应之后关闭客户端连接（或在某个请求之后关闭上游连接）时，应当在那条消息里带 Connection: close。",
+      "rows": [
+        "R02",
+        "R34",
+        "R35"
+      ]
+    },
+    {
+      "id": "9112-9.6-2",
+      "section": "9.6",
+      "section_title": "Tear-down",
+      "quote": "A client that sends a \"close\" connection option MUST NOT send further requests on that connection (after the one containing the \"close\") and MUST close the connection after reading the final response message corresponding to this request.",
+      "level": "MUST NOT",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "约束客户端：发了 close 之后不能在这条连接上再发请求，读完最终响应必须关闭连接。网关向上游发了 close 时自己要遵守；也用来判断客户端的行为。",
+      "rows": [
+        "R02"
+      ]
+    },
+    {
+      "id": "9112-9.6-3",
+      "section": "9.6",
+      "section_title": "Tear-down",
+      "quote": "A server that receives a \"close\" connection option MUST initiate closure of the connection (see below) after it sends the final response to the request that contained the \"close\" connection option. The server SHOULD send a \"close\" connection option in its final response on that connection. The server MUST NOT process any further requests received on that connection.",
+      "level": "MUST",
+      "binds": "recipient",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "原文主语是 server。入口收到带 close 的请求：发完最终响应后必须主动开始关闭连接，应当在这个响应里带 close，这条连接上之后收到的请求一律不处理。",
+      "rows": [
+        "R02"
+      ]
+    },
+    {
+      "id": "9112-9.6-4",
+      "section": "9.6",
+      "section_title": "Tear-down",
+      "quote": "A server that sends a \"close\" connection option MUST initiate closure of the connection (see below) after it sends the response containing the \"close\" connection option. The server MUST NOT process any further requests received on that connection.",
+      "level": "MUST",
+      "binds": "sender",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "原文主语是 server。入口自己在响应里发了 close（例如带 Connection: close 的 407），发完这个响应必须主动开始关闭连接，之后这条连接上收到的请求不处理。",
+      "rows": [
+        "R34",
+        "R35"
+      ]
+    },
+    {
+      "id": "9112-9.6-5",
+      "section": "9.6",
+      "section_title": "Tear-down",
+      "quote": "A client that receives a \"close\" connection option MUST cease sending requests on that connection and close the connection after reading the response message containing the \"close\" connection option; if additional pipelined requests had been sent on the connection, the client SHOULD NOT assume that they will be processed by the server.",
+      "level": "MUST",
+      "binds": "client",
+      "side": "两侧",
+      "topic": "connection",
+      "gateway": "约束客户端：收到带 close 的响应后不能在这条连接上再发请求，读完该响应就关闭连接。所以 407 带 close 时，合规的客户端只能换一条新连接重试；网关收到上游带 close 的响应后，那条上游连接也不能放回连接池。",
+      "rows": [
+        "R32",
+        "R33",
+        "R34",
+        "R35"
+      ]
+    },
+    {
+      "id": "9112-9.6-6",
+      "section": "9.6",
+      "section_title": "Tear-down",
+      "quote": "If a server performs an immediate close of a TCP connection, there is a significant risk that the client will not be able to read the last HTTP response.",
+      "level": "statement",
+      "binds": "sender",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "原文主语是 server。背景：发完响应立刻完全关闭 TCP 连接，客户端可能读不到最后那个响应（原文下一句解释了原因：客户端还在发数据时会引出 RST）。入口对正文没读完的请求回错误响应时要考虑这一点。",
+      "rows": [
+        "R34",
+        "R35",
+        "R43"
+      ]
+    },
+    {
+      "id": "9112-9.6-7",
+      "section": "9.6",
+      "section_title": "Tear-down",
+      "quote": "To avoid the TCP reset problem, servers typically close a connection in stages. First, the server performs a half-close by closing only the write side of the read/write connection. The server then continues to read from the connection until it receives a corresponding close by the client, or until the server is reasonably certain that its own TCP stack has received the client's acknowledgement of the packet(s) containing the server's last response. Finally, the server fully closes the connection.",
+      "level": "statement",
+      "binds": "sender",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "原文主语是 server。背景：通行的做法是分阶段关闭，先只关写的一侧，继续读到客户端也关闭或者确认最后的响应已被对方收到，再完全关闭。这是对惯例的描述，不是要求。",
+      "rows": [
+        "R34",
+        "R35",
+        "R43"
+      ]
+    },
+    {
+      "id": "9112-9.6-8",
+      "section": "9.6",
+      "section_title": "Tear-down",
+      "quote": "Note that a TCP connection that is half-closed by the client does not delimit a request message, nor does it imply that the client is no longer interested in a response.",
+      "level": "statement",
+      "binds": "any",
+      "side": "入口",
+      "topic": "connection",
+      "gateway": "入口不能把客户端的半关闭（收到 FIN）当作请求的结束，也不能据此认为客户端不要响应了而丢弃正在处理的请求。",
+      "rows": []
+    },
+    {
+      "id": "9112-9.7-1",
+      "section": "9.7",
+      "section_title": "TLS Connection Initiation",
+      "quote": "The HTTP client also acts as the TLS client. It initiates a connection to the server on the appropriate port and sends the TLS ClientHello to begin the TLS handshake.",
+      "level": "statement",
+      "binds": "client",
+      "side": "客户端",
+      "topic": "tunnel",
+      "gateway": "背景：HTTPS 由 HTTP 客户端发起 TLS 握手，先发 ClientHello。这一节没有提到代理和隧道；CONNECT 隧道建好之后的首包见 RFC 9110 的 CONNECT 一节。",
+      "rows": [
+        "R06"
+      ]
+    },
+    {
+      "id": "9112-9.8-1",
+      "section": "9.8",
+      "section_title": "TLS Connection Closure",
+      "quote": "A response that has neither chunked transfer coding nor Content- Length is complete only if a valid closure alert has been received. Treating an incomplete message as complete could expose implementations to attack.",
+      "level": "statement",
+      "binds": "any",
+      "side": "客户端",
+      "topic": "tunnel",
+      "gateway": "背景：TLS 之上，没有长度信息的响应只有收到合法的关闭告警才算完整。隧道被网关或上游直接切断（只有 TCP 的 FIN，没有 TLS 关闭告警）时，客户端看到的是不完整关闭；网关不终结隧道里的 TLS，补不出这个告警。",
+      "rows": [
+        "R94",
+        "R95",
+        "R97"
+      ]
+    },
+    {
+      "id": "9112-9.8-2",
+      "section": "9.8",
+      "section_title": "TLS Connection Closure",
+      "quote": "A client detecting an incomplete close SHOULD recover gracefully.",
+      "level": "SHOULD",
+      "binds": "client",
+      "side": "客户端",
+      "topic": "tunnel",
+      "gateway": "约束客户端：遇到不完整关闭应当平稳恢复。原文没有说恢复是指重试还是报错。",
+      "rows": [
+        "R94",
+        "R95",
+        "R97"
+      ]
+    },
+    {
+      "id": "9112-11.1-1",
+      "section": "11.1",
+      "section_title": "Response Splitting",
+      "quote": "A more effective mitigation is to prevent anything other than the server's core protocol libraries from sending a CR or LF within the header section, which means restricting the output of header fields to APIs that filter for bad octets and not allowing application servers to write directly to the protocol stream.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "背景（安全建议，没有规范性关键词）：头部只经过会过滤 CR、LF 的接口输出。网关把来自客户端的数据（目标主机、用户名里的会话参数等）写进发给上游的请求头或自己的响应头时，照此过滤 CR 和 LF。",
+      "rows": []
+    },
+    {
+      "id": "9112-11.2-1",
+      "section": "11.2",
+      "section_title": "Request Smuggling",
+      "quote": "Request smuggling ([Linhart]) is a technique that exploits differences in protocol parsing among various recipients to hide additional requests (which might otherwise be blocked or disabled by policy) within an apparently harmless request. Like response splitting, request smuggling can lead to a variety of attacks on HTTP usage. This specification has introduced new requirements on request parsing, particularly with regard to message framing in Section 6.3, to reduce the effectiveness of request smuggling.",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "smuggling",
+      "gateway": "背景：请求走私利用的是各个接收方解析不一致。网关与上游代理、源站正是这样一串接收方；原文指明防线是 6.3 节的分帧规则。",
+      "rows": [
+        "R19"
+      ]
+    },
+    {
+      "id": "9112-11.3-1",
+      "section": "11.3",
+      "section_title": "Message Integrity",
+      "quote": "The mechanisms provided with the \"https\" scheme, such as authenticated encryption, provide protection against modification of messages. Care is needed, however, to ensure that connection closure cannot be used to truncate messages (see Section 9.8).",
+      "level": "statement",
+      "binds": "any",
+      "side": "两侧",
+      "topic": "tunnel",
+      "gateway": "背景：https 防得住篡改，但要另外防止靠关闭连接来截断消息。隧道里的内容上游改不了，却可以随时切断隧道。",
+      "rows": [
+        "R94",
+        "R95"
+      ]
+    },
+    {
+      "id": "9112-11.3-2",
+      "section": "11.3",
+      "section_title": "Message Integrity",
+      "quote": "The \"http\" scheme provides no protection against accidental or malicious modification of messages.",
+      "level": "statement",
+      "binds": "any",
+      "side": "上游",
+      "topic": "smuggling",
+      "gateway": "背景：明文 http 的消息对无意或恶意的修改没有任何保护。经不可信上游转发的明文请求和响应，HTTP 本身不提供发现改动的手段。",
+      "rows": [
+        "R24"
+      ]
+    },
+    {
+      "id": "9112-C.2.2-1",
+      "section": "C.2.2",
+      "section_title": "Keep-Alive Connections",
+      "quote": "One attempted solution was the introduction of a Proxy-Connection header field, targeted specifically at proxies. In practice, this was also unworkable, because proxies are often deployed in multiple layers, bringing about the same problem discussed above. As a result, clients are encouraged not to send the Proxy-Connection header field in any requests.",
+      "level": "statement",
+      "binds": "client",
+      "side": "客户端",
+      "topic": "hop-by-hop",
+      "gateway": "背景：Proxy-Connection 不是标准头，规范鼓励客户端不要发（encouraged，不是规范性关键词）。这一段没有规定代理收到它之后该怎么办。",
+      "rows": [
+        "R02",
+        "R04"
+      ]
+    }
+  ]
+}
