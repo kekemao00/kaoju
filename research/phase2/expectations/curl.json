@@ -1,0 +1,537 @@
+{
+ "variant": "curl",
+ "written": "2026-11-10",
+ "method": "只凭文档和源码，未做任何实测",
+ "client_version": "curl 命令行 8.5.0（libcurl 8.5.0，OpenSSL 3.0.13，nghttp2 1.59.0）；读的源码是上游标签 curl-8_5_0，本机装的是 Ubuntu 24.04 的包 8.5.0-2ubuntu10.16，带安全补丁，与上游源码不完全相同",
+ "sources": [
+  "curl 8.5.0 源码，标签 curl-8_5_0，取自 https://raw.githubusercontent.com/curl/curl/curl-8_5_0/ ：lib/http.c、lib/http.h、lib/http_proxy.c、lib/cf-h1-proxy.c、lib/http1.c、lib/socks.c、lib/url.c、lib/urlapi.c、lib/setopt.c、lib/transfer.c、lib/multi.c、lib/conncache.c、lib/hostip.c、lib/connect.c、lib/cf-socket.c、lib/cfilters.c、lib/http2.c、lib/vtls/vtls.c、lib/vtls/openssl.c、lib/dynbuf.h、lib/urldata.h、include/curl/curl.h、src/tool_operate.c、src/tool_getparam.c、src/tool_paramhlp.c",
+  "curl 8.5.0 文档（同一标签）：docs/cmdline-opts/ 下的 proxy.d、proxy-user.d、proxy-anyauth.d、proxy-basic.d、next.d、parallel.d、parallel-max.d、parallel-immediate.d、rate.d、cacert.d、location.d、retry.d、dump-header.d、suppress-connect-headers.d、write-out.d、trace-ids.d、socks5-hostname.d；docs/libcurl/opts/CURLOPT_PROXYUSERPWD.3；docs/libcurl/libcurl-errors.3；docs/KNOWN_BUGS",
+  "本机 curl --version 的输出（只读版本和特性，没有发起连接）：curl 8.5.0，libcurl/8.5.0 OpenSSL/3.0.13 nghttp2/1.59.0；Features 里有 GSS-API、NTLM、SPNEGO、HTTP2、AsynchDNS、IPv6；Protocols 里没有 ws、wss；Release-Date 一行写着 security patched: 8.5.0-2ubuntu10.16",
+  "本机 /usr/share/doc/libcurl4t64/changelog.Debian.gz（Ubuntu 包的变更记录，到 8.5.0-2ubuntu10.16）：10.8 一节的 CVE-2026-3784（wrong proxy connection reuse with credentials，改 lib/url.c）、10.9 一节的 CVE-2026-6253（clear the proxy credentials as well on port or scheme change，改 lib/transfer.*）。补丁正文没有读到（存放补丁的站点从这台机器访问不了），只读到了这份变更记录",
+  "上游后续版本的源码，用来推断上面两个补丁的内容（标签 curl-8_18_0、curl-8_19_0、curl-8_20_0 的 lib/url.c、lib/http.c、lib/transfer.c、lib/cf-h1-proxy.c，同样取自 raw.githubusercontent.com）：8.19.0 的 proxy_info_matches 开始比较代理用户名和密码；8.20.0 在跟随重定向时调用 Curl_reset_proxypwd 把代理凭据恢复成选项里设的值",
+  "本仓库 research/phase2/drivers/curl/driver.py（驱动实际用的命令行写法：一个用例一个 curl 进程，各步之间 --next，parallel 用 --parallel --parallel-max N，sleep 用 --rate；default_text 由 -w 的 http_code、退出码、不带 -v 也会打印的标准错误、-o 存下的正文组成，extra_text 是 -v 的输出加 -D 存下的响应头）",
+  "本仓库 research/phase2/harness/proxyhttp.go、server.go（只为弄清仪器的两处行为：回 407 之前先读完请求正文；目标端口等于内置源站端口时也接到内置源站）"
+ ],
+ "rows": {
+  "R01": {
+   "expect": "绝对形式",
+   "basis": "经 HTTP 代理的 http:// 请求不走隧道（没有 --proxytunnel，src/tool_operate.c:1372），请求行里写完整 URL；同一个请求还带 Proxy-Connection 头（lib/http.c:3343-3349）（curl-8_5_0）；docs/cmdline-opts/proxy.d",
+   "confidence": "high"
+  },
+  "R02": {
+   "expect": "Proxy-Connection: Keep-Alive",
+   "basis": "lib/http.c:3309-3349（curl-8_5_0）：请求头依次是 Host、（代理凭据）、User-Agent、Accept，经 HTTP 代理且不走隧道时再加 Proxy-Connection: Keep-Alive；没有 Connection、TE、Via 之类。A01 没配凭据，所以只有这一个",
+   "confidence": "high"
+  },
+  "R03": {
+   "expect": "a.kaoju.test:443 HTTP/1.1",
+   "basis": "lib/http_proxy.c:100-109 目标写成“主机:端口”；lib/cf-h1-proxy.c:243-245 代理类型不是 HTTP/1.0 时次版本号是 1；lib/http1.c:326-332 请求行的格式（curl-8_5_0）",
+   "confidence": "high"
+  },
+  "R04": {
+   "expect": "Host, User-Agent, Proxy-Connection",
+   "basis": "lib/http_proxy.c:119-147（curl-8_5_0）：依次加 Host、（有凭据时的 Proxy-Authorization）、User-Agent（工具默认设了 curl/8.5.0，src/tool_paramhlp.c:664-667）、Proxy-Connection: Keep-Alive。A02 没配凭据，也没有 --proxy-header",
+   "confidence": "high"
+  },
+  "R05": {
+   "expect": "同目标",
+   "basis": "lib/http_proxy.c:100-124（curl-8_5_0）：Host 的值和请求目标用的是同一个 authority 字符串",
+   "confidence": "high"
+  },
+  "R06": {
+   "expect": "TLS ClientHello",
+   "basis": "隧道建好以后同一条连接上接着做到源站的 TLS 握手（连接过滤器链：SSL 在 H1-PROXY 之上，lib/cf-h1-proxy.c:1030-1034（curl-8_5_0））",
+   "confidence": "high"
+  },
+  "R07": {
+   "expect": "不超过 1460 字节",
+   "basis": "本机 curl 链接的是 OpenSSL 3.0.13（curl --version）：3.0 系列没有后量子密钥交换，默认只带一个 X25519 的 key share，ClientHello 在五百多字节的量级。没有逐字节推算，所以把握中等",
+   "confidence": "medium"
+  },
+  "R08": {
+   "expect": "h2,http/1.1",
+   "basis": "工具默认 CURL_HTTP_VERSION_2TLS（src/tool_operate.c:1495-1498（curl-8_5_0）），https 目标的 ALPN 提供 h2 和 http/1.1（docs/cmdline-opts/http2.d 一类选项的说明：默认对 HTTPS 尝试 HTTP/2）",
+   "confidence": "high"
+  },
+  "R09": {
+   "expect": "HTTP/2.0",
+   "basis": "同 R08：源站支持 h2 时 ALPN 选中 h2，请求走 HTTP/2",
+   "confidence": "high"
+  },
+  "R10": {
+   "expect": "1",
+   "basis": "src/tool_operate.c:963 每个 URL 一个新的 easy 句柄，:1282 都挂同一个 share，:2778-2794 这个 share 共享连接缓存（CURL_LOCK_DATA_CONNECT）（curl-8_5_0）；连接缓存的键：经 HTTP 代理不走隧道时是代理的主机和端口，否则是目标主机和端口（lib/conncache.c:126-150）；匹配规则在 ConnectionExists（lib/url.c:913-1310）（curl-8_5_0）：第 2、3 个请求复用第一条隧道（h2 连接）",
+   "confidence": "high"
+  },
+  "R11": {
+   "expect": "1",
+   "basis": "同 R10；明文请求经代理时连接束按代理的主机和端口归类（lib/conncache.c:132-135（curl-8_5_0）），三个请求一条到代理的连接",
+   "confidence": "high"
+  },
+  "R12": {
+   "expect": "2",
+   "basis": "同 R10：走隧道的连接按目标主机和端口匹配（lib/url.c:1177-1201（curl-8_5_0）），两个源各一条隧道，之后各自复用",
+   "confidence": "high"
+  },
+  "R13": {
+   "expect": "1",
+   "basis": "同 R11：不走隧道的 HTTP 代理连接不比目标主机（lib/url.c:1177-1183 的条件不成立（curl-8_5_0）），两个明文源共用到代理的那一条连接",
+   "confidence": "high"
+  },
+  "R14": {
+   "expect": "1",
+   "basis": "--parallel 而没有 --parallel-immediate 时工具给每个传输设 CURLOPT_PIPEWAIT=1（src/tool_operate.c:2299-2302）；工具默认的 HTTP 版本是 CURL_HTTP_VERSION_2TLS（:1495-1498），所以 IsMultiplexingPossible 为真，同一个连接束还不知道能不能多路复用时，后来的传输先挂起（lib/url.c:960-967）（curl-8_5_0）；第一条隧道的 ALPN 定下是 h2 后 Curl_multiuse_state 放出挂起的传输（lib/vtls/vtls.c:2151-2153、lib/multi.c:3664-3676），挂起的传输每次只放出一个（lib/multi.c:3680-3702），放出来的传输拿到连接后再放下一个（lib/multi.c:1936-1941）（curl-8_5_0），它们都作为流加到这一条 h2 连接上（lib/url.c:970-972）",
+   "confidence": "medium"
+  },
+  "R15": {
+   "expect": "6",
+   "basis": "--parallel 而没有 --parallel-immediate 时工具给每个传输设 CURLOPT_PIPEWAIT=1（src/tool_operate.c:2299-2302）；工具默认的 HTTP 版本是 CURL_HTTP_VERSION_2TLS（:1495-1498），所以 IsMultiplexingPossible 为真，同一个连接束还不知道能不能多路复用时，后来的传输先挂起（lib/url.c:960-967）（curl-8_5_0）；第一条隧道的 ALPN 定下是 http/1.1（BUNDLE_NO_MULTIUSE，lib/vtls/vtls.c:2151-2153）后放出挂起的传输，挂起的传输每次只放出一个（lib/multi.c:3680-3702），放出来的传输拿到连接后再放下一个（lib/multi.c:1936-1941）（curl-8_5_0）；这时第一条连接正被占用（源站延迟 300 毫秒），其余 5 个各自新建隧道（lib/url.c:1009-1013）",
+   "confidence": "medium"
+  },
+  "R16": {
+   "expect": "5",
+   "basis": "--parallel 而没有 --parallel-immediate 时工具给每个传输设 CURLOPT_PIPEWAIT=1（src/tool_operate.c:2299-2302）；工具默认的 HTTP 版本是 CURL_HTTP_VERSION_2TLS（:1495-1498），所以 IsMultiplexingPossible 为真，同一个连接束还不知道能不能多路复用时，后来的传输先挂起（lib/url.c:960-967）（curl-8_5_0）。明文请求也一样先挂起：到代理的连接束要等第一个响应的状态行到了才标成不能多路复用（lib/http.c:4487-4489），而这一步不叫醒挂起的传输；叫醒发生在第一个传输结束时（lib/multi.c:696）。那时第一条连接已经空闲，第 2 个传输复用它，挂起的传输每次只放出一个（lib/multi.c:3680-3702），放出来的传输拿到连接后再放下一个（lib/multi.c:1936-1941）（curl-8_5_0），其余 4 个各开一条新连接：共 5 条。仪器把响应头和正文一次写出（harness/proxyhttp.go:90-94），不会出现“头到了、正文没到”的间隙。把握中等：靠的是对多路状态机的逐步推演",
+   "confidence": "medium"
+  },
+  "R17": {
+   "expect": "经代理",
+   "basis": "lib/url.c:2434-2449（curl-8_5_0）：只有 --noproxy 或环境变量 no_proxy 命中才绕过代理，源码里没有对 localhost 或回环地址的特判；驱动的环境里没有代理相关的变量",
+   "confidence": "high"
+  },
+  "R18": {
+   "expect": "经代理",
+   "basis": "同 R17：curl 发 CONNECT localhost:<源站端口>。仪器把目标端口等于内置源站端口的隧道也接到内置源站（harness/server.go:293-295），源站证书的名字里有 localhost",
+   "confidence": "high"
+  },
+  "R19": {
+   "expect": "Content-Length",
+   "basis": "--data-binary @文件 由工具整个读进内存，作为 CURLOPT_POSTFIELDS 连同长度交给库（src/tool_operate.c:1435-1438（curl-8_5_0）），长度已知，发 Content-Length",
+   "confidence": "high"
+  },
+  "R20": {
+   "expect": "发",
+   "basis": "lib/http.h:186-188 EXPECT_100_THRESHOLD 是 1024*1024；lib/http.c:2518-2537、:2709：POST 在 HTTP/1.1 下正文超过它就加 Expect: 100-continue（curl-8_5_0）。2 MiB 超过阈值（64 KiB 的 A12 不会加）",
+   "confidence": "high"
+  },
+  "R21": {
+   "expect": "不适用",
+   "basis": "cases.json 里 A15 的 only 不含 curl 的两列；本机的 curl 也没有编进 ws（curl --version 的 Protocols 里没有 ws、wss）",
+   "confidence": "high"
+  },
+  "R22": {
+   "expect": "不适用",
+   "basis": "cases.json 里 A16 的 only 不含 curl 的两列；本机的 curl 也没有编进 wss",
+   "confidence": "high"
+  },
+  "R23": {
+   "expect": "G / C / 05",
+   "basis": "明文是绝对形式的 GET（R01），首字节 G；HTTPS 是 CONNECT（R03），首字节 C；SOCKS5 的问候第一个字节是版本号 5（lib/socks.c:611-612（curl-8_5_0）），写成 05",
+   "confidence": "high"
+  },
+  "R24": {
+   "expect": "完整",
+   "basis": "三个用例的正文长度都已知（R19）。A14 带 Expect: 100-continue（R20），仪器默认先回 100，curl 收到后发正文；收不到也只等 1 秒就发（CURLOPT_EXPECT_100_TIMEOUT_MS 的默认值）",
+   "confidence": "high"
+  },
+  "R30": {
+   "expect": "先带",
+   "basis": "lib/http.c:907-911：还没有选定方法时 picked 取 want；工具不加 --proxy-anyauth 时不设 CURLOPT_PROXYAUTH（src/tool_operate.c:1379-1393），want 就是默认的 Basic 一种，output_auth_headers（lib/http.c:793-806）立即输出 Proxy-Authorization: Basic（curl-8_5_0）；docs/cmdline-opts/proxy-basic.d：“Basic is the default authentication method curl uses with proxies”",
+   "confidence": "high"
+  },
+  "R31": {
+   "expect": "先带",
+   "basis": "lib/http.c:907-911：还没有选定方法时 picked 取 want；工具不加 --proxy-anyauth 时不设 CURLOPT_PROXYAUTH（src/tool_operate.c:1379-1393），want 就是默认的 Basic 一种，output_auth_headers（lib/http.c:793-806）立即输出 Proxy-Authorization: Basic（curl-8_5_0）；docs/cmdline-opts/proxy-basic.d：“Basic is the default authentication method curl uses with proxies”；CONNECT 走同一个函数（lib/http_proxy.c:113-132）",
+   "confidence": "high"
+  },
+  "R32": {
+   "expect": "不适用",
+   "basis": "凭据先带（R30）而且正确，收不到 407",
+   "confidence": "high"
+  },
+  "R33": {
+   "expect": "不适用",
+   "basis": "凭据先带（R31）而且正确，收不到 407",
+   "confidence": "high"
+  },
+  "R34": {
+   "expect": "不适用",
+   "basis": "凭据先带（R30），收不到 407，代理怎样写 407 无从影响",
+   "confidence": "high"
+  },
+  "R35": {
+   "expect": "不适用",
+   "basis": "凭据先带（R31），收不到 407",
+   "confidence": "high"
+  },
+  "R36": {
+   "expect": "3/0",
+   "basis": "每个请求都先带凭据（R30），三个请求复用一条连接（R11）",
+   "confidence": "high"
+  },
+  "R37": {
+   "expect": "先带",
+   "basis": "同 R31：每个 CONNECT 都先带",
+   "confidence": "high"
+  },
+  "R38": {
+   "expect": "1",
+   "basis": "同 R10：三个请求的代理凭据相同，复用同一条隧道（打了 CVE-2026-3784 补丁以后比较凭据，这里相同）",
+   "confidence": "high"
+  },
+  "R39": {
+   "expect": "没有",
+   "basis": "隧道建成（或失败）时清掉 Proxy-Authorization（lib/cf-h1-proxy.c:196-199、:1027）；隧道里的请求不输出代理认证头（lib/http.c:915-927：只有 tunnel_proxy 与当前是否在发 CONNECT 一致时才输出）（curl-8_5_0）。六个用例里没有“先明文、再复用已有隧道”的顺序，旧值残留的情况不会出现",
+   "confidence": "high"
+  },
+  "R40": {
+   "expect": "都成功",
+   "basis": "-L 跟随重定向，每一跳重新建连接或隧道，代理凭据来自 -U 设的选项，对每一跳都有效（lib/transfer.c:1437-1441、lib/url.c:1386（curl-8_5_0））。本机的包打了 CVE-2026-6253 的补丁（重定向换端口或协议时清代理凭据，改 lib/transfer.*）；上游对应的修复是把代理凭据恢复成选项里设的值（curl-8_20_0 的 lib/transfer.c:457-473、lib/http.c:1263），-U 属于选项，不受影响。补丁正文没读到，所以把握中等",
+   "confidence": "medium"
+  },
+  "R41": {
+   "expect": "各用各的凭据",
+   "basis": "Basic 头按每次传输自己的凭据生成（lib/http.c:351-369 的注释：credentials are unique per transfer for HTTP）（curl-8_5_0）；每个 --next 段各有自己的 -U（docs/cmdline-opts/next.d）",
+   "confidence": "high"
+  },
+  "R42": {
+   "expect": "各开各的隧道",
+   "basis": "上游 8.5.0 的 proxy_info_matches 只比代理的类型、主机、端口（lib/url.c:699-708（curl-8_5_0）），不比凭据；本机的包（Ubuntu 包 8.5.0-2ubuntu10.16）按变更记录在 10.8 里打了 CVE-2026-3784 的补丁（改 lib/url.c），上游对应的修复是让 proxy_info_matches 同时比较代理用户名和密码（curl-8_19_0 的 lib/url.c:588-601）。按打过补丁来预期：第二个用户不复用第一个用户的隧道，另发 CONNECT。补丁正文没读到，如果它没有覆盖隧道，结果会是“用了别人的隧道”（上游 8.5.0 原版就是这样）",
+   "confidence": "medium"
+  },
+  "R43": {
+   "expect": "1",
+   "basis": "凭据先带（R30），不会先收到 407；正文只发一遍",
+   "confidence": "high"
+  },
+  "R44": {
+   "expect": "0",
+   "basis": "6 个 CONNECT 都先带凭据（R31），代理不回 407",
+   "confidence": "high"
+  },
+  "R45": {
+   "expect": "拿到 407 响应",
+   "basis": "没配凭据时 407 只是一个普通响应（没有 -f，lib/http.c:1198-1199；也不会重试，:673 要求 proxy_user_passwd）（curl-8_5_0）：退出码 0，http_code 407",
+   "confidence": "high"
+  },
+  "R46": {
+   "expect": "报错，提到 407",
+   "basis": "CONNECT 的响应不是 2xx 又没有可重试的认证时：failf(\"CONNECT tunnel failed, response %d\") 并返回 CURLE_RECV_ERROR（lib/cf-h1-proxy.c:975-982）（curl-8_5_0），工具打印 curl: (56) CONNECT tunnel failed, response <码>；失败后 info.httpcode 被清零（:194），-w 的 http_code 是 000",
+   "confidence": "high"
+  },
+  "R47": {
+   "expect": "1",
+   "basis": "带着 Basic 收到 407：lib/http.c:1132-1139 判定为认证问题（“Authentication problem. Ignoring this.”），不再重试，407 作为响应返回（curl-8_5_0）",
+   "confidence": "high"
+  },
+  "R48": {
+   "expect": "1",
+   "basis": "同 R47，发生在 CONNECT 上（lib/cf-h1-proxy.c:300-317 把 Proxy-Authenticate 交给同一个函数）；随后隧道失败",
+   "confidence": "high"
+  },
+  "R49": {
+   "expect": "报错，提到 407",
+   "basis": "CONNECT 的响应不是 2xx 又没有可重试的认证时：failf(\"CONNECT tunnel failed, response %d\") 并返回 CURLE_RECV_ERROR（lib/cf-h1-proxy.c:975-982）（curl-8_5_0），工具打印 curl: (56) CONNECT tunnel failed, response <码>；失败后 info.httpcode 被清零（:194），-w 的 http_code 是 000",
+   "confidence": "high"
+  },
+  "R50": {
+   "expect": "报错，提到 403",
+   "basis": "CONNECT 的响应不是 2xx 又没有可重试的认证时：failf(\"CONNECT tunnel failed, response %d\") 并返回 CURLE_RECV_ERROR（lib/cf-h1-proxy.c:975-982）（curl-8_5_0），工具打印 curl: (56) CONNECT tunnel failed, response <码>；失败后 info.httpcode 被清零（:194），-w 的 http_code 是 000",
+   "confidence": "high"
+  },
+  "R51": {
+   "expect": "拿到 403 响应",
+   "basis": "明文请求得到的 403 是普通响应：退出码 0，http_code 403（没有 -f）",
+   "confidence": "high"
+  },
+  "R52": {
+   "expect": "带",
+   "basis": "同 R30：带不带只看有没有 -U，与代理要不要认证无关",
+   "confidence": "high"
+  },
+  "R53": {
+   "expect": "带",
+   "basis": "同 R31",
+   "confidence": "high"
+  },
+  "R60": {
+   "expect": "原样",
+   "basis": "-U 的值原样进 CURLOPT_PROXYUSERPWD（src/tool_getparam.c:2520-2523、src/tool_operate.c:1369）；setstropt_userpwd 用 Curl_parse_login_details 按第一个冒号拆开，不认分号（lib/setopt.c:110-127、:1588-1594，lib/url.c:2598-2618）；每次建连接时 parse_proxy_auth 对用户名、密码各做一次 URL 解码并写回（lib/url.c:2370-2389）；Basic 头是“用户名:密码”的 base64（lib/http.c:351-381）（curl-8_5_0）。docs/libcurl/opts/CURLOPT_PROXYUSERPWD.3：“Both the name and the password are URL decoded before used”。这个用户名里没有冒号和百分号",
+   "confidence": "high"
+  },
+  "R61": {
+   "expect": "原样",
+   "basis": "同 R60：下划线、点、波浪号、等号、分号、逗号都不是分隔符，也不受 URL 解码影响（分号只在解析带 options 的登录串时才算分隔符，这里不算）",
+   "confidence": "high"
+  },
+  "R62": {
+   "expect": "变了",
+   "basis": "同 R60 的 URL 解码：用户名里的 %41 被解成 A，代理收到 sess@abA+c/d e；@、+、/、空格不变（Curl_urldecode 不把加号当空格）。驱动按惯用写法原样传 -U，不做转义",
+   "confidence": "high"
+  },
+  "R63": {
+   "expect": "原样",
+   "basis": "同 R60：用户名的字节原样拼接、原样 base64，curl 不做任何字符集转换；非 ASCII 字节不含百分号，URL 解码不碰它们",
+   "confidence": "high"
+  },
+  "R64": {
+   "expect": "原样",
+   "basis": "同 R63；curl 只认质询里的方案名（lib/http.c:1128-1129（curl-8_5_0）），不看 charset 参数",
+   "confidence": "high"
+  },
+  "R65": {
+   "expect": "原样",
+   "basis": "同 R60；HTTP 这一侧对用户名没有长度限制（-U 的值上限是 CURL_MAX_INPUT_LENGTH，8000000 字节，lib/setopt.c:119-121、lib/urldata.h:120（curl-8_5_0））",
+   "confidence": "high"
+  },
+  "R66": {
+   "expect": "原样",
+   "basis": "同 R65：HTTP 这一侧没有 255 字节的界限",
+   "confidence": "high"
+  },
+  "R67": {
+   "expect": "原样",
+   "basis": "同 R65；CONNECT 请求的缓冲上限是 1 MiB（lib/dynbuf.h:83、lib/cf-h1-proxy.c:135（curl-8_5_0））",
+   "confidence": "high"
+  },
+  "R68": {
+   "expect": "变了",
+   "basis": "同 R60：-U 按第一个冒号拆开，用户名是 kaoju-user，密码是 p:a@s s%2Fw+d（后面的冒号留在密码里）；URL 解码把 %2F 变成 /，代理收到的密码是 p:a@s s/w+d",
+   "confidence": "high"
+  },
+  "R69": {
+   "expect": "原样",
+   "basis": "-U 'kaoju-user:' 里有冒号，工具不提示输入密码（src/tool_paramhlp.c:507-513）；Curl_parse_login_details 给出空密码（lib/url.c:2638-2645）；Basic 头是 base64(\"kaoju-user:\")（curl-8_5_0）",
+   "confidence": "high"
+  },
+  "R70": {
+   "expect": "原样",
+   "basis": "-U 'sess:ab12:kaoju-pass-1' 按第一个冒号拆成用户名 sess、密码 ab12:kaoju-pass-1（lib/url.c:2612-2614（curl-8_5_0）），拼回去的字节与“用例里的用户名、冒号、密码”相同。要让用户名含冒号，按 CURLOPT_PROXYUSERPWD.3 得写成 %3A；驱动不转义",
+   "confidence": "high"
+  },
+  "R80": {
+   "expect": "状态码",
+   "basis": "CONNECT 的响应不是 2xx 又没有可重试的认证时：failf(\"CONNECT tunnel failed, response %d\") 并返回 CURLE_RECV_ERROR（lib/cf-h1-proxy.c:975-982）（curl-8_5_0），工具打印 curl: (56) CONNECT tunnel failed, response <码>；失败后 info.httpcode 被清零（:194），-w 的 http_code 是 000：报错文字里只有状态码。驱动的 default_text 只有 -w 的 http_code、退出码、不带 -v 也会打印的标准错误、-o 存下的正文（drivers/curl/driver.py 的 step_result）；没有 -i，CONNECT 的响应头不进正文文件；非 407 的响应正文 curl 不读（lib/cf-h1-proxy.c:489-534）",
+   "confidence": "high"
+  },
+  "R81": {
+   "expect": "状态码、原因短语、响应头",
+   "basis": "额外手段是 -v 和 -D：-v 把 CONNECT 响应的状态行和每个头打印出来（lib/cf-h1-proxy.c:467-468 的 Curl_debug），-D 的文件里也有它们（:470-473；没有 --suppress-connect-headers，docs/cmdline-opts/suppress-connect-headers.d）（curl-8_5_0）。响应正文 curl 根本不读，哪种手段都看不到",
+   "confidence": "high"
+  },
+  "R82": {
+   "expect": "状态码",
+   "basis": "同 R80，状态码换成 403",
+   "confidence": "high"
+  },
+  "R83": {
+   "expect": "1",
+   "basis": "驱动没有加 --retry（docs/cmdline-opts/retry.d：默认不重试）；CONNECT 失败发生在连接阶段，Curl_retry_request 只在传输阶段起作用（lib/multi.c:2408-2423（curl-8_5_0））。Retry-After 没人看",
+   "confidence": "high"
+  },
+  "R84": {
+   "expect": "看不到",
+   "basis": "驱动的 default_text 只有 -w 的 http_code、退出码、不带 -v 也会打印的标准错误、-o 存下的正文（drivers/curl/driver.py 的 step_result）；CONNECT 的响应头只进 -D 的文件和 -v 的输出",
+   "confidence": "high"
+  },
+  "R85": {
+   "expect": "看得到",
+   "basis": "同 R81：-v 和 -D 都包含 CONNECT 200 的响应头",
+   "confidence": "high"
+  },
+  "R86": {
+   "expect": "状态码、正文",
+   "basis": "明文请求被代理回 403 是普通响应：-w 的 http_code 是 403，-o 的文件里是响应正文。驱动的 default_text 只有 -w 的 http_code、退出码、不带 -v 也会打印的标准错误、-o 存下的正文（drivers/curl/driver.py 的 step_result），没有 -i，原因短语和响应头不在其中",
+   "confidence": "high"
+  },
+  "R87": {
+   "expect": "看不到",
+   "basis": "驱动的 default_text 只有 -w 的 http_code、退出码、不带 -v 也会打印的标准错误、-o 存下的正文（drivers/curl/driver.py 的 step_result）；没有 -i，响应头不在其中（-D 和 -v 属于额外手段）",
+   "confidence": "high"
+  },
+  "R88": {
+   "expect": "新连接",
+   "basis": "lib/cf-h1-proxy.c:978-980（curl-8_5_0）：CONNECT 失败后把连接标记为关闭（“proxy CONNECT failure”），不管代理关没关；下一个 CONNECT 另开连接。另外两个目标主机不同，本来也不在同一个连接束里",
+   "confidence": "high"
+  },
+  "R89": {
+   "expect": "成功",
+   "basis": "串行模式下一次传输失败后继续下一个 --next 段：只有致命错误或 --fail-early 才中止（src/tool_operate.c:2508-2510、:116-132（curl-8_5_0）），CURLE_RECV_ERROR 不在其列",
+   "confidence": "high"
+  },
+  "R90": {
+   "expect": "换新连接，成功",
+   "basis": "复用前先检查连接是否还活着：extract_if_dead（lib/url.c:776-826）在连接空闲时探测，对端已发 FIN 就丢掉这条连接、另开新的（lib/url.c:1291-1295）（curl-8_5_0）。即使没探测出来，也会走 R92 的重发",
+   "confidence": "high"
+  },
+  "R91": {
+   "expect": "换新隧道，成功",
+   "basis": "同 R90：隧道所在的 TCP 连接已收到 FIN，复用前被判为已断；新连接重新 CONNECT",
+   "confidence": "high"
+  },
+  "R92": {
+   "expect": "2 次，成功",
+   "basis": "Curl_retry_request（lib/transfer.c:1769-1783）：这次传输一个字节都没收到、用的又是复用的连接（conn->bits.reuse），就在新连接上重发，不看请求方法；最多 5 次（:1796-1802）。触发点在 lib/multi.c:2408-2423（传输结束或 CURLE_RECV_ERROR 时）（curl-8_5_0）。丢弃只生效一次，重发的那次正常返回",
+   "confidence": "high"
+  },
+  "R93": {
+   "expect": "2 次，成功",
+   "basis": "Curl_retry_request（lib/transfer.c:1769-1783）：这次传输一个字节都没收到、用的又是复用的连接（conn->bits.reuse），就在新连接上重发，不看请求方法；最多 5 次（:1796-1802）。触发点在 lib/multi.c:2408-2423（传输结束或 CURLE_RECV_ERROR 时）（curl-8_5_0）。POST 也一样重发：条件里没有方法，已发出正文时只是把上传标记为要回卷（lib/transfer.c:1817-1821）；正文在内存里（R19），回卷没有障碍",
+   "confidence": "high"
+  },
+  "R94": {
+   "expect": "2 次，成功",
+   "basis": "隧道被切断时 TLS 层读到没有 close_notify 的 EOF，OpenSSL 3 报错，ossl_recv 返回 CURLE_RECV_ERROR（lib/vtls/openssl.c:4673-4699）；Curl_retry_request（lib/transfer.c:1769-1783）：这次传输一个字节都没收到、用的又是复用的连接（conn->bits.reuse），就在新连接上重发，不看请求方法；最多 5 次（:1796-1802）。触发点在 lib/multi.c:2408-2423（传输结束或 CURLE_RECV_ERROR 时）（curl-8_5_0）。把握中等：依赖 OpenSSL 3.0 把这种 EOF 报成错误",
+   "confidence": "medium"
+  },
+  "R95": {
+   "expect": "2 次，成功",
+   "basis": "同 R94；POST 也重发，理由同 R93",
+   "confidence": "medium"
+  },
+  "R96": {
+   "expect": "1 次，失败",
+   "basis": "Curl_retry_request 要求 conn->bits.reuse 为真（lib/transfer.c:1769-1771）（curl-8_5_0）；新连接上的第一个请求不满足，不重发；驱动没有加 --retry；代理不回应就关，curl 报 Empty reply from server（lib/http.c:1651-1654，退出码 52）",
+   "confidence": "high"
+  },
+  "R97": {
+   "expect": "1 次，失败",
+   "basis": "Curl_retry_request 要求 conn->bits.reuse 为真（lib/transfer.c:1769-1771）（curl-8_5_0）；新连接上的第一个请求不满足，不重发；驱动没有加 --retry；TLS 层读到意外的 EOF，退出码 56（lib/vtls/openssl.c:4695-4697）",
+   "confidence": "high"
+  },
+  "R98": {
+   "expect": "2 次，成功",
+   "basis": "同 R92：复位时 recv 出错，结果是 CURLE_RECV_ERROR，同样进 Curl_retry_request（lib/multi.c:2404-2423（curl-8_5_0））",
+   "confidence": "high"
+  },
+  "R99": {
+   "expect": "2 次，成功",
+   "basis": "同 R94，复位时 SSL_read 报系统错误，同样是 CURLE_RECV_ERROR",
+   "confidence": "medium"
+  },
+  "R100": {
+   "expect": "1 次，失败",
+   "basis": "lib/cf-h1-proxy.c:407-420（curl-8_5_0）：等 CONNECT 响应时读到 EOF，报 Proxy CONNECT aborted（CURLE_RECV_ERROR，退出码 56）；这发生在连接阶段，没有重试（同 R83）",
+   "confidence": "high"
+  },
+  "R101": {
+   "expect": "2 次，成功",
+   "basis": "第二个请求是复用的 h2 连接上的一个流；连接断了而流还没开始收响应时 cf_h2 返回 CURLE_RECV_ERROR（lib/http2.c:1846-1849），TLS 层先报错的话也是 CURLE_RECV_ERROR；Curl_retry_request（lib/transfer.c:1769-1783）：这次传输一个字节都没收到、用的又是复用的连接（conn->bits.reuse），就在新连接上重发，不看请求方法；最多 5 次（:1796-1802）。触发点在 lib/multi.c:2408-2423（传输结束或 CURLE_RECV_ERROR 时）（curl-8_5_0）",
+   "confidence": "medium"
+  },
+  "R110": {
+   "expect": "00,01",
+   "basis": "lib/socks.c:611-620（curl-8_5_0）：问候里依次是 0（无认证）、允许 GSS-API 时的 1、有用户名时的 2；CURLOPT_SOCKS5_AUTH 的默认值是 Basic|GSSAPI（lib/url.c:399），工具不改它（src/tool_operate.c:2004-2006）；本机构建带 GSS-API（curl --version 的 Features），所以 lib/socks.c:606-609 的 allow_gssapi 为真",
+   "confidence": "medium"
+  },
+  "R111": {
+   "expect": "00,01,02",
+   "basis": "同 R110，配了 -U 时再加 2（lib/socks.c:617-618（curl-8_5_0））",
+   "confidence": "medium"
+  },
+  "R112": {
+   "expect": "域名",
+   "basis": "lib/url.c:2210-2211：socks5h 对应 CURLPROXY_SOCKS5_HOSTNAME；lib/socks.c:577-578、:896-921：这种类型不在本地解析，不是 IP 字面量的主机名写成 ATYP=3 加域名（curl-8_5_0）",
+   "confidence": "high"
+  },
+  "R113": {
+   "expect": "IPv6",
+   "basis": "socks5:// 在本地解析（lib/socks.c:577-578、:787-800）；Curl_resolv 对 localhost 不查 DNS，直接给出写死的地址表（lib/hostip.c:793-795），表里 ::1 排在 127.0.0.1 前面（lib/hostip.c:596-600）；socks.c 取第一个地址（:824-829），按它的地址族写 ATYP=4（:866-873）（curl-8_5_0）。本机构建带 IPv6（Features）",
+   "confidence": "medium"
+  },
+  "R114": {
+   "expect": "其他",
+   "basis": "curl 先连上代理、发问候、收下方法选择，然后才在本地解析目标（lib/socks.c:787-800 在认证之后）；解析失败返回 CURLPX_RESOLVE_HOST（:819、:842），退出码 97（curl-8_5_0）。代理端口上有连接和问候，没有 socks5_request：matrix.py 的 R114 把这种情况归到“其他”",
+   "confidence": "medium"
+  },
+  "R115": {
+   "expect": "TLS ClientHello",
+   "basis": "SOCKS5 应答成功后（lib/socks.c:1064）同一条连接上直接开始到源站的 TLS 握手，没有 CONNECT（curl-8_5_0）",
+   "confidence": "high"
+  },
+  "R116": {
+   "expect": "明文 HTTP",
+   "basis": "SOCKS 代理不是 HTTP 代理（lib/url.c:2521-2524 把 httpproxy 置假）（curl-8_5_0），明文请求以源站形式（GET /路径）直接发在 SOCKS 连接上",
+   "confidence": "high"
+  },
+  "R117": {
+   "expect": "成功",
+   "basis": "lib/socks.c:667-671 服务端选 2 就进用户名密码认证，:714-749 发 01、ULEN、UNAME、PLEN、PASSWD，:776-783 状态为 0 就继续（curl-8_5_0）",
+   "confidence": "high"
+  },
+  "R118": {
+   "expect": "成功",
+   "basis": "lib/socks.c:662-666（curl-8_5_0）：服务端选 0 就跳过认证，直接发请求",
+   "confidence": "high"
+  },
+  "R119": {
+   "expect": "提到认证或方法",
+   "basis": "lib/socks.c:689-691（curl-8_5_0）：failf(\"No authentication method was acceptable.\")，返回 CURLPX_NO_AUTH，工具打印 curl: (97) No authentication method was acceptable.；里面有 authentication 和 method",
+   "confidence": "high"
+  },
+  "R120": {
+   "expect": "只说失败",
+   "basis": "lib/socks.c:776-779（curl-8_5_0）：failf(\"User was rejected by the SOCKS5 server (%d %d).\")，工具打印 curl: (97) User was rejected by the SOCKS5 server (1 1).；转小写后不含 auth、method、credential、password 中的任何一个。驱动自己写进 default_text 的固定文字里也没有这些词",
+   "confidence": "high"
+  },
+  "R121": {
+   "expect": "能区分",
+   "basis": "lib/socks.c:978-982（curl-8_5_0）：failf(\"Can't complete SOCKS5 connection to %s. (%d)\")，括号里是应答码，三个用例分别是 (2)、(4)、(5)；一位数字不会被“3 位以上的数字串”的规则去掉。退出码都是 97",
+   "confidence": "high"
+  },
+  "R122": {
+   "expect": "1",
+   "basis": "同 R10：经 SOCKS 代理的连接按目标主机和端口归类，SOCKS 代理的主机、端口、凭据相同才复用（lib/url.c:1073-1076、:710-727（curl-8_5_0））",
+   "confidence": "high"
+  },
+  "R123": {
+   "expect": "6",
+   "basis": "同 R15：ALPN 定下是 http/1.1 后，其余 5 个传输各开一条 SOCKS 连接",
+   "confidence": "medium"
+  },
+  "R124": {
+   "expect": "各开各的连接",
+   "basis": "lib/url.c:710-727 socks_proxy_info_matches 比较 SOCKS 代理的用户名和密码，不同就不复用（:1073-1076）（curl-8_5_0）；第三步回到第一个用户，复用它自己那条连接",
+   "confidence": "high"
+  },
+  "R125": {
+   "expect": "原样",
+   "basis": "SOCKS 代理的凭据就是 -U 那一对：create_conn_helper_init_proxy 把 http_proxy.user、passwd 挪给 socks_proxy（lib/url.c:2531-2539），socks.c 原样按字节写进 RFC 1929 的报文（lib/socks.c:714-749）（curl-8_5_0）；拆分和 URL 解码同 R60",
+   "confidence": "high"
+  },
+  "R126": {
+   "expect": "变了",
+   "basis": "SOCKS 代理的凭据就是 -U 那一对：create_conn_helper_init_proxy 把 http_proxy.user、passwd 挪给 socks_proxy（lib/url.c:2531-2539），socks.c 原样按字节写进 RFC 1929 的报文（lib/socks.c:714-749）（curl-8_5_0）；拆分和 URL 解码同 R60：用户名里的 %41 被解成 A，代理收到 sess@abA+c/d e",
+   "confidence": "high"
+  },
+  "R127": {
+   "expect": "原样",
+   "basis": "SOCKS 代理的凭据就是 -U 那一对：create_conn_helper_init_proxy 把 http_proxy.user、passwd 挪给 socks_proxy（lib/url.c:2531-2539），socks.c 原样按字节写进 RFC 1929 的报文（lib/socks.c:714-749）（curl-8_5_0）；拆分和 URL 解码同 R60；字节原样写出，没有字符集转换",
+   "confidence": "high"
+  },
+  "R128": {
+   "expect": "原样",
+   "basis": "SOCKS 代理的凭据就是 -U 那一对：create_conn_helper_init_proxy 把 http_proxy.user、passwd 挪给 socks_proxy（lib/url.c:2531-2539），socks.c 原样按字节写进 RFC 1929 的报文（lib/socks.c:714-749）（curl-8_5_0）；拆分和 URL 解码同 R60；255 字节正好不超过上限（lib/socks.c:729-733 只拒绝大于 255 的）",
+   "confidence": "high"
+  },
+  "R129": {
+   "expect": "客户端报错",
+   "basis": "lib/socks.c:729-733（curl-8_5_0）：用户名超过 255 字节时 failf(\"Excessive user name length for proxy auth\")，返回 CURLPX_LONG_USER（退出码 97）；检查发生在方法协商之后、认证报文发出之前，代理看到问候但收不到 socks5_auth",
+   "confidence": "high"
+  },
+  "R130": {
+   "expect": "变了",
+   "basis": "SOCKS 代理的凭据就是 -U 那一对：create_conn_helper_init_proxy 把 http_proxy.user、passwd 挪给 socks_proxy（lib/url.c:2531-2539），socks.c 原样按字节写进 RFC 1929 的报文（lib/socks.c:714-749）（curl-8_5_0）；拆分和 URL 解码同 R60：密码里的 %2F 被解成 /，代理收到 p:a@s s/w+d",
+   "confidence": "high"
+  },
+  "R131": {
+   "expect": "原样",
+   "basis": "SOCKS 代理的凭据就是 -U 那一对：create_conn_helper_init_proxy 把 http_proxy.user、passwd 挪给 socks_proxy（lib/url.c:2531-2539），socks.c 原样按字节写进 RFC 1929 的报文（lib/socks.c:714-749）（curl-8_5_0）；拆分和 URL 解码同 R60；空密码不是空指针（lib/url.c:2638-2645、:2383-2384），问候照样提供方法 2（lib/socks.c:617-618 只看用户名），认证报文里 PLEN 为 0（:738-746）",
+   "confidence": "high"
+  },
+  "R132": {
+   "expect": "变了",
+   "basis": "SOCKS 代理的凭据就是 -U 那一对：create_conn_helper_init_proxy 把 http_proxy.user、passwd 挪给 socks_proxy（lib/url.c:2531-2539），socks.c 原样按字节写进 RFC 1929 的报文（lib/socks.c:714-749）（curl-8_5_0）；拆分和 URL 解码同 R60：-U 'sess:ab12:kaoju-pass-1' 按第一个冒号拆开，SOCKS5 的 UNAME 是 sess，PASSWD 是 ab12:kaoju-pass-1，与用例里的用户名 sess:ab12 不同（HTTP 那边拼回去看不出差别，见 R70）",
+   "confidence": "high"
+  }
+ }
+}

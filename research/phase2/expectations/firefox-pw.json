@@ -1,0 +1,539 @@
+{
+ "variant": "firefox-pw",
+ "written": "2026-11-10",
+ "method": "只凭文档和源码，未做任何实测",
+ "client_version": "Playwright 1.63.0（playwright-core）驱动的 Firefox 155.0（browsers.json 里 firefox 的 revision 1543）；necko 源码读的是 mozilla-firefox/firefox 的修订 d065a04bc5610f496762935dee56604a78b91b51（Playwright v1.63.0 的 browser_patches/firefox/UPSTREAM_CONFIG.sh 写明的基线，release 分支，browser/config/version.txt 是 155.0，与 browsers.json 一致）",
+ "sources": [
+  "basis 里的前缀：necko: 指 https://raw.githubusercontent.com/mozilla-firefox/firefox/d065a04bc5610f496762935dee56604a78b91b51/ 下的路径（necko:netwerk/protocol/http/ 简写了目录）；juggler: 指 https://raw.githubusercontent.com/microsoft/playwright/v1.63.0/browser_patches/firefox/juggler/ 下的路径；playwright: 指 https://raw.githubusercontent.com/microsoft/playwright/v1.63.0/packages/playwright-core/src/ 下的路径。行号都是这两个版本的。2026-11-10 取",
+  "本机 /opt/node-tools/node_modules/playwright-core（package.json 版本 1.63.0；browsers.json：firefox revision 1543、browserVersion 155.0）。这个版本的服务端代码打包在 lib/coreBundle.js 里，没有单独的 lib/server/firefox/ 目录，所以读的是同一标签的 TypeScript 源码",
+  "Playwright v1.63.0 源码：packages/playwright-core/src/server/firefox/ffBrowser.ts（toJugglerProxyOptions、Browser.setBrowserProxy、Browser.setContextProxy）、server/browserContext.ts（normalizeProxySettings、validateBrowserContextOptions）、server/browserType.ts、server/firefox/firefox.ts、server/firefox/ffPage.ts、server/network.ts",
+  "Playwright v1.63.0 文档：docs/src/network.md 的“HTTP Proxy”一节；docs/src/api/params.md 的 browser-option-proxy、context-option-proxy、js-python-browser-option-firefoxuserprefs（含 PLAYWRIGHT_FIREFOX_POLICIES_JSON）",
+  "Playwright v1.63.0 的 Firefox 补丁：browser_patches/firefox/UPSTREAM_CONFIG.sh、preferences/playwright.cfg、preferences/00-playwright-prefs.js、patches/bootstrap.diff（对 netwerk 的改动只涉及离线判断和 LoadInfo，不改代理、认证、连接管理）、juggler/TargetRegistry.js、juggler/NetworkObserver.js、juggler/Helper.js、juggler/content/FrameTree.js、juggler/protocol/BrowserHandler.js、juggler/protocol/Protocol.js",
+  "Firefox 155.0 源码（上述修订）：netwerk/protocol/http/ 下的 nsHttpConnection.cpp、HttpConnectionBase.cpp、nsHttpChannel.cpp、nsHttpChannelAuthProvider.cpp、nsHttpBasicAuth.cpp、nsHttpTransaction.cpp、nsHttpConnectionMgr.cpp、nsHttpConnectionInfo.cpp、nsHttpHandler.cpp、nsHttp.cpp、nsHttpRequestHead.cpp、nsHttpHeaderArray.cpp、TlsHandshaker.cpp、Http2Session.cpp、HttpBaseChannel.cpp",
+  "Firefox 155.0 源码（上述修订）：netwerk/socket/nsSOCKSIOLayer.cpp、netwerk/base/nsSocketTransport2.cpp、netwerk/base/nsProtocolProxyService.cpp、netwerk/protocol/websocket/WebSocketChannel.cpp、security/manager/ssl/nsNSSIOLayer.cpp、modules/libpref/init/all.js、modules/libpref/init/StaticPrefList.yaml、js/xpconnect/src/xpc.msg、xpcom/base/ErrorList.py、docshell/base/nsDocShell.cpp（只查了代理错误到错误页的对应）、browser/actors/LinkHandlerChild.sys.mjs、browser/modules/FaviconLoader.sys.mjs、browser/components/enterprisepolicies/Policies.sys.mjs、browser/config/version.txt",
+  "research/phase2/PROTOCOL.md、cases.json、rows.json、runner/matrix.py（取值的字符串格式）、harness/server.go:291-299（端口映射）、harness/proxyhttp.go、harness/origin.go（响应头）",
+  "没有运行过 Firefox，也没有让任何客户端连过任何代理。ClientHello 的长度是按字段估的；涉及时序的行（favicon 请求与下一个请求的先后）只能给出推断"
+ ],
+ "rows": {
+  "R01": {
+   "expect": "绝对形式",
+   "basis": "necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:110-121：代理是 HTTP 类型而目标不是 https 时 mUsingConnect 为假；necko:netwerk/protocol/http/nsHttpChannel.cpp:1913-1942：这种情况下请求目标写成完整的 URI（“RequestURI should be the absolute uri H1 proxy syntax”），版本取 network.http.proxy.version（modules/libpref/init/all.js:1126，默认 1.1）。代理由 juggler 的通道过滤器给出（juggler:NetworkObserver.js:620-643，类型 http）。",
+   "confidence": "high"
+  },
+  "R02": {
+   "expect": "Connection: keep-alive",
+   "basis": "necko:netwerk/protocol/http/nsHttpChannel.cpp:8372 调 AddConnectionHeader，necko:netwerk/protocol/http/nsHttpHandler.cpp:816-832 只写 Connection: keep-alive（注释写明不用 Proxy-Connection，见 bug 570283）。Proxy-Connection 只在 CONNECT 里设（necko:netwerk/protocol/http/nsHttpConnection.cpp:2082，全文只此一处写入）。TE: trailers 只在 HTTP/2 上加（necko:netwerk/protocol/http/nsHttpTransaction.cpp:585-600）。A01 没配凭据，认证缓存是空的，不带 Proxy-Authorization。导航请求另有 Upgrade-Insecure-Requests，名字不在这一行的名单里。",
+   "confidence": "high"
+  },
+  "R03": {
+   "expect": "a.kaoju.test:443 HTTP/1.1",
+   "basis": "necko:netwerk/protocol/http/nsHttpConnection.cpp:2068-2076 MakeConnectString：目标由 GenerateHostPort(Origin, OriginPort) 生成，方法 CONNECT，版本取 network.http.version（all.js:1120，默认 1.1）；necko:netwerk/protocol/http/nsHttpRequestHead.cpp:362-385 Flatten 写出“方法 空格 目标 空格 HTTP/1.1”。",
+   "confidence": "high"
+  },
+  "R04": {
+   "expect": "User-Agent, Proxy-Connection, Connection, Host",
+   "basis": "necko:netwerk/protocol/http/nsHttpConnection.cpp:2077-2090 依次 SetHeader：User-Agent、Proxy-Connection: keep-alive、Connection: keep-alive、Host；A02 没有凭据，事务的请求头里没有 Proxy-Authorization（:2092-2099 只在有时才抄过来），也不是 CONNECT_ONLY（没有 ALPN 头）。头按加入顺序写出（necko:netwerk/protocol/http/nsHttpHeaderArray.cpp:406-452）。",
+   "confidence": "high"
+  },
+  "R05": {
+   "expect": "同目标",
+   "basis": "necko:netwerk/protocol/http/nsHttpConnection.cpp:2076 与 :2089 用的是同一个 result 字符串（host:port），注释写明 Host 与目标重复是有意的（bug 82388）。",
+   "confidence": "high"
+  },
+  "R06": {
+   "expect": "TLS ClientHello",
+   "basis": "necko:netwerk/protocol/http/nsHttpConnection.cpp:1181-1218 HandleTunnelResponse：CONNECT 收到 200 后对 https 目标调 InitSSLParams 开始 TLS 握手，隧道里客户端先发的是 ClientHello。",
+   "confidence": "high"
+  },
+  "R07": {
+   "expect": "超过 1460 字节",
+   "basis": "security.tls.enable_kyber 默认 true（modules/libpref/init/StaticPrefList.yaml:19051-19055）；security/manager/ssl/nsNSSIOLayer.cpp:1582-1609：TLS 1.3 时把 mlkem768x25519 放进组列表并多发密钥份额（mlkem768x25519、x25519，非 Nightly 还有 P-256）。mlkem768x25519 的密钥份额本身就是 1184+32=1216 字节，加上 x25519、P-256 份额、SNI、ALPN、签名算法、会话票据和 ECH GREASE（security.tls.ech.grease_probability 默认 100，StaticPrefList.yaml:19006-19010），总长超过 1460。长度是照字段估的，没有量过。",
+   "confidence": "high"
+  },
+  "R08": {
+   "expect": "h2,http/1.1",
+   "basis": "necko:netwerk/protocol/http/TlsHandshaker.cpp:162-191 SetupNPNList：数组是 [http/1.1, h2]，注释写明 ALPN 上的通告顺序是下标 {1,…,N,0}，即 h2 在前、http/1.1 在后；network.http.http2.enabled 默认 true（StaticPrefList.yaml:16296-16299）。",
+   "confidence": "high"
+  },
+  "R09": {
+   "expect": "HTTP/2.0",
+   "basis": "同 R08：隧道里的 TLS 提供 h2，源站支持 h2 就协商成 h2。经 HTTP 代理的 CONNECT 隧道不影响这一步（necko:netwerk/protocol/http/nsHttpConnection.cpp:1202-1212）。",
+   "confidence": "high"
+  },
+  "R10": {
+   "expect": "1",
+   "basis": "三次导航是同一个源、同一个浏览器上下文，连接的散列键相同（necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:147-232、:297-299），h2 会话在隧道里一直复用。/favicon.ico 的请求也在同一个 h2 会话里，不会多开隧道。",
+   "confidence": "high"
+  },
+  "R11": {
+   "expect": "1",
+   "basis": "明文经代理的连接按“代理主机:端口”加来源属性后缀归并（necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:147-153、:297-299），三次导航顺序进行，空闲的持久连接被复用（keep-alive 超时 115 秒，all.js:1146）。提醒：Firefox 的界面层在每个顶层 http(s) 页面 pageshow 之后会再取一次 /favicon.ico（browser/actors/LinkHandlerChild.sys.mjs:26-39、browser/modules/FaviconLoader.sys.mjs:155-190、:707-719），Playwright 的 playwright.cfg 里没有关掉它的设置（全文检索 favicon、guess_favicon、site_icons 无命中）；这个请求不带 k，走同一个连接池。如果下一次导航发出时 favicon 请求还占着连接，会多开一条（每个代理上限 32），所以只给 medium。",
+   "confidence": "medium"
+  },
+  "R12": {
+   "expect": "2",
+   "basis": "CONNECT 隧道的散列键里是源站的主机和端口（necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:150-153、:212-232），a 和 b 各一条。h2 的连接合并需要本机解析出的地址相同，经代理时本机不解析目标域名，按不合并估计；合并规则的源码没有读，所以是 medium。",
+   "confidence": "medium"
+  },
+  "R13": {
+   "expect": "1",
+   "basis": "明文经代理时散列键用的是代理的主机和端口，不含目标主机（necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:147-149），a 和 b 共用一条连接；a.kaoju.test 与 b.kaoju.test 同属一个站点（kaoju.test），网络分区键相同。提醒：Firefox 的界面层在每个顶层 http(s) 页面 pageshow 之后会再取一次 /favicon.ico（browser/actors/LinkHandlerChild.sys.mjs:26-39、browser/modules/FaviconLoader.sys.mjs:155-190、:707-719），Playwright 的 playwright.cfg 里没有关掉它的设置（全文检索 favicon、guess_favicon、site_icons 无命中）；这个请求不带 k，走同一个连接池。风险同 R11。",
+   "confidence": "medium"
+  },
+  "R14": {
+   "expect": "1",
+   "basis": "驱动先导航到 https://a.kaoju.test/page（开一条隧道，协商成 h2），6 个 fetch 是同源请求，在同一个 h2 会话上多路复用，不再开隧道。",
+   "confidence": "high"
+  },
+  "R15": {
+   "expect": "6",
+   "basis": "CONNECT 隧道按每主机上限算：necko:netwerk/protocol/http/nsHttpConnectionMgr.cpp:1150-1157 MaxPersistConnections 对“HTTP 代理且不用 CONNECT”才取每代理上限，其余取 network.http.max-persistent-connections-per-server=6（all.js:1163）。先导航 /page 留下 1 条空闲的 HTTP/1.1 隧道，6 个并发请求用掉它再开 5 条，合计 6。即使 favicon 请求正占着一条，上限也把总数卡在 6。",
+   "confidence": "medium"
+  },
+  "R16": {
+   "expect": "6",
+   "basis": "明文经代理按每代理上限算（necko:netwerk/protocol/http/nsHttpConnectionMgr.cpp:1152-1154，network.http.max-persistent-connections-per-proxy=32，all.js:1172），6 个并发不受每主机 6 条的限制。先导航 /page 留下 1 条空闲连接，6 个 fetch 复用它再开 5 条，合计 6。提醒：Firefox 的界面层在每个顶层 http(s) 页面 pageshow 之后会再取一次 /favicon.ico（browser/actors/LinkHandlerChild.sys.mjs:26-39、browser/modules/FaviconLoader.sys.mjs:155-190、:707-719），Playwright 的 playwright.cfg 里没有关掉它的设置（全文检索 favicon、guess_favicon、site_icons 无命中）；这个请求不带 k，走同一个连接池。如果 fetch 发出时 favicon 请求还占着那条连接，会是 7。",
+   "confidence": "medium"
+  },
+  "R17": {
+   "expect": "经代理",
+   "basis": "Firefox 自身默认不代理回环地址（network.proxy.allow_hijacking_localhost 默认 false，StaticPrefList.yaml:14961-14964；netwerk/base/nsProtocolProxyService.cpp:1180-1187 CanUseProxy）。但 Playwright 的构建把它改成了 true：browser_patches/firefox/preferences/playwright.cfg:113-115（注释 Allow proxying loopback URLs）。juggler 的 getProxyInfo 只按 bypass 列表排除（juggler:TargetRegistry.js:310-318），Playwright 不加默认的 bypass（playwright:server/firefox/ffBrowser.ts:413-437）。所以 localhost 也经代理，明文是绝对形式的请求。",
+   "confidence": "high"
+  },
+  "R18": {
+   "expect": "经代理",
+   "basis": "同 R17；目标是 https，发的是 CONNECT localhost:<端口>，obsproxy 把这个端口对到内置 HTTPS 源站（harness/server.go:291-299）。",
+   "confidence": "high"
+  },
+  "R19": {
+   "expect": "Content-Length",
+   "basis": "POST 从页面里用 fetch 发，正文是长度已知的二进制数据；Firefox 不支持流式的请求正文，长度已知的上传按 Content-Length 发。依据是 Fetch 的常规实现，没有逐行读上传流的代码。",
+   "confidence": "high"
+  },
+  "R20": {
+   "expect": "不发",
+   "basis": "在 nsHttpChannel.cpp、HttpBaseChannel.cpp、nsHttpTransaction.cpp 里检索 100-continue 和 Expect 头无命中，Firefox 不主动发 Expect: 100-continue。",
+   "confidence": "high"
+  },
+  "R21": {
+   "expect": "CONNECT 到 80 端口，隧道里明文升级",
+   "basis": "netwerk/protocol/websocket/WebSocketChannel.cpp:2957-2963 解析代理时带 RESOLVE_ALWAYS_TUNNEL，necko:netwerk/protocol/http/HttpBaseChannel.cpp:4019-4025 同样设置；necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:114-119 见到这个标志就用 CONNECT。juggler 的过滤器新建的 proxyInfo 不带这个标志，但 nsProtocolProxyService.cpp:258-267 EnsureResolveFlagsMatch 会在过滤之后补上。CONNECT 里还会多一个 ALPN 头（necko:netwerk/protocol/http/nsHttpConnection.cpp:2100-2108）。过滤器之后标志是否真的生效没有实测，所以是 medium。",
+   "confidence": "medium"
+  },
+  "R22": {
+   "expect": "CONNECT 到 443 端口，隧道里 TLS",
+   "basis": "wss 的目标是 https 类，本来就走 CONNECT（necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:113），隧道建好后先做 TLS 握手再升级。",
+   "confidence": "high"
+  },
+  "R23": {
+   "expect": "G / C / 05",
+   "basis": "明文：请求行以 GET 开头（R01）；HTTPS：以 CONNECT 开头（R03）；SOCKS5：netwerk/socket/nsSOCKSIOLayer.cpp:716-721 第一个字节是版本 0x05。medium 是因为代理设在整个浏览器上时，浏览器自己的后台请求也会走代理（juggler:TargetRegistry.js:310-318 没有上下文的通道用浏览器级代理）；playwright.cfg 关掉了已知的后台请求，但如果有漏网的，第一条连接可能不是被测请求。",
+   "confidence": "medium"
+  },
+  "R24": {
+   "expect": "完整",
+   "basis": "三个用例都没有认证重试和断连；正文由 fetch 以已知长度发出，HTTP/2 下（A13）走流量控制。",
+   "confidence": "high"
+  },
+  "R30": {
+   "expect": "等 407 再带",
+   "basis": "Playwright 把代理的用户名和密码交给 juggler（playwright:server/firefox/ffBrowser.ts:63-65、:212-218、:413-437），juggler 建 proxyInfo 时不放凭据（juggler:NetworkObserver.js:631-640，aProxyAuthorizationHeader 是空串），而是等 Firefox 收到 407 后来问 nsIAuthPrompt2 时才给（juggler:NetworkObserver.js:272-315）。发请求前只会从认证缓存里找代理凭据（necko:netwerk/protocol/http/nsHttpChannelAuthProvider.cpp:212-218），新启动的浏览器缓存是空的，第一个请求不带。",
+   "confidence": "high"
+  },
+  "R31": {
+   "expect": "等 407 再带",
+   "basis": "同 R30；CONNECT 的 Proxy-Authorization 是从事务的请求头里抄的（necko:netwerk/protocol/http/nsHttpConnection.cpp:2092-2099），第一次没有。",
+   "confidence": "high"
+  },
+  "R32": {
+   "expect": "原连接",
+   "basis": "407 带 Content-Length、不带 Connection: close 时连接可复用（necko:netwerk/protocol/http/nsHttpConnection.cpp:1079-1106）。拿到凭据后通道把 407 的正文读完丢掉（necko:netwerk/protocol/http/nsHttpChannel.cpp:7157-7176），事务正常结束、连接回到空闲池，然后 DoAuthRetry 发新事务（necko:netwerk/protocol/http/nsHttpChannel.cpp:10266-10269、:11450-11530），新事务取到的就是那条空闲连接。Playwright 把 network.auth.use_redirect_for_retries 设成 false（playwright.cfg:32-33），走的是这条老路径。连接归还与新事务派发的先后是按代码顺序推的，没有实测。",
+   "confidence": "medium"
+  },
+  "R33": {
+   "expect": "原连接",
+   "basis": "CONNECT 收到 407 后事务把连接留住（necko:netwerk/protocol/http/nsHttpTransaction.cpp:1745-1754），连接仍处在 SETTING_UP_TUNNEL 状态；重试的事务被派到这条连接上时，necko:netwerk/protocol/http/HttpConnectionBase.cpp:149-158 的注释写明“需要认证，重发 CONNECT，这次带认证头”。前提是 407 没带 Connection: close。",
+   "confidence": "medium"
+  },
+  "R34": {
+   "expect": "成功",
+   "basis": "407 带 Connection: close 时连接不复用（necko:netwerk/protocol/http/nsHttpConnection.cpp:1079-1106）；Basic 是按请求的方案，necko:netwerk/protocol/http/nsHttpChannelAuthProvider.cpp:876-880 把这次重试标成可重启（注释：对端在第一个 407 后关连接是合法的），重试在新连接上进行。",
+   "confidence": "high"
+  },
+  "R35": {
+   "expect": "成功",
+   "basis": "同 R34；重试的事务在新连接上重新发 CONNECT（necko:netwerk/protocol/http/HttpConnectionBase.cpp:139-147）。",
+   "confidence": "high"
+  },
+  "R36": {
+   "expect": "不知道",
+   "basis": "网络栈本身的行为是 4/1：s1 先不带（1 个），407 后重试带上，凭据进认证缓存，s2、s3 发出前就从缓存取到（necko:netwerk/protocol/http/nsHttpChannelAuthProvider.cpp:212-218）。但这一行数的是代理端口上全部的请求。提醒：Firefox 的界面层在每个顶层 http(s) 页面 pageshow 之后会再取一次 /favicon.ico（browser/actors/LinkHandlerChild.sys.mjs:26-39、browser/modules/FaviconLoader.sys.mjs:155-190、:707-719），Playwright 的 playwright.cfg 里没有关掉它的设置（全文检索 favicon、guess_favicon、site_icons 无命中）；这个请求不带 k，走同一个连接池。它会带着缓存里的凭据到达代理，使总数变成 5/1（404 被缓存、只取一次）或 7/1（每次导航都取）。favicon 请求是否发出、404 是否被 HTTP 缓存留住，只凭源码定不下来，所以写不知道。",
+   "confidence": "low"
+  },
+  "R37": {
+   "expect": "先带",
+   "basis": "第一次认证成功后凭据按（http, 代理主机, 代理端口, realm）进认证缓存，代理凭据不按来源属性隔离（necko:netwerk/protocol/http/nsHttpChannelAuthProvider.cpp:794、:1381）；之后任何经这个代理的通道在发请求前都会加上 Proxy-Authorization（:212-218），CONNECT 再把它抄过去（necko:netwerk/protocol/http/nsHttpConnection.cpp:2092-2099）。只有一个用户，juggler 不清缓存（juggler:TargetRegistry.js:264-298）。",
+   "confidence": "high"
+  },
+  "R38": {
+   "expect": "1",
+   "basis": "同 R10；认证只发生在建隧道时，之后三次请求复用同一条隧道。",
+   "confidence": "high"
+  },
+  "R39": {
+   "expect": "没有",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:269-270 生成请求头时对用 CONNECT 的连接剪掉代理头，necko:netwerk/protocol/http/nsHttpHeaderArray.cpp:408-413 剪的是 Proxy-Authorization 和 Proxy-Connection；隧道里的请求不带代理凭据。跳转到明文目标（B10）时是绝对形式的请求，按行规则不算。",
+   "confidence": "high"
+  },
+  "R40": {
+   "expect": "都成功",
+   "basis": "page.goto 自动跟随 302。跳转后的请求是新的通道，凭据从认证缓存里取（R37）；https 跳到 http 的顶层导航不受混合内容限制，Playwright 关掉了 https_first（playwright.cfg:16-18）。",
+   "confidence": "high"
+  },
+  "R41": {
+   "expect": "各用各的凭据",
+   "basis": "两个用户用两个浏览器上下文，各自 newContext({proxy})。juggler 发现同一个代理配了不同凭据时，每个请求解析代理之前都清空认证缓存（juggler:TargetRegistry.js:264-298、NetworkObserver.js:629-630，发 net:clear-active-logins；necko:netwerk/protocol/http/nsHttpHandler.cpp:2351-2353 收到后 ClearAll），于是每个请求都先不带凭据、收 407，再按通道所属的上下文给凭据（juggler:NetworkObserver.js:300-302、TargetRegistry.js:310-318）。没有实测，清缓存与并行请求之间的时序没有逐一核对。",
+   "confidence": "medium"
+  },
+  "R42": {
+   "expect": "各开各的隧道",
+   "basis": "连接的散列键末尾是来源属性后缀（necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:297-299），每个浏览器上下文有自己的 userContextId，两个上下文不共用连接和隧道；s3 复用的是第一个上下文自己的隧道。建隧道时的凭据见 R41。",
+   "confidence": "medium"
+  },
+  "R43": {
+   "expect": "1",
+   "basis": "驱动先导航到 /page，这次导航吃掉 407 并把凭据放进认证缓存；随后的 POST 发出前就带上凭据（R37），正文只发一遍。如果驱动不先导航而直接发 POST，会是 2。",
+   "confidence": "medium"
+  },
+  "R44": {
+   "expect": "1",
+   "basis": "唯一的 407 出现在先导航 /page 的那次 CONNECT 上；之后 6 个并发请求新开的 CONNECT 都从缓存带上凭据（R37）。",
+   "confidence": "medium"
+  },
+  "R45": {
+   "expect": "报错，没提 407",
+   "basis": "没配凭据时 juggler 仍然回答“有凭据”：juggler:NetworkObserver.js:300-311 只判断 proxy 对象是否存在，用户名密码是 undefined 也照填，Firefox 会带着一份无效的凭据再试一次；再收到 407 时提示带 PREVIOUS_FAILED（necko:netwerk/protocol/http/nsHttpChannelAuthProvider.cpp:1296-1298），juggler 返回 false（NetworkObserver.js:294-295），通道在 OnAuthCancelled 里对代理认证一律 Cancel(NS_ERROR_PROXY_CONNECTION_REFUSED)，不展示 407 的正文（necko:netwerk/protocol/http/nsHttpChannel.cpp:7179-7191）。page.goto 抛出的文字是错误名（juggler:content/FrameTree.js:304、Helper.js:109-115），里面没有 407 这个数字。无效凭据那一步（undefined 被转成什么）没有核实，但不影响这一行的取值。",
+   "confidence": "medium"
+  },
+  "R46": {
+   "expect": "报错，没提 407",
+   "basis": "同 R45。CONNECT 的 407 走同一个取消路径（necko:netwerk/protocol/http/nsHttpChannel.cpp:3530-3537 设 ProxyAuthPending）。",
+   "confidence": "medium"
+  },
+  "R47": {
+   "expect": "1",
+   "basis": "第一个请求不带；407 后带错误的密码试 1 次；再收到 407，Basic 认为凭据无效并清掉缓存项（necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:50、nsHttpChannelAuthProvider.cpp:882-889），再次提示时带 PREVIOUS_FAILED，juggler 拒绝（juggler:NetworkObserver.js:294-295），通道取消。导航失败后是错误页，不取 favicon。",
+   "confidence": "medium"
+  },
+  "R48": {
+   "expect": "1",
+   "basis": "同 R47，对象是 CONNECT。",
+   "confidence": "medium"
+  },
+  "R49": {
+   "expect": "报错，没提 407",
+   "basis": "第二个 407 之后 juggler 拒绝再给凭据，通道在 OnAuthCancelled 里对代理认证一律 Cancel(NS_ERROR_PROXY_CONNECTION_REFUSED)，不展示 407 的正文（necko:netwerk/protocol/http/nsHttpChannel.cpp:7179-7191）。page.goto 抛出的文字是错误名（juggler:content/FrameTree.js:304、Helper.js:109-115），里面没有 407 这个数字。",
+   "confidence": "medium"
+  },
+  "R50": {
+   "expect": "报错，没提 403",
+   "basis": "带错误密码的 CONNECT 收到 403：necko:netwerk/protocol/http/nsHttpChannel.cpp:3202-3204 对失败的 CONNECT（407 除外）调 ProcessFailedProxyConnect，necko:netwerk/protocol/http/nsHttp.cpp:880-882 把 403 映射成 NS_ERROR_PROXY_FORBIDDEN，正文不展示（nsHttpChannel.cpp:2745-2775）。page.goto 的文字是这个错误名，没有数字 403。",
+   "confidence": "medium"
+  },
+  "R51": {
+   "expect": "拿到 403 响应",
+   "basis": "明文请求带错误密码重试后收到的 403 只是一个普通响应，Firefox 不做特殊处理（necko:netwerk/protocol/http/nsHttpChannel.cpp:3582-3584 走 ProcessNormal），page.goto 返回状态码 403 的 Response。",
+   "confidence": "medium"
+  },
+  "R52": {
+   "expect": "不带",
+   "basis": "没有 407 就没有人往认证缓存里放凭据（R30），请求始终不带。",
+   "confidence": "high"
+  },
+  "R53": {
+   "expect": "不带",
+   "basis": "同 R52。",
+   "confidence": "high"
+  },
+  "R60": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。",
+   "confidence": "high"
+  },
+  "R61": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。",
+   "confidence": "high"
+  },
+  "R62": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。凭据不经过 URL，@ % + / 空格都不需要也不会被转义。",
+   "confidence": "high"
+  },
+  "R63": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。编码固定是 UTF-8（注释 we work with UTF-8 around here）。",
+   "confidence": "high"
+  },
+  "R64": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。质询里的 charset 不影响编码。",
+   "confidence": "high"
+  },
+  "R65": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。",
+   "confidence": "high"
+  },
+  "R66": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。HTTP 的 Basic 没有 255 字节的限制（那是 SOCKS5 的）。",
+   "confidence": "high"
+  },
+  "R67": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。1024 字节的用户名在 Playwright 的管道协议和 Firefox 的请求头里都没有看到长度上限，但没有逐处核对。",
+   "confidence": "medium"
+  },
+  "R68": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。",
+   "confidence": "high"
+  },
+  "R69": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。空密码时仍然写冒号（nsHttpBasicAuth.cpp:82 always send a ':'）。Playwright 一侧 password 为空串时照样传给 juggler（playwright:server/firefox/ffBrowser.ts:434-435），空串经协议后是否仍是空串没有实测。",
+   "confidence": "medium"
+  },
+  "R70": {
+   "expect": "原样",
+   "basis": "用户名和密码经 Playwright 的协议（JSON）原样传给 juggler，juggler 填进 authInfo（juggler:NetworkObserver.js:310-311），necko:netwerk/protocol/http/nsHttpBasicAuth.cpp:79-86 把用户名转成 UTF-8、加冒号、接密码的 UTF-8，再整体 base64；不做转义、不截断、不看 charset 参数。用户名里的冒号不做处理，原样拼接。",
+   "confidence": "high"
+  },
+  "R80": {
+   "expect": "都看不到",
+   "basis": "necko:netwerk/protocol/http/nsHttpChannel.cpp:2745-2775 ProcessFailedProxyConnect 的注释写明不渲染代理的回应正文，只按状态码换成错误码；necko:netwerk/protocol/http/nsHttp.cpp:944-946 把 502 映射成 NS_ERROR_PROXY_BAD_GATEWAY。page.goto 抛出的文字是 juggler 给的错误名（juggler:content/FrameTree.js:304、Helper.js:109-115，名字来自 js/xpconnect/src/xpc.msg:148），形如 page.goto: NS_ERROR_PROXY_BAD_GATEWAY 加调用日志；没有数字 502，也没有原因短语、响应头、正文。",
+   "confidence": "high"
+  },
+  "R81": {
+   "expect": "没有这样的手段",
+   "basis": "Playwright 的文档里没有能看到 CONNECT 响应的选项：requestfailed 事件的 request.failure().errorText 与默认报错是同一个错误名。Firefox 自己的 MOZ_LOG=nsHttp:5 日志能看到状态行和响应头，但那是 Mozilla 的调试手段，不在 Playwright 文档里；驱动作者如果把它算作额外手段，这一格会是“状态码、原因短语、响应头”。",
+   "confidence": "medium"
+  },
+  "R82": {
+   "expect": "都看不到",
+   "basis": "同 R80；necko:netwerk/protocol/http/nsHttp.cpp:880-882 把 403 映射成 NS_ERROR_PROXY_FORBIDDEN，文字里没有数字 403。",
+   "confidence": "high"
+  },
+  "R83": {
+   "expect": "1",
+   "basis": "necko:netwerk/protocol/http/nsHttp.cpp:947-955 把 503 映射成 NS_ERROR_CONNECTION_REFUSED，通道取消，不看 Retry-After；代理故障转移只对 NS_ERROR_PROXY_CONNECTION_REFUSED、UNKNOWN_PROXY_HOST、NET_TIMEOUT、NET_RESET 触发（necko:netwerk/protocol/http/nsHttpChannel.cpp:9716-9727），而且这里没有备用代理。文档层（docshell）对顶层导航的 CONNECTION_REFUSED 有没有别的重试没有逐行核对。",
+   "confidence": "medium"
+  },
+  "R84": {
+   "expect": "看不到",
+   "basis": "page.goto 返回的 Response 是隧道里源站的响应；CONNECT 的 200 及其头只留在连接内部（necko:netwerk/protocol/http/nsHttpConnection.cpp:1181-1184），不出现在 Playwright 的接口里。",
+   "confidence": "high"
+  },
+  "R85": {
+   "expect": "没有这样的手段",
+   "basis": "同 R81：Playwright 文档里没有读 CONNECT 响应头的接口。",
+   "confidence": "medium"
+  },
+  "R86": {
+   "expect": "状态码、原因短语、响应头、正文",
+   "basis": "明文请求被代理回 403 只是普通响应：page.goto 返回 Response，status()、statusText()（juggler:NetworkObserver.js:952-958 取 responseStatusText）、allHeaders()、body() 都拿得到。响应没有 Content-Type，Firefox 会嗅探成文本并当页面显示；如果被当成下载，goto 会报错，这一点没有实测。",
+   "confidence": "medium"
+  },
+  "R87": {
+   "expect": "看得到",
+   "basis": "代理加的头就在这个响应里，Response.allHeaders() 能读到。",
+   "confidence": "high"
+  },
+  "R88": {
+   "expect": "新连接",
+   "basis": "失败的 CONNECT 所在的连接被标成不复用（necko:netwerk/protocol/http/nsHttpChannel.cpp:2764-2767 DontReuseConnection）；而且隧道连接按目标主机归并（necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:150-153），a.kaoju.test 不会用 fail.kaoju.test 的连接。",
+   "confidence": "high"
+  },
+  "R89": {
+   "expect": "成功",
+   "basis": "两次导航互不相干，第二次在新连接上正常建隧道。",
+   "confidence": "high"
+  },
+  "R90": {
+   "expect": "换新连接，成功",
+   "basis": "代理发 FIN 之后空闲连接不再可用，下一次请求开新连接；即便没察觉，写到失效连接上也会按重启规则重发（necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。）。",
+   "confidence": "high"
+  },
+  "R91": {
+   "expect": "换新隧道，成功",
+   "basis": "同 R90；隧道被关后 h2 会话随之结束，下一次导航新建隧道。",
+   "confidence": "high"
+  },
+  "R92": {
+   "expect": "2 次，成功",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。F03 是 GET，重启后在新连接上再发一次，成功。提醒：Firefox 的界面层在每个顶层 http(s) 页面 pageshow 之后会再取一次 /favicon.ico（browser/actors/LinkHandlerChild.sys.mjs:26-39、browser/modules/FaviconLoader.sys.mjs:155-190、:707-719），Playwright 的 playwright.cfg 里没有关掉它的设置（全文检索 favicon、guess_favicon、site_icons 无命中）；这个请求不带 k，走同一个连接池。如果 s2 发出时 favicon 请求还占着连接，s2 会走新连接，仪器的 only_if_reused 条件不满足，这一格会变成“未触发”。",
+   "confidence": "medium"
+  },
+  "R93": {
+   "expect": "2 次，成功",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。F04 的 POST 是在复用的连接上发出的（之前有 s1 的导航和 /page 的导航），满足“连接是复用过的”这一条，所以 POST 也会重发；正文流先倒回开头（nsHttpTransaction.cpp:1990-1992）。即 Firefox 对复用连接上的 POST 会自动重发。",
+   "confidence": "medium"
+  },
+  "R94": {
+   "expect": "2 次，成功",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。隧道被切断后 TLS 连接读到结束，GET 重启，在新隧道里再发一次。",
+   "confidence": "medium"
+  },
+  "R95": {
+   "expect": "2 次，成功",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。同 R93：POST 所在的隧道内连接是复用过的，会重发。",
+   "confidence": "medium"
+  },
+  "R96": {
+   "expect": "2 次，成功",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。注释写明“不只对复用的连接，对所有安全方法都重试（bug 1236277）”，所以新连接上的第一个 GET 也重发；仪器只丢一次，第二次成功。",
+   "confidence": "medium"
+  },
+  "R97": {
+   "expect": "2 次，成功",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。同 R96，在新隧道里重发。",
+   "confidence": "medium"
+  },
+  "R98": {
+   "expect": "2 次，成功",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。RST 被转成 NS_ERROR_NET_RESET（netwerk/base/nsSocketTransport2.cpp:175-179），同样在可重启的原因之列。favicon 的风险同 R92。",
+   "confidence": "medium"
+  },
+  "R99": {
+   "expect": "2 次，成功",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。同 R98。",
+   "confidence": "medium"
+  },
+  "R100": {
+   "expect": "2 次，成功",
+   "basis": "necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1554、:1593-1596：事务以 NS_OK（对端正常关闭）或 NS_ERROR_NET_RESET 结束、且还没收到任何响应数据时，只要方法是安全的（GET、HEAD、OPTIONS、TRACE，nsHttpRequestHead.cpp:345-352），或者请求还没真正发出，或者连接是复用过的，就重启事务；重启次数上限是 network.http.request.max-attempts=10（all.js:1181、nsHttpTransaction.cpp:1966-1970）。CONNECT 发出后连接被关，事务（GET）没有收到任何数据，按安全方法重启；新连接上重新发 CONNECT（necko:netwerk/protocol/http/HttpConnectionBase.cpp:139-158），仪器只丢一次。",
+   "confidence": "medium"
+  },
+  "R101": {
+   "expect": "1 次，失败",
+   "basis": "HTTP/2 走的是另一条路：连接断开时 necko:netwerk/protocol/http/nsHttpConnection.cpp:1641-1649 把会话标成非正常关闭，necko:netwerk/protocol/http/Http2Session.cpp:262-283 ShutdownStream 只有在收到过 GOAWAY（mCleanShutdown）时才用 NS_ERROR_NET_RESET 关流（可重启），否则没收到数据的流以 NS_ERROR_ABORT 关闭；NS_ERROR_ABORT 不在事务的可重启原因里（necko:netwerk/protocol/http/nsHttpTransaction.cpp:1546-1551）。仪器切断隧道时不发 GOAWAY，所以 s2 不重发，page.goto 报 NS_ERROR_ABORT。只读了源码，这条与 HTTP/1.1 的行为相反，值得核对。",
+   "confidence": "medium"
+  },
+  "R110": {
+   "expect": "00",
+   "basis": "necko:netwerk/socket/nsSOCKSIOLayer.cpp:716-721：问候只提供 1 个方法，没有代理用户名时是 0x00。",
+   "confidence": "high"
+  },
+  "R111": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。Firefox 本身支持（necko:netwerk/socket/nsSOCKSIOLayer.cpp:720 有用户名时提供 0x02），是 Playwright 不放行。",
+   "confidence": "medium"
+  },
+  "R112": {
+   "expect": "域名",
+   "basis": "juggler 建 proxyInfo 时固定带 TRANSPARENT_PROXY_RESOLVES_HOST（juggler:NetworkObserver.js:637），necko:netwerk/socket/nsSOCKSIOLayer.cpp:819-835 见到 PROXY_RESOLVES_HOST 就用地址类型 0x03 发域名；本机不解析（netwerk/base/nsSocketTransport2.cpp:994-1007）。",
+   "confidence": "high"
+  },
+  "R113": {
+   "expect": "域名",
+   "basis": "Playwright 的 Firefox 不区分 socks5 和 socks5h：只认 socks5: 这个写法（playwright:server/firefox/ffBrowser.ts:417-418），而且总是让代理解析（R112）。localhost 也经代理（R17），以域名 localhost 发给代理。",
+   "confidence": "high"
+  },
+  "R114": {
+   "expect": "把域名交给了代理",
+   "basis": "同 R113：本机根本不解析目标域名。",
+   "confidence": "high"
+  },
+  "R115": {
+   "expect": "TLS ClientHello",
+   "basis": "SOCKS 是透明代理，握手完成后直接在这条连接上开始 TLS（netwerk/base/nsSocketTransport2.cpp:1655-1668）。",
+   "confidence": "high"
+  },
+  "R116": {
+   "expect": "明文 HTTP",
+   "basis": "同 R115，目标是 http，SOCKS 建好后直接发 HTTP 请求（源站形式）。",
+   "confidence": "high"
+  },
+  "R117": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  },
+  "R118": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  },
+  "R119": {
+   "expect": "只说失败",
+   "basis": "necko:netwerk/socket/nsSOCKSIOLayer.cpp:742-753：代理回 0xFF 时以 PR_CONNECT_REFUSED_ERROR 结束握手；netwerk/base/nsSocketTransport2.cpp:1674-1677、:180-193 把它转成 NS_ERROR_CONNECTION_REFUSED。page.goto 的文字是这个错误名加调用日志（URL、waiting until \"load\"），不含 auth、method、credential、password。",
+   "confidence": "medium"
+  },
+  "R120": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  },
+  "R121": {
+   "expect": "不能区分",
+   "basis": "necko:netwerk/socket/nsSOCKSIOLayer.cpp:916-961：应答码 2 和 5 都用 PR_CONNECT_REFUSED_ERROR（→ NS_ERROR_CONNECTION_REFUSED），4 用 PR_BAD_ADDRESS_ERROR（→ NS_ERROR_UNKNOWN_HOST，netwerk/base/nsSocketTransport2.cpp:235-237）。2 和 5 的报错文字相同，三者不是两两不同。",
+   "confidence": "medium"
+  },
+  "R122": {
+   "expect": "1",
+   "basis": "SOCKS 连接的散列键含目标主机和代理信息（necko:netwerk/protocol/http/nsHttpConnectionInfo.cpp:150-153、:212-232），三次导航复用同一条连接上的 h2 会话。",
+   "confidence": "high"
+  },
+  "R123": {
+   "expect": "6",
+   "basis": "同 R15：SOCKS 不是 HTTP 代理，按每主机 6 条的上限（necko:netwerk/protocol/http/nsHttpConnectionMgr.cpp:1150-1157）；先导航 /page 的那条被复用，再开 5 条。",
+   "confidence": "medium"
+  },
+  "R124": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  },
+  "R125": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  },
+  "R126": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  },
+  "R127": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  },
+  "R128": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  },
+  "R129": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。（Firefox 本身对超过 255 字节的用户名会在握手时报错，necko:netwerk/socket/nsSOCKSIOLayer.cpp:759-763。）",
+   "confidence": "medium"
+  },
+  "R130": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  },
+  "R131": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。（Playwright 的判断是 username || password，用户名非空就抛错，空密码也一样。）",
+   "confidence": "medium"
+  },
+  "R132": {
+   "expect": "不支持",
+   "basis": "playwright:server/browserContext.ts:831-832 normalizeProxySettings：代理是 socks5 而又给了 username 或 password 时直接抛错“Browser does not support socks5 proxy authentication”，launch 和 newContext 都先过这一步（server/browserType.ts:110、server/browserContext.ts:776-777）。配置写不出来，驱动应报 unsupported。",
+   "confidence": "medium"
+  }
+ }
+}

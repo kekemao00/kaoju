@@ -1,0 +1,537 @@
+{
+ "variant": "node-fetch-env",
+ "written": "2026-11-10",
+ "method": "只凭文档和源码，未做任何实测",
+ "client_version": "Node.js v22.23.4（内置 undici 6.29.1、OpenSSL 3.5.9）",
+ "sources": [
+  "出处前缀：node: 指 nodejs/node 标签 v22.23.4 的路径；u6: 指同一标签下 deps/undici/src/lib/（内置 undici 6.29.1）；u8: 指 npm 包 undici 8.12.4 的 package/lib/。行号是这些版本的。",
+  "nodejs/node 标签 v22.23.4（raw.githubusercontent.com/nodejs/node/v22.23.4/…，2026-11-10 取）：lib/internal/process/pre_execution.js、lib/internal/http.js、lib/_http_client.js、lib/_http_agent.js、lib/_http_outgoing.js、lib/https.js、lib/internal/errors.js",
+  "同一标签的文档：doc/api/http.md（Built-in Proxy Support、new Agent 的 proxyEnv、request.reusedSocket）、doc/api/cli.md（--use-env-proxy、NODE_USE_ENV_PROXY=1、NODE_EXTRA_CA_CERTS、NODE_DEBUG）、doc/api/globals.md（WebSocket）",
+  "本机 node -p process.versions：node 22.23.4、undici 6.29.1、openssl 3.5.9、nghttp2 1.69.0；node -p tls.DEFAULT_ECDH_CURVE 是 auto，process.config.variables.node_shared_openssl 是 false",
+  "research/phase2/runner/matrix.py、harness/server.go（只为确认取值的规范化写法和端口映射）",
+  "内置 undici 6.29.1：nodejs/node 标签 v22.23.4 的 deps/undici/src/lib/ 下 dispatcher/proxy-agent.js、dispatcher/env-http-proxy-agent.js、dispatcher/client.js、dispatcher/client-h1.js、dispatcher/pool.js、dispatcher/agent.js、core/connect.js、core/request.js、core/util.js、core/errors.js、web/fetch/index.js、web/websocket/connection.js（deps/undici/src/package.json 的 version 是 6.29.1）",
+  "npm 包 undici 8.12.4 的 docs/docs/api/DiagnosticsChannel.md（只用来确认 undici:request:headers 频道的文档说法）和 lib/dispatcher/proxy-agent.js（对比 6.29.1 缺哪些修正）"
+ ],
+ "rows": {
+  "R01": {
+   "expect": "CONNECT 到 80 端口",
+   "basis": "内置 undici 6.29.1 的 ProxyAgent 默认 proxyTunnel = true（u6:dispatcher/proxy-agent.js:106），只有 proxyTunnel 为假时才对 http: 目标走绝对形式（:137-143）；EnvHttpProxyAgent 建 ProxyAgent 时不传这个选项（u6:dispatcher/env-http-proxy-agent.js:35-47，由 node:lib/internal/process/pre_execution.js:204-206 无参数构造）。所以明文请求也先 CONNECT 主机:80，再在隧道里发普通请求（proxy-agent.js:150-174）。",
+   "confidence": "high"
+  },
+  "R02": {
+   "expect": "Connection: keep-alive",
+   "basis": "请求在隧道里，头由源站记录（matrix.py 的 r02 注明这时名字是规范化以后的）。undici 的 HTTP/1.1 写法固定带 connection: keep-alive（u6:dispatcher/client-h1.js:1118-1124，pipelining 默认 1）；fetch 另加的 accept、accept-language、sec-fetch-mode、user-agent、accept-encoding 不在这一行要列的名字里。代理头只在 CONNECT 上，不进隧道。",
+   "confidence": "medium"
+  },
+  "R03": {
+   "expect": "a.kaoju.test:443 HTTP/1.1",
+   "basis": "u6:dispatcher/proxy-agent.js:151-154：请求目标是 opts.host，没有端口时补上默认端口；u6:dispatcher/client-h1.js:1110 写 ${method} ${path} HTTP/1.1。",
+   "confidence": "high"
+  },
+  "R04": {
+   "expect": "host, connection",
+   "basis": "u6:dispatcher/client-h1.js:1110-1124：先写 host，再写 connection（CONNECT 时 kReset 为真，值是 close，:1091-1096）；之后是调用方给的头，ProxyAgent 只给了代理头和 host（proxy-agent.js:161-164），A02 没配凭据所以没有别的。6.29.1 不加 proxy-connection（这是 7.x 后来加的）。",
+   "confidence": "high"
+  },
+  "R05": {
+   "expect": "不同",
+   "basis": "u6:dispatcher/proxy-agent.js:151-164：请求目标补了 :443，而 host 头用的是 opts.host 原样（a.kaoju.test，默认端口时不带端口）。",
+   "confidence": "high"
+  },
+  "R06": {
+   "expect": "TLS ClientHello",
+   "basis": "u6:dispatcher/proxy-agent.js:171-181：目标是 https: 时在隧道套接字上做 TLS（httpSocket: socket，u6:core/connect.js:102-113）。",
+   "confidence": "high"
+  },
+  "R07": {
+   "expect": "超过 1460 字节",
+   "basis": "ClientHello 由 OpenSSL 3.5.9 生成（本机 process.versions.openssl；node_shared_openssl 为 false，是随 Node 一起编的）。Node 默认的 ecdhCurve 是 auto（本机 tls.DEFAULT_ECDH_CURVE），不改 OpenSSL 的默认组；按我对 OpenSSL 3.5 的了解（没有逐字核对 OpenSSL 源码，记为“未验证”），它默认的组列表以 X25519MLKEM768 开头并为它和 X25519 各发一个 key share，X25519MLKEM768 的公钥是 1216 字节，整个 ClientHello 因此超过 1460 字节。如果这个构建没有启用混合后量子组，就会落在 500 字节上下，这一格翻转。",
+   "confidence": "medium"
+  },
+  "R08": {
+   "expect": "http/1.1",
+   "basis": "u6:core/connect.js:87 allowH2 默认 false，:110 ALPNProtocols 于是只有 ['http/1.1']。",
+   "confidence": "high"
+  },
+  "R09": {
+   "expect": "HTTP/1.1",
+   "basis": "只提供 http/1.1（R08），源站只能选它。",
+   "confidence": "high"
+  },
+  "R10": {
+   "expect": "1",
+   "basis": "每个源一个 Pool（u6:dispatcher/agent.js），连接保持（keepAliveTimeout 默认 4 秒，u6:dispatcher/client.js:231），三个请求依次发，复用同一条隧道。",
+   "confidence": "high"
+  },
+  "R11": {
+   "expect": "1",
+   "basis": "明文也走隧道（R01），同一个源复用同一条；代理端口上只有一次 accept。",
+   "confidence": "high"
+  },
+  "R12": {
+   "expect": "2",
+   "basis": "按源分 Pool，a、b 各一条隧道，各自复用。",
+   "confidence": "high"
+  },
+  "R13": {
+   "expect": "2",
+   "basis": "同 R12，隧道的目标端口是 80。",
+   "confidence": "high"
+  },
+  "R14": {
+   "expect": "6",
+   "basis": "Pool 默认不限连接数（connections 为 null，u6:dispatcher/pool.js:69），每条连接 pipelining 为 1（u6:dispatcher/client.js:229），忙的连接不接新请求，6 个并发开 6 个 Client，各自 CONNECT 一次（每个 CONNECT 用掉一条到代理的连接）。不谈 h2（R08），源站支持 h2 也不合并。",
+   "confidence": "high"
+  },
+  "R15": {
+   "expect": "6",
+   "basis": "同 R14。",
+   "confidence": "high"
+  },
+  "R16": {
+   "expect": "6",
+   "basis": "同 R14：明文也是每个并发请求一条 CONNECT 到 80 的隧道。",
+   "confidence": "high"
+  },
+  "R17": {
+   "expect": "经代理",
+   "basis": "NO_PROXY 没设时不绕过任何主机（u6:dispatcher/env-http-proxy-agent.js:99-101），localhost 不特殊处理。请求经 CONNECT localhost:端口 的隧道到达（matrix.py 的 r17 把隧道里到达也算“经代理”）。",
+   "confidence": "high"
+  },
+  "R18": {
+   "expect": "经代理",
+   "basis": "同 R17。",
+   "confidence": "high"
+  },
+  "R19": {
+   "expect": "其他：代理端口上没有带 k=A12.s1 的请求",
+   "basis": "明文 POST 在 CONNECT 到 80 的隧道里（R01），代理端口上只有 CONNECT；matrix.py 的 r19 只看代理端口上带 k 的请求，找不到就写这句话。隧道里实际是 Content-Length：fetch 对长度已知的正文加 content-length 头（u6:web/fetch/index.js:1434）。",
+   "confidence": "medium"
+  },
+  "R20": {
+   "expect": "其他：代理端口上没有带 k=A14.s1 的请求",
+   "basis": "同 R19：请求在隧道里，r20 在代理端口上找不到。隧道里也不会发 Expect（undici 的 HTTP/1.1 不发，u6:core/request.js 的 expectContinue 默认 false 且只用于 h2）。",
+   "confidence": "medium"
+  },
+  "R21": {
+   "expect": "CONNECT 到 80 端口，隧道里明文升级",
+   "basis": "内置 WebSocket 的握手走 fetch 的 fetching（u6:web/websocket/connection.js:105 没给 dispatcher 时用全局的，u6:web/fetch/index.js:370），全局 dispatcher 就是 EnvHttpProxyAgent；ws: 按 http: 处理，于是同 R01：CONNECT 主机:80，升级请求在隧道里。",
+   "confidence": "medium"
+  },
+  "R22": {
+   "expect": "CONNECT 到 443 端口，隧道里 TLS",
+   "basis": "同 R21，wss: 按 https: 处理，CONNECT 主机:443 后在隧道里做 TLS。",
+   "confidence": "medium"
+  },
+  "R23": {
+   "expect": "C / C / 不支持",
+   "basis": "明文和 HTTPS 的第一条代理连接都以 CONNECT 开头（R01、R03）；S01 这一列不支持（见 R110）。",
+   "confidence": "high"
+  },
+  "R24": {
+   "expect": "完整",
+   "basis": "没有认证重试，正文只发一遍；fetch 按 content-length 发完整的 Buffer。",
+   "confidence": "high"
+  },
+  "R30": {
+   "expect": "先带",
+   "basis": "代理 URL 里用户名和密码都非空时，构造 ProxyAgent 时就算好 Basic 头（u6:dispatcher/proxy-agent.js:127-128），每个 CONNECT 都带（:161-164）；不等 407，也没有处理 407 的重试。明文也是 CONNECT（R01），代理端口上第一个请求就是带凭据的 CONNECT。",
+   "confidence": "high"
+  },
+  "R31": {
+   "expect": "先带",
+   "basis": "代理 URL 里用户名和密码都非空时，构造 ProxyAgent 时就算好 Basic 头（u6:dispatcher/proxy-agent.js:127-128），每个 CONNECT 都带（:161-164）；不等 407，也没有处理 407 的重试。",
+   "confidence": "high"
+  },
+  "R32": {
+   "expect": "不适用",
+   "basis": "先带凭据，凭据正确，收不到 407。",
+   "confidence": "high"
+  },
+  "R33": {
+   "expect": "不适用",
+   "basis": "先带凭据，凭据正确，收不到 407。",
+   "confidence": "high"
+  },
+  "R34": {
+   "expect": "不适用",
+   "basis": "先带凭据，收不到 407。",
+   "confidence": "high"
+  },
+  "R35": {
+   "expect": "不适用",
+   "basis": "先带凭据，收不到 407。",
+   "confidence": "high"
+  },
+  "R36": {
+   "expect": "1/0",
+   "basis": "明文三个请求都在同一条 CONNECT 到 80 的隧道里（R01、R11），代理端口上只有 1 个 http_request（带凭据的 CONNECT）。",
+   "confidence": "medium"
+  },
+  "R37": {
+   "expect": "先带",
+   "basis": "代理 URL 里用户名和密码都非空时，构造 ProxyAgent 时就算好 Basic 头（u6:dispatcher/proxy-agent.js:127-128），每个 CONNECT 都带（:161-164）；不等 407，也没有处理 407 的重试。",
+   "confidence": "high"
+  },
+  "R38": {
+   "expect": "1",
+   "basis": "同 R10。",
+   "confidence": "high"
+  },
+  "R39": {
+   "expect": "没有（不含 B12：不支持）",
+   "basis": "代理头只放在 CONNECT 上（u6:dispatcher/proxy-agent.js:161-164）；调用方自己带 Proxy-Authorization 会被 dispatch 拒绝（:196、:266-272）。隧道里的请求不带。B12 这一列不支持。",
+   "confidence": "high"
+  },
+  "R40": {
+   "expect": "都成功",
+   "basis": "fetch 默认 redirect: 'follow'（u6:web/fetch/index.js:1133、:1194），每一跳按新 URL 的协议重新选代理、重新 CONNECT。",
+   "confidence": "high"
+  },
+  "R41": {
+   "expect": "不支持",
+   "basis": "环境变量在进程启动时读一次：fetch 的全局 dispatcher 在 node:lib/internal/process/pre_execution.js:194-206 启动时建好，http/https 的全局 Agent 在创建时取 process.env 的快照（node:lib/_http_agent.js:720-722、node:lib/https.js:636-638）。一个进程只有一份代理 URL，也就只有一份凭据；这一列的定义就是只用环境变量，驱动把 B11 报成 unsupported。",
+   "confidence": "high"
+  },
+  "R42": {
+   "expect": "不支持",
+   "basis": "环境变量在进程启动时读一次：fetch 的全局 dispatcher 在 node:lib/internal/process/pre_execution.js:194-206 启动时建好，http/https 的全局 Agent 在创建时取 process.env 的快照（node:lib/_http_agent.js:720-722、node:lib/https.js:636-638）。一个进程只有一份代理 URL，也就只有一份凭据；这一列的定义就是只用环境变量，驱动把 B12 报成 unsupported。",
+   "confidence": "high"
+  },
+  "R43": {
+   "expect": "0",
+   "basis": "明文 POST 在隧道里（R01），代理端口上带 k 的 http_request 一个也没有，matrix.py 的 r43 数出来是 0。（正文实际只发了一遍，在隧道里。）",
+   "confidence": "medium"
+  },
+  "R44": {
+   "expect": "0",
+   "basis": "6 个 CONNECT 都先带凭据。",
+   "confidence": "high"
+  },
+  "R45": {
+   "expect": "报错，提到 407",
+   "basis": "明文也是 CONNECT（R01）。u6:dispatcher/proxy-agent.js:167-170：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling；fetch 把它包成 TypeError: fetch failed，原错误在 cause 里。驱动要把 cause 链记进 default_text。",
+   "confidence": "high"
+  },
+  "R46": {
+   "expect": "报错，提到 407",
+   "basis": "u6:dispatcher/proxy-agent.js:167-170：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling；fetch 把它包成 TypeError: fetch failed，原错误在 cause 里。驱动要把 cause 链记进 default_text。",
+   "confidence": "high"
+  },
+  "R47": {
+   "expect": "1",
+   "basis": "一次 CONNECT（带凭据），407 后直接报错，不重试。",
+   "confidence": "high"
+  },
+  "R48": {
+   "expect": "1",
+   "basis": "同 R47。",
+   "confidence": "high"
+  },
+  "R49": {
+   "expect": "报错，提到 407",
+   "basis": "u6:dispatcher/proxy-agent.js:167-170：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling；fetch 把它包成 TypeError: fetch failed，原错误在 cause 里。驱动要把 cause 链记进 default_text。",
+   "confidence": "high"
+  },
+  "R50": {
+   "expect": "报错，提到 403",
+   "basis": "u6:dispatcher/proxy-agent.js:167-170：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling；fetch 把它包成 TypeError: fetch failed，原错误在 cause 里。驱动要把 cause 链记进 default_text。",
+   "confidence": "high"
+  },
+  "R51": {
+   "expect": "报错，提到 403",
+   "basis": "明文也是 CONNECT（R01），代理对带错凭据的 CONNECT 回 403。u6:dispatcher/proxy-agent.js:167-170：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling；fetch 把它包成 TypeError: fetch failed，原错误在 cause 里。驱动要把 cause 链记进 default_text。",
+   "confidence": "high"
+  },
+  "R52": {
+   "expect": "带",
+   "basis": "凭据无条件加在 CONNECT 上；明文也是 CONNECT。",
+   "confidence": "high"
+  },
+  "R53": {
+   "expect": "带",
+   "basis": "凭据无条件加在 CONNECT 上。",
+   "confidence": "high"
+  },
+  "R60": {
+   "expect": "原样",
+   "basis": "u6:dispatcher/proxy-agent.js:108-109、:127-128：代理 URL 用 WHATWG URL 解析，username、password 各自 decodeURIComponent 后拼接，Buffer.from 按 UTF-8 编码再 base64。前提：驱动把用户名和密码各自 encodeURIComponent 后写进环境变量的 URL。",
+   "confidence": "high"
+  },
+  "R61": {
+   "expect": "原样",
+   "basis": "u6:dispatcher/proxy-agent.js:108-109、:127-128：代理 URL 用 WHATWG URL 解析，username、password 各自 decodeURIComponent 后拼接，Buffer.from 按 UTF-8 编码再 base64。前提：驱动把用户名和密码各自 encodeURIComponent 后写进环境变量的 URL。",
+   "confidence": "high"
+  },
+  "R62": {
+   "expect": "原样",
+   "basis": "u6:dispatcher/proxy-agent.js:108-109、:127-128：代理 URL 用 WHATWG URL 解析，username、password 各自 decodeURIComponent 后拼接，Buffer.from 按 UTF-8 编码再 base64。前提：驱动把用户名和密码各自 encodeURIComponent 后写进环境变量的 URL。%40 %25 %2B %2F %20 逐个还原。",
+   "confidence": "high"
+  },
+  "R63": {
+   "expect": "原样",
+   "basis": "u6:dispatcher/proxy-agent.js:108-109、:127-128：代理 URL 用 WHATWG URL 解析，username、password 各自 decodeURIComponent 后拼接，Buffer.from 按 UTF-8 编码再 base64。前提：驱动把用户名和密码各自 encodeURIComponent 后写进环境变量的 URL。先带凭据，看不到质询。",
+   "confidence": "high"
+  },
+  "R64": {
+   "expect": "原样",
+   "basis": "同 R63，charset 参数不起作用。",
+   "confidence": "high"
+  },
+  "R65": {
+   "expect": "原样",
+   "basis": "u6:dispatcher/proxy-agent.js:108-109、:127-128：代理 URL 用 WHATWG URL 解析，username、password 各自 decodeURIComponent 后拼接，Buffer.from 按 UTF-8 编码再 base64。前提：驱动把用户名和密码各自 encodeURIComponent 后写进环境变量的 URL。没有长度限制。",
+   "confidence": "high"
+  },
+  "R66": {
+   "expect": "原样",
+   "basis": "u6:dispatcher/proxy-agent.js:108-109、:127-128：代理 URL 用 WHATWG URL 解析，username、password 各自 decodeURIComponent 后拼接，Buffer.from 按 UTF-8 编码再 base64。前提：驱动把用户名和密码各自 encodeURIComponent 后写进环境变量的 URL。没有长度限制。",
+   "confidence": "high"
+  },
+  "R67": {
+   "expect": "原样",
+   "basis": "u6:dispatcher/proxy-agent.js:108-109、:127-128：代理 URL 用 WHATWG URL 解析，username、password 各自 decodeURIComponent 后拼接，Buffer.from 按 UTF-8 编码再 base64。前提：驱动把用户名和密码各自 encodeURIComponent 后写进环境变量的 URL。没有长度限制。",
+   "confidence": "medium"
+  },
+  "R68": {
+   "expect": "原样",
+   "basis": "u6:dispatcher/proxy-agent.js:108-109、:127-128：代理 URL 用 WHATWG URL 解析，username、password 各自 decodeURIComponent 后拼接，Buffer.from 按 UTF-8 编码再 base64。前提：驱动把用户名和密码各自 encodeURIComponent 后写进环境变量的 URL。",
+   "confidence": "high"
+  },
+  "R69": {
+   "expect": "客户端报错",
+   "basis": "u6:dispatcher/proxy-agent.js:127 的条件是 username && password：密码为空就不生成 Proxy-Authorization。CONNECT 不带凭据，代理回 407，fetch 报错；代理端口上没有任何带凭据的请求，matrix.py 的 basic_bytes 在这一步失败时写“客户端报错”。（npm 的 undici 到 8.2.0 才补上只有用户名的分支。）",
+   "confidence": "high"
+  },
+  "R70": {
+   "expect": "原样",
+   "basis": "u6:dispatcher/proxy-agent.js:108-109、:127-128：代理 URL 用 WHATWG URL 解析，username、password 各自 decodeURIComponent 后拼接，Buffer.from 按 UTF-8 编码再 base64。前提：驱动把用户名和密码各自 encodeURIComponent 后写进环境变量的 URL。%3A 还原成冒号后原样拼接。",
+   "confidence": "high"
+  },
+  "R80": {
+   "expect": "状态码",
+   "basis": "u6:dispatcher/proxy-agent.js:167-170：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling；fetch 把它包成 TypeError: fetch failed，原错误在 cause 里。驱动要把 cause 链记进 default_text。消息里只有状态码，没有原因短语、头和正文。",
+   "confidence": "high"
+  },
+  "R81": {
+   "expect": "状态码、原因短语、响应头",
+   "basis": "node:diagnostics_channel 的 undici:request:headers 频道：CONNECT 的响应到达时发布 { request, response: { statusCode, headers, statusText } }（u6:core/request.js:272-281、:327-331，状态短语由 u6:dispatcher/client-h1.js:470 传入）；npm undici 的 docs/docs/api/DiagnosticsChannel.md 写明这个频道（v6.3.0 加入）包含 CONNECT 的响应。正文不在消息里。前提：驱动订阅这个频道并把 statusCode、statusText 和头记进 extra_text；Node 自己的文档没有写这个频道，驱动若不采用就是“没有这样的手段”。",
+   "confidence": "medium"
+  },
+  "R82": {
+   "expect": "状态码",
+   "basis": "u6:dispatcher/proxy-agent.js:167-170：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling；fetch 把它包成 TypeError: fetch failed，原错误在 cause 里。驱动要把 cause 链记进 default_text。",
+   "confidence": "high"
+  },
+  "R83": {
+   "expect": "1",
+   "basis": "CONNECT 非 200 直接报错，不看 Retry-After；RequestAbortedError 的 code 是 UND_ERR_ABORTED，不属于会留在队列里重连的那两类（u6:dispatcher/client.js:371-390）。",
+   "confidence": "high"
+  },
+  "R84": {
+   "expect": "看不到",
+   "basis": "CONNECT 成功后 ProxyAgent 只取 socket 和 statusCode（u6:dispatcher/proxy-agent.js:156），头被丢掉；fetch 的 Response 是隧道里源站的响应。",
+   "confidence": "high"
+  },
+  "R85": {
+   "expect": "看得到",
+   "basis": "node:diagnostics_channel 的 undici:request:headers 频道：CONNECT 的响应到达时发布 { request, response: { statusCode, headers, statusText } }（u6:core/request.js:272-281、:327-331，状态短语由 u6:dispatcher/client-h1.js:470 传入）；npm undici 的 docs/docs/api/DiagnosticsChannel.md 写明这个频道（v6.3.0 加入）包含 CONNECT 的响应。正文不在消息里。前提：驱动订阅这个频道并把 statusCode、statusText 和头记进 extra_text；Node 自己的文档没有写这个频道，驱动若不采用就是“没有这样的手段”。",
+   "confidence": "medium"
+  },
+  "R86": {
+   "expect": "都看不到",
+   "basis": "明文走隧道（R01），仪器的 forward.fail 只对绝对形式的请求生效，这里根本不会触发：CONNECT 成功，源站正常回 200。default_text 里是 200 的响应，没有 403 也没有记号。（除非 200 响应的文字里碰巧有独立的“403”，比如 Content-Length 恰好是 403。）",
+   "confidence": "medium"
+  },
+  "R87": {
+   "expect": "看不到",
+   "basis": "同 R86：add_response_headers 只加在代理转发的绝对形式响应上，隧道里的响应代理碰不到。",
+   "confidence": "medium"
+  },
+  "R88": {
+   "expect": "新连接",
+   "basis": "CONNECT 失败后 ProxyAgent 把那条套接字销毁（u6:dispatcher/proxy-agent.js:168）；况且 CONNECT 本来就让连接不再复用（u6:dispatcher/client-h1.js:1091-1096）。下一个 CONNECT 新开连接。",
+   "confidence": "high"
+  },
+  "R89": {
+   "expect": "成功",
+   "basis": "失败只影响 fail.kaoju.test 那个源的 Pool；a.kaoju.test 另开隧道。",
+   "confidence": "high"
+  },
+  "R90": {
+   "expect": "其他：s2 成功，但代理端口上找不到 s1 或 s2 的请求",
+   "basis": "明文走隧道（R01）：代理连接上有隧道，仪器的 conn.idle_close_ms 不适用于它，连接不会被关；s2 成功（多半还复用同一条隧道，keepAliveTimeout 默认 4 秒，u6:dispatcher/client.js:231）。matrix.py 的 r90 在代理端口上找不到带 k 的请求，写的就是这句话。",
+   "confidence": "medium"
+  },
+  "R91": {
+   "expect": "换新隧道，成功",
+   "basis": "空闲时收到 FIN：u6:dispatcher/client-h1.js:765 销毁套接字，没有在跑的请求所以没有请求出错，Client 回到未连接状态；s2 触发重连，重新 CONNECT。",
+   "confidence": "high"
+  },
+  "R92": {
+   "expect": "未触发",
+   "basis": "明文走隧道（R01），仪器的 conn.drop 只对代理端口上带 k 的绝对形式请求生效，这里不会触发；matrix.py 的 after_drop 写“未触发”。",
+   "confidence": "medium"
+  },
+  "R93": {
+   "expect": "未触发",
+   "basis": "明文走隧道（R01），仪器的 conn.drop 只对代理端口上带 k 的绝对形式请求生效，这里不会触发；matrix.py 的 after_drop 写“未触发”。",
+   "confidence": "medium"
+  },
+  "R94": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：连接在等响应时被关，队首的请求直接报错（u6:dispatcher/client-h1.js:765、:797 一带，FIN 是 SocketError: other side closed，RST 是 ECONNRESET）；fetch 只在 421 时重试（u6:web/fetch/index.js），RetryAgent 不是默认。",
+   "confidence": "high"
+  },
+  "R95": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：连接在等响应时被关，队首的请求直接报错（u6:dispatcher/client-h1.js:765、:797 一带，FIN 是 SocketError: other side closed，RST 是 ECONNRESET）；fetch 只在 421 时重试（u6:web/fetch/index.js），RetryAgent 不是默认。",
+   "confidence": "high"
+  },
+  "R96": {
+   "expect": "未触发",
+   "basis": "明文走隧道（R01），仪器的 conn.drop 只对代理端口上带 k 的绝对形式请求生效，这里不会触发；matrix.py 的 after_drop 写“未触发”。",
+   "confidence": "medium"
+  },
+  "R97": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：连接在等响应时被关，队首的请求直接报错（u6:dispatcher/client-h1.js:765、:797 一带，FIN 是 SocketError: other side closed，RST 是 ECONNRESET）；fetch 只在 421 时重试（u6:web/fetch/index.js），RetryAgent 不是默认。",
+   "confidence": "high"
+  },
+  "R98": {
+   "expect": "未触发",
+   "basis": "明文走隧道（R01），仪器的 conn.drop 只对代理端口上带 k 的绝对形式请求生效，这里不会触发；matrix.py 的 after_drop 写“未触发”。",
+   "confidence": "medium"
+  },
+  "R99": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：连接在等响应时被关，队首的请求直接报错（u6:dispatcher/client-h1.js:765、:797 一带，FIN 是 SocketError: other side closed，RST 是 ECONNRESET）；fetch 只在 421 时重试（u6:web/fetch/index.js），RetryAgent 不是默认。",
+   "confidence": "high"
+  },
+  "R100": {
+   "expect": "2 次，成功",
+   "basis": "代理不回应就关：到代理的那个 Client 上，CONNECT 请求以 SocketError（code UND_ERR_SOCKET，other side closed）失败，ProxyAgent 原样把它交给源站那个 Client 的连接回调（u6:dispatcher/proxy-agent.js:182-188）。u6:dispatcher/client.js:371-390 的 onError 对 UND_ERR_SOCKET 不清队列，:523 的 kResume 于是再连一次，也就是再发一个 CONNECT；仪器只丢 1 次，第二次成功。这正是 npm 8.12.4 的 proxy-agent.js:261-268 注释里说的 #3897（代理掐断时无限重连），那个修正 6.29.1 没有。",
+   "confidence": "medium"
+  },
+  "R101": {
+   "expect": "1 次，失败",
+   "basis": "这一列不谈 h2（R08），源站支持 h2 与否无关；其余同 R94。",
+   "confidence": "high"
+  },
+  "R110": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R111": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R112": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R113": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R114": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R115": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R116": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R117": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R118": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R119": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R120": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R121": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R122": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R123": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R124": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R125": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R126": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R127": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R128": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R129": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R130": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R131": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  },
+  "R132": {
+   "expect": "不支持",
+   "basis": "这一列不支持 SOCKS5，驱动把 S 组报成 unsupported：node:doc/api/http.md“Proxy URL Format”只列 http:// 和 https:// 两种；node:lib/internal/http.js:218-220 对其他协议的代理 URL 直接忽略（返回 null，请求会直连）；内置 undici 6.29.1 没有 SOCKS 实现（u6:dispatcher/ 下没有 socks5-proxy-agent.js），ProxyAgent 拿到 socks5:// 的 URL 时在 u6:core/util.js:138-139、:205-206 抛 InvalidArgumentError（Invalid URL protocol），而这个 ProxyAgent 是进程启动时在 pre_execution.js:204-206 建的，所以把 socks5:// 写进 HTTP_PROXY 或 HTTPS_PROXY 再加 NODE_USE_ENV_PROXY=1，进程在跑到用户代码之前就会出错。",
+   "confidence": "high"
+  }
+ }
+}
