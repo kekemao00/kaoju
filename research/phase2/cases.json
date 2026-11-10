@@ -1,0 +1,3006 @@
+{
+ "version": "1.0",
+ "说明": "用例表。运行时 run.py 把 {origin_http_port}、{origin_https_port} 换成实际端口，按 body_bytes 生成正文文件（第 i 个字节是 (i*131+7)%251，Content-Type 是 application/octet-stream），其余原样交给驱动。profile 只写与默认值不同的字段。only 非空时只对列出的列运行，其余列记“不适用”。",
+ "repeats": 3,
+ "timeout_s": 15,
+ "cases": [
+  {
+   "id": "A01",
+   "group": "A",
+   "title": "明文 GET 一次",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=A01.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "A02",
+   "group": "A",
+   "title": "HTTPS GET 一次",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=A02.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "A03",
+   "group": "A",
+   "title": "HTTPS 同一个源连续 3 次",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=A03.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=A03.s2",
+     "user": null
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=A03.s3",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "A04",
+   "group": "A",
+   "title": "明文同一个源连续 3 次",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=A04.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=A04.s2",
+     "user": null
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=A04.s3",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "A05",
+   "group": "A",
+   "title": "HTTPS 两个源交替各 2 次",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=A05.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://b.kaoju.test/echo?k=A05.s2",
+     "user": null
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=A05.s3",
+     "user": null
+    },
+    {
+     "id": "s4",
+     "op": "request",
+     "method": "GET",
+     "url": "https://b.kaoju.test/echo?k=A05.s4",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "A06",
+   "group": "A",
+   "title": "明文两个源交替各 2 次",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=A06.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "http://b.kaoju.test/echo?k=A06.s2",
+     "user": null
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=A06.s3",
+     "user": null
+    },
+    {
+     "id": "s4",
+     "op": "request",
+     "method": "GET",
+     "url": "http://b.kaoju.test/echo?k=A06.s4",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "A07",
+   "group": "A",
+   "title": "HTTPS 同一个源 6 个并发，源站支持 h2",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "p",
+     "op": "parallel",
+     "steps": [
+      {
+       "id": "p1",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A07.p1",
+       "user": null
+      },
+      {
+       "id": "p2",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A07.p2",
+       "user": null
+      },
+      {
+       "id": "p3",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A07.p3",
+       "user": null
+      },
+      {
+       "id": "p4",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A07.p4",
+       "user": null
+      },
+      {
+       "id": "p5",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A07.p5",
+       "user": null
+      },
+      {
+       "id": "p6",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A07.p6",
+       "user": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "A08",
+   "group": "A",
+   "title": "HTTPS 同一个源 6 个并发，源站只说 HTTP/1.1",
+   "proxy": "http",
+   "profile": {
+    "origin": {
+     "h2": false
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "p",
+     "op": "parallel",
+     "steps": [
+      {
+       "id": "p1",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A08.p1",
+       "user": null
+      },
+      {
+       "id": "p2",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A08.p2",
+       "user": null
+      },
+      {
+       "id": "p3",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A08.p3",
+       "user": null
+      },
+      {
+       "id": "p4",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A08.p4",
+       "user": null
+      },
+      {
+       "id": "p5",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A08.p5",
+       "user": null
+      },
+      {
+       "id": "p6",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=A08.p6",
+       "user": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "A09",
+   "group": "A",
+   "title": "明文同一个源 6 个并发",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "p",
+     "op": "parallel",
+     "steps": [
+      {
+       "id": "p1",
+       "op": "request",
+       "method": "GET",
+       "url": "http://a.kaoju.test/echo?delay=300&k=A09.p1",
+       "user": null
+      },
+      {
+       "id": "p2",
+       "op": "request",
+       "method": "GET",
+       "url": "http://a.kaoju.test/echo?delay=300&k=A09.p2",
+       "user": null
+      },
+      {
+       "id": "p3",
+       "op": "request",
+       "method": "GET",
+       "url": "http://a.kaoju.test/echo?delay=300&k=A09.p3",
+       "user": null
+      },
+      {
+       "id": "p4",
+       "op": "request",
+       "method": "GET",
+       "url": "http://a.kaoju.test/echo?delay=300&k=A09.p4",
+       "user": null
+      },
+      {
+       "id": "p5",
+       "op": "request",
+       "method": "GET",
+       "url": "http://a.kaoju.test/echo?delay=300&k=A09.p5",
+       "user": null
+      },
+      {
+       "id": "p6",
+       "op": "request",
+       "method": "GET",
+       "url": "http://a.kaoju.test/echo?delay=300&k=A09.p6",
+       "user": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "A10",
+   "group": "A",
+   "title": "明文，目标是 localhost",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://localhost:{origin_http_port}/echo?k=A10.s1",
+     "user": null
+    }
+   ],
+   "notes": "看客户端会不会对回环地址绕过代理。直连时请求落在源站的监听端口上，记为直连。"
+  },
+  {
+   "id": "A11",
+   "group": "A",
+   "title": "HTTPS，目标是 localhost",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://localhost:{origin_https_port}/echo?k=A11.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "A12",
+   "group": "A",
+   "title": "明文 POST 64 KiB",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "POST",
+     "url": "http://a.kaoju.test/echo?k=A12.s1",
+     "user": null,
+     "body_bytes": 65536
+    }
+   ]
+  },
+  {
+   "id": "A13",
+   "group": "A",
+   "title": "HTTPS POST 64 KiB",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "POST",
+     "url": "https://a.kaoju.test/echo?k=A13.s1",
+     "user": null,
+     "body_bytes": 65536
+    }
+   ]
+  },
+  {
+   "id": "A14",
+   "group": "A",
+   "title": "明文 POST 2 MiB",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "POST",
+     "url": "http://a.kaoju.test/echo?k=A14.s1",
+     "user": null,
+     "body_bytes": 2097152
+    }
+   ],
+   "notes": "看客户端发不发 Expect: 100-continue。代理收到后先回 100。"
+  },
+  {
+   "id": "A15",
+   "group": "A",
+   "title": "ws:// 明文 WebSocket",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "w1",
+     "op": "ws",
+     "url": "ws://a.kaoju.test/ws?k=A15.w1",
+     "page": "http://a.kaoju.test/page?k=A15.pre"
+    }
+   ],
+   "only": [
+    "chromium-pw",
+    "firefox-pw",
+    "node-fetch-env",
+    "rawref"
+   ],
+   "notes": "只对自带 WebSocket 客户端的列有意义：两个浏览器和 Node 内置的 WebSocket。"
+  },
+  {
+   "id": "A16",
+   "group": "A",
+   "title": "wss:// WebSocket",
+   "proxy": "http",
+   "profile": {},
+   "users": [],
+   "steps": [
+    {
+     "id": "w1",
+     "op": "ws",
+     "url": "wss://a.kaoju.test/ws?k=A16.w1",
+     "page": "https://a.kaoju.test/page?k=A16.pre"
+    }
+   ],
+   "only": [
+    "chromium-pw",
+    "firefox-pw",
+    "node-fetch-env",
+    "rawref"
+   ]
+  },
+  {
+   "id": "B01",
+   "group": "B",
+   "title": "明文 GET 一次",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=B01.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "B02",
+   "group": "B",
+   "title": "HTTPS GET 一次",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=B02.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "B03",
+   "group": "B",
+   "title": "明文 GET，407 带 Connection: close",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ],
+     "on407": "close"
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=B03.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "B04",
+   "group": "B",
+   "title": "HTTPS GET，407 带 Connection: close",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ],
+     "on407": "close"
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=B04.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "B05",
+   "group": "B",
+   "title": "明文同一个源连续 3 次",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=B05.s1",
+     "user": 0
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=B05.s2",
+     "user": 0
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=B05.s3",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "B06",
+   "group": "B",
+   "title": "HTTPS 先后访问两个源",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=B06.s1",
+     "user": 0
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://b.kaoju.test/echo?k=B06.s2",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "B07",
+   "group": "B",
+   "title": "HTTPS 同一个源连续 3 次",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=B07.s1",
+     "user": 0
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=B07.s2",
+     "user": 0
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=B07.s3",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "B08",
+   "group": "B",
+   "title": "重定向：明文跳到 HTTPS（换了源）",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/redirect?to=https%3A%2F%2Fb.kaoju.test%2Fecho%3Fk%3DB08.s1b&k=B08.s1",
+     "user": 0,
+     "follow": true
+    }
+   ]
+  },
+  {
+   "id": "B09",
+   "group": "B",
+   "title": "重定向：HTTPS 跳到另一个源的 HTTPS",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/redirect?to=https%3A%2F%2Fb.kaoju.test%2Fecho%3Fk%3DB09.s1b&k=B09.s1",
+     "user": 0,
+     "follow": true
+    }
+   ]
+  },
+  {
+   "id": "B10",
+   "group": "B",
+   "title": "重定向：HTTPS 跳到另一个源的明文",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/redirect?to=http%3A%2F%2Fb.kaoju.test%2Fecho%3Fk%3DB10.s1b&k=B10.s1",
+     "user": 0,
+     "follow": true
+    }
+   ]
+  },
+  {
+   "id": "B11",
+   "group": "B",
+   "title": "明文，同一个进程里两个用户交替",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ],
+      [
+       "kaoju-user-2",
+       "kaoju-pass-2"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    },
+    {
+     "user": "kaoju-user-2",
+     "pass": "kaoju-pass-2"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=B11.s1",
+     "user": 0
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=B11.s2",
+     "user": 1
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=B11.s3",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "B12",
+   "group": "B",
+   "title": "HTTPS，同一个进程里两个用户交替",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ],
+      [
+       "kaoju-user-2",
+       "kaoju-pass-2"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    },
+    {
+     "user": "kaoju-user-2",
+     "pass": "kaoju-pass-2"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=B12.s1",
+     "user": 0
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=B12.s2",
+     "user": 1
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=B12.s3",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "B13",
+   "group": "B",
+   "title": "明文 POST 64 KiB",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "POST",
+     "url": "http://a.kaoju.test/echo?k=B13.s1",
+     "user": 0,
+     "body_bytes": 65536
+    }
+   ],
+   "notes": "等 407 再带凭据的客户端会把正文发两遍。"
+  },
+  {
+   "id": "B14",
+   "group": "B",
+   "title": "HTTPS 同一个源 6 个并发，源站只说 HTTP/1.1",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    },
+    "origin": {
+     "h2": false
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "p",
+     "op": "parallel",
+     "steps": [
+      {
+       "id": "p1",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=B14.p1",
+       "user": 0
+      },
+      {
+       "id": "p2",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=B14.p2",
+       "user": 0
+      },
+      {
+       "id": "p3",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=B14.p3",
+       "user": 0
+      },
+      {
+       "id": "p4",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=B14.p4",
+       "user": 0
+      },
+      {
+       "id": "p5",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=B14.p5",
+       "user": 0
+      },
+      {
+       "id": "p6",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=B14.p6",
+       "user": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "C01",
+   "group": "C",
+   "title": "明文，没配凭据，代理要求认证",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=C01.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "C02",
+   "group": "C",
+   "title": "HTTPS，没配凭据，代理要求认证",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=C02.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "C03",
+   "group": "C",
+   "title": "明文，密码错，代理一直回 407",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "wrong-pass"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=C03.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "C04",
+   "group": "C",
+   "title": "HTTPS，密码错，代理一直回 407",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "wrong-pass"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=C04.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "C05",
+   "group": "C",
+   "title": "HTTPS，密码错，代理回 403",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ],
+     "reject_status": 403
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "wrong-pass"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=C05.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "C06",
+   "group": "C",
+   "title": "明文，配了凭据但代理不要求认证",
+   "proxy": "http",
+   "profile": {},
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=C06.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "C07",
+   "group": "C",
+   "title": "HTTPS，配了凭据但代理不要求认证",
+   "proxy": "http",
+   "profile": {},
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=C07.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "C08",
+   "group": "C",
+   "title": "明文，密码错，代理回 403",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ],
+     "reject_status": 403
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "wrong-pass"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=C08.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D01",
+   "group": "D",
+   "title": "常见的参数写法（连字符）",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-session-ab12CD-ttl-600-country-us",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-session-ab12CD-ttl-600-country-us",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D01.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D02",
+   "group": "D",
+   "title": "下划线、点、波浪号、等号、分号、逗号",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "sess_ab.12~x=1;ttl=600,cc=us",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "sess_ab.12~x=1;ttl=600,cc=us",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D02.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D03",
+   "group": "D",
+   "title": "要转义的字符：@ % + / 和空格",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "sess@ab%41+c/d e",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "sess@ab%41+c/d e",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D03.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D04",
+   "group": "D",
+   "title": "UTF-8 用户名，质询不带 charset",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "用户-séssion-ß",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "用户-séssion-ß",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D04.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D05",
+   "group": "D",
+   "title": "UTF-8 用户名，质询带 charset=\"UTF-8\"",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "用户-séssion-ß",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true,
+     "challenge": [
+      "Basic realm=\"kaoju\", charset=\"UTF-8\""
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "用户-séssion-ß",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D05.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D06",
+   "group": "D",
+   "title": "用户名 255 字节",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D06.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D07",
+   "group": "D",
+   "title": "用户名 256 字节",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D07.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D08",
+   "group": "D",
+   "title": "用户名 1024 字节",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D08.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D09",
+   "group": "D",
+   "title": "密码里有冒号、@、空格、%2F、加号",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       "p:a@s s%2Fw+d"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "p:a@s s%2Fw+d"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D09.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D10",
+   "group": "D",
+   "title": "空密码",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "kaoju-user",
+       ""
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": ""
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D10.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "D11",
+   "group": "D",
+   "title": "用户名里有冒号",
+   "proxy": "http",
+   "profile": {
+    "auth": {
+     "mode": "basic",
+     "accept": [
+      [
+       "sess:ab12",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "sess:ab12",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=D11.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "E01",
+   "group": "E",
+   "title": "CONNECT 回 502",
+   "proxy": "http",
+   "profile": {
+    "connect": {
+     "fail": {
+      "status": 502,
+      "reason": "KaojuReasonMarker",
+      "headers": [
+       [
+        "X-Kaoju-Note",
+        "KaojuHeaderMarker"
+       ],
+       [
+        "Proxy-Status",
+        "kaoju; error=destination_unavailable; details=\"KaojuStatusMarker\""
+       ]
+      ],
+      "body": "KaojuBodyMarker\n",
+      "close": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=E01.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "E02",
+   "group": "E",
+   "title": "CONNECT 回 403",
+   "proxy": "http",
+   "profile": {
+    "connect": {
+     "fail": {
+      "status": 403,
+      "reason": "KaojuReasonMarker",
+      "headers": [
+       [
+        "X-Kaoju-Note",
+        "KaojuHeaderMarker"
+       ],
+       [
+        "Proxy-Status",
+        "kaoju; error=destination_unavailable; details=\"KaojuStatusMarker\""
+       ]
+      ],
+      "body": "KaojuBodyMarker\n",
+      "close": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=E02.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "E03",
+   "group": "E",
+   "title": "CONNECT 回 503，带 Retry-After: 1",
+   "proxy": "http",
+   "profile": {
+    "connect": {
+     "fail": {
+      "status": 503,
+      "reason": "KaojuReasonMarker",
+      "headers": [
+       [
+        "X-Kaoju-Note",
+        "KaojuHeaderMarker"
+       ],
+       [
+        "Proxy-Status",
+        "kaoju; error=destination_unavailable; details=\"KaojuStatusMarker\""
+       ],
+       [
+        "Retry-After",
+        "1"
+       ]
+      ],
+      "body": "KaojuBodyMarker\n",
+      "close": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=E03.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "E04",
+   "group": "E",
+   "title": "CONNECT 成功，200 里带附加的头",
+   "proxy": "http",
+   "profile": {
+    "connect": {
+     "ok_headers": [
+      [
+       "X-Kaoju-Note",
+       "KaojuHeaderMarker"
+      ],
+      [
+       "Proxy-Status",
+       "kaoju; details=\"KaojuStatusMarker\""
+      ]
+     ]
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=E04.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "E05",
+   "group": "E",
+   "title": "明文请求被代理回 403",
+   "proxy": "http",
+   "profile": {
+    "forward": {
+     "fail": {
+      "status": 403,
+      "reason": "KaojuReasonMarker",
+      "headers": [
+       [
+        "X-Kaoju-Note",
+        "KaojuHeaderMarker"
+       ],
+       [
+        "Proxy-Status",
+        "kaoju; error=destination_unavailable; details=\"KaojuStatusMarker\""
+       ]
+      ],
+      "body": "KaojuBodyMarker\n",
+      "close": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=E05.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "E06",
+   "group": "E",
+   "title": "明文请求成功，代理在响应里附加了头",
+   "proxy": "http",
+   "profile": {
+    "forward": {
+     "add_response_headers": [
+      [
+       "X-Kaoju-Note",
+       "KaojuHeaderMarker"
+      ],
+      [
+       "Proxy-Status",
+       "kaoju; details=\"KaojuStatusMarker\""
+      ]
+     ]
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=E06.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "E07",
+   "group": "E",
+   "title": "CONNECT 回 502 但不关连接，接着访问另一个源",
+   "proxy": "http",
+   "profile": {
+    "connect": {
+     "fail": {
+      "status": 502,
+      "reason": "KaojuReasonMarker",
+      "headers": [
+       [
+        "X-Kaoju-Note",
+        "KaojuHeaderMarker"
+       ],
+       [
+        "Proxy-Status",
+        "kaoju; error=destination_unavailable; details=\"KaojuStatusMarker\""
+       ]
+      ],
+      "body": "KaojuBodyMarker\n",
+      "close": false,
+      "hosts": [
+       "fail.kaoju.test"
+      ]
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://fail.kaoju.test/echo?k=E07.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=E07.s2",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F01",
+   "group": "F",
+   "title": "明文：空闲 1.5 秒的连接被代理关掉，3 秒后再请求",
+   "proxy": "http",
+   "profile": {
+    "conn": {
+     "idle_close_ms": 1500
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=F01.s1",
+     "user": null
+    },
+    {
+     "id": "z",
+     "op": "sleep",
+     "ms": 3000
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=F01.s2",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F02",
+   "group": "F",
+   "title": "HTTPS：静默 1.5 秒的隧道被代理关掉，3 秒后再请求",
+   "proxy": "http",
+   "profile": {
+    "tunnel": {
+     "idle_close_ms": 1500
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F02.s1",
+     "user": null
+    },
+    {
+     "id": "z",
+     "op": "sleep",
+     "ms": 3000
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F02.s2",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F03",
+   "group": "F",
+   "title": "明文：复用的连接上，GET 发出后连接被关（FIN）",
+   "proxy": "http",
+   "profile": {
+    "conn": {
+     "drop": {
+      "k": "F03.s2",
+      "times": 1,
+      "how": "fin",
+      "only_if_reused": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=F03.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=F03.s2",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F04",
+   "group": "F",
+   "title": "明文：复用的连接上，POST 发出后连接被关（FIN）",
+   "proxy": "http",
+   "profile": {
+    "conn": {
+     "drop": {
+      "k": "F04.s2",
+      "times": 1,
+      "how": "fin",
+      "only_if_reused": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=F04.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "POST",
+     "url": "http://a.kaoju.test/echo?k=F04.s2",
+     "user": null,
+     "body_bytes": 1024
+    }
+   ]
+  },
+  {
+   "id": "F05",
+   "group": "F",
+   "title": "HTTPS：复用的隧道里，GET 到达源站后隧道被切断（FIN）",
+   "proxy": "http",
+   "profile": {
+    "origin": {
+     "h2": false,
+     "drop": {
+      "k": "F05.s2",
+      "times": 1,
+      "how": "fin",
+      "only_if_reused": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F05.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F05.s2",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F06",
+   "group": "F",
+   "title": "HTTPS：复用的隧道里，POST 到达源站后隧道被切断（FIN）",
+   "proxy": "http",
+   "profile": {
+    "origin": {
+     "h2": false,
+     "drop": {
+      "k": "F06.s2",
+      "times": 1,
+      "how": "fin",
+      "only_if_reused": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F06.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "POST",
+     "url": "https://a.kaoju.test/echo?k=F06.s2",
+     "user": null,
+     "body_bytes": 1024
+    }
+   ]
+  },
+  {
+   "id": "F07",
+   "group": "F",
+   "title": "明文：新连接上的第一个 GET 发出后连接被关",
+   "proxy": "http",
+   "profile": {
+    "conn": {
+     "drop": {
+      "k": "F07.s1",
+      "times": 1,
+      "how": "fin"
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=F07.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F08",
+   "group": "F",
+   "title": "HTTPS：新隧道里的第一个 GET 到达源站后隧道被切断",
+   "proxy": "http",
+   "profile": {
+    "origin": {
+     "h2": false,
+     "drop": {
+      "k": "F08.s1",
+      "times": 1,
+      "how": "fin"
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F08.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F09",
+   "group": "F",
+   "title": "明文：复用的连接上，GET 发出后连接被复位（RST）",
+   "proxy": "http",
+   "profile": {
+    "conn": {
+     "drop": {
+      "k": "F09.s2",
+      "times": 1,
+      "how": "rst",
+      "only_if_reused": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=F09.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=F09.s2",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F10",
+   "group": "F",
+   "title": "HTTPS：复用的隧道里，GET 到达源站后隧道被复位（RST）",
+   "proxy": "http",
+   "profile": {
+    "origin": {
+     "h2": false,
+     "drop": {
+      "k": "F10.s2",
+      "times": 1,
+      "how": "rst",
+      "only_if_reused": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F10.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F10.s2",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F11",
+   "group": "F",
+   "title": "HTTPS：CONNECT 发出后代理什么都不回就关连接",
+   "proxy": "http",
+   "profile": {
+    "connect": {
+     "drop": {
+      "times": 1,
+      "how": "fin"
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F11.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "F12",
+   "group": "F",
+   "title": "HTTPS：源站支持 h2，复用的隧道里 GET 到达源站后隧道被切断",
+   "proxy": "http",
+   "profile": {
+    "origin": {
+     "h2": true,
+     "drop": {
+      "k": "F12.s2",
+      "times": 1,
+      "how": "fin",
+      "only_if_reused": true
+     }
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F12.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=F12.s2",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S01",
+   "group": "S",
+   "title": "域名交给代理解析，HTTPS GET",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "none"
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S01.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S02",
+   "group": "S",
+   "title": "域名交给代理解析，明文 GET",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "none"
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "http://a.kaoju.test/echo?k=S02.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S03",
+   "group": "S",
+   "title": "客户端自己解析，目标是 localhost",
+   "proxy": "socks5",
+   "profile": {
+    "socks": {
+     "auth": "none"
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://localhost:{origin_https_port}/echo?k=S03.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S04",
+   "group": "S",
+   "title": "客户端自己解析，目标域名本机解析不了",
+   "proxy": "socks5",
+   "profile": {
+    "socks": {
+     "auth": "none"
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S04.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S05",
+   "group": "S",
+   "title": "用户名密码认证，凭据正确",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S05.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S06",
+   "group": "S",
+   "title": "配了凭据，但代理选了无认证",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "none"
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S06.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S07",
+   "group": "S",
+   "title": "代理要求认证，客户端没配凭据",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S07.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S08",
+   "group": "S",
+   "title": "密码错",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "wrong-pass"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S08.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S09",
+   "group": "S",
+   "title": "应答码 2（规则不允许）",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "none",
+     "rep": 2
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S09.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S10",
+   "group": "S",
+   "title": "应答码 4（主机不可达）",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "none",
+     "rep": 4
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S10.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S11",
+   "group": "S",
+   "title": "应答码 5（连接被拒绝）",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "none",
+     "rep": 5
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S11.s1",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S12",
+   "group": "S",
+   "title": "HTTPS 同一个源连续 3 次",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "none"
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S12.s1",
+     "user": null
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S12.s2",
+     "user": null
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S12.s3",
+     "user": null
+    }
+   ]
+  },
+  {
+   "id": "S13",
+   "group": "S",
+   "title": "HTTPS 同一个源 6 个并发，源站只说 HTTP/1.1",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "none"
+    },
+    "origin": {
+     "h2": false
+    }
+   },
+   "users": [],
+   "steps": [
+    {
+     "id": "p",
+     "op": "parallel",
+     "steps": [
+      {
+       "id": "p1",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=S13.p1",
+       "user": null
+      },
+      {
+       "id": "p2",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=S13.p2",
+       "user": null
+      },
+      {
+       "id": "p3",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=S13.p3",
+       "user": null
+      },
+      {
+       "id": "p4",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=S13.p4",
+       "user": null
+      },
+      {
+       "id": "p5",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=S13.p5",
+       "user": null
+      },
+      {
+       "id": "p6",
+       "op": "request",
+       "method": "GET",
+       "url": "https://a.kaoju.test/echo?delay=300&k=S13.p6",
+       "user": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "S14",
+   "group": "S",
+   "title": "同一个进程里两个用户交替",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "kaoju-user",
+       "kaoju-pass-1"
+      ],
+      [
+       "kaoju-user-2",
+       "kaoju-pass-2"
+      ]
+     ]
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "kaoju-pass-1"
+    },
+    {
+     "user": "kaoju-user-2",
+     "pass": "kaoju-pass-2"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S14.s1",
+     "user": 0
+    },
+    {
+     "id": "s2",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S14.s2",
+     "user": 1
+    },
+    {
+     "id": "s3",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S14.s3",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S15",
+   "group": "S",
+   "title": "常见的参数写法（连字符）",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "kaoju-session-ab12CD-ttl-600-country-us",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-session-ab12CD-ttl-600-country-us",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S15.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S16",
+   "group": "S",
+   "title": "要转义的字符：@ % + / 和空格",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "sess@ab%41+c/d e",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "sess@ab%41+c/d e",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S16.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S17",
+   "group": "S",
+   "title": "UTF-8 用户名",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "用户-séssion-ß",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "用户-séssion-ß",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S17.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S18",
+   "group": "S",
+   "title": "用户名 255 字节",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S18.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S19",
+   "group": "S",
+   "title": "用户名 256 字节（超出 RFC 1929 的上限）",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-session-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S19.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S20",
+   "group": "S",
+   "title": "密码里有冒号、@、空格、%2F、加号",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "kaoju-user",
+       "p:a@s s%2Fw+d"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": "p:a@s s%2Fw+d"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S20.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S21",
+   "group": "S",
+   "title": "空密码",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "kaoju-user",
+       ""
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "kaoju-user",
+     "pass": ""
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S21.s1",
+     "user": 0
+    }
+   ]
+  },
+  {
+   "id": "S22",
+   "group": "S",
+   "title": "用户名里有冒号",
+   "proxy": "socks5h",
+   "profile": {
+    "socks": {
+     "auth": "userpass"
+    },
+    "auth": {
+     "accept": [
+      [
+       "sess:ab12",
+       "kaoju-pass-1"
+      ]
+     ],
+     "accept_any_user": true
+    }
+   },
+   "users": [
+    {
+     "user": "sess:ab12",
+     "pass": "kaoju-pass-1"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "op": "request",
+     "method": "GET",
+     "url": "https://a.kaoju.test/echo?k=S22.s1",
+     "user": 0
+    }
+   ]
+  }
+ ]
+}

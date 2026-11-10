@@ -1,0 +1,1445 @@
+{
+ "version": "1.0",
+ "说明": "矩阵的行表。每一行写明看哪些用例、怎样从事件和驱动结果里取值、可能的取值。取数之前写定；matrix.py 按 id 一行一个函数实现这里的规则。所有行通用：驱动报 unsupported 的写“不支持”，用例的 only 不含该列的写“不适用”，没通过抓包核对的写“未通过核对”。",
+ "rows": [
+  {
+   "id": "R01",
+   "section": "基线",
+   "title": "明文请求到达代理的形式",
+   "cases": [
+    "A01"
+   ],
+   "how": "找到带 k=A01.s1 的请求是怎么到的：代理端口上的 http_request 且 form=absolute；或先有到 80 端口的隧道、请求出现在隧道里的 origin_request；或源站端口上的直连。",
+   "values": [
+    "绝对形式",
+    "CONNECT 到 80 端口",
+    "直连",
+    "没到"
+   ]
+  },
+  {
+   "id": "R02",
+   "section": "基线",
+   "title": "明文请求里与连接有关的头",
+   "cases": [
+    "A01"
+   ],
+   "how": "取 R01 找到的那个请求的头，按出现顺序列出名字属于 Proxy-Connection、Connection、Keep-Alive、Via、Forwarded、X-Forwarded-For、TE、Upgrade、Proxy-Authorization 的，写成“名: 值”，用分号加空格连接（Proxy-Authorization 只写名字）。",
+   "values": [
+    "（头的列表）",
+    "无"
+   ]
+  },
+  {
+   "id": "R03",
+   "section": "基线",
+   "title": "CONNECT 请求行",
+   "cases": [
+    "A02"
+   ],
+   "how": "第一个 form=connect 的 http_request：目标、空格、版本。",
+   "values": [
+    "（原样）",
+    "没有 CONNECT"
+   ]
+  },
+  {
+   "id": "R04",
+   "section": "基线",
+   "title": "CONNECT 带的头",
+   "cases": [
+    "A02"
+   ],
+   "how": "同一个请求的头的名字，原大小写、原顺序，用逗号加空格连接。",
+   "values": [
+    "（原样）"
+   ]
+  },
+  {
+   "id": "R05",
+   "section": "基线",
+   "title": "CONNECT 的 Host 头",
+   "cases": [
+    "A02"
+   ],
+   "how": "Host 头的值与请求目标逐字节相同是“同目标”。",
+   "values": [
+    "同目标",
+    "不同",
+    "没有"
+   ]
+  },
+  {
+   "id": "R06",
+   "section": "基线",
+   "title": "隧道里客户端发的首包",
+   "cases": [
+    "A02"
+   ],
+   "how": "第一条隧道的 tunnel_first_bytes 的归类。",
+   "values": [
+    "TLS ClientHello",
+    "明文 HTTP",
+    "其他"
+   ]
+  },
+  {
+   "id": "R07",
+   "section": "基线",
+   "title": "ClientHello 的长度",
+   "cases": [
+    "A02"
+   ],
+   "how": "TLS 记录长度加 5 个字节的记录头。按以太网上一个 TCP 包最多 1460 字节的载荷分两档；3 遍里的最小值和最大值另记在脚注。",
+   "values": [
+    "不超过 1460 字节",
+    "超过 1460 字节"
+   ]
+  },
+  {
+   "id": "R08",
+   "section": "基线",
+   "title": "隧道里提供的 ALPN",
+   "cases": [
+    "A02"
+   ],
+   "how": "ClientHello 里的 ALPN 列表，用逗号连接。",
+   "values": [
+    "（原样）",
+    "无"
+   ]
+  },
+  {
+   "id": "R09",
+   "section": "基线",
+   "title": "源站支持 h2 时实际用的协议",
+   "cases": [
+    "A02"
+   ],
+   "how": "带 k=A02.s1 的 origin_request 的协议。",
+   "values": [
+    "HTTP/2.0",
+    "HTTP/1.1"
+   ]
+  },
+  {
+   "id": "R10",
+   "section": "基线",
+   "title": "HTTPS 同一个源连续 3 次：隧道数",
+   "cases": [
+    "A03"
+   ],
+   "how": "tunnel_open 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R11",
+   "section": "基线",
+   "title": "明文同一个源连续 3 次：代理连接数",
+   "cases": [
+    "A04"
+   ],
+   "how": "代理端口上 accept 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R12",
+   "section": "基线",
+   "title": "HTTPS 两个源交替各 2 次：隧道数",
+   "cases": [
+    "A05"
+   ],
+   "how": "tunnel_open 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R13",
+   "section": "基线",
+   "title": "明文两个源交替各 2 次：代理连接数",
+   "cases": [
+    "A06"
+   ],
+   "how": "代理端口上 accept 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R14",
+   "section": "基线",
+   "title": "HTTPS 6 个并发（源站支持 h2）：隧道数",
+   "cases": [
+    "A07"
+   ],
+   "how": "tunnel_open 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R15",
+   "section": "基线",
+   "title": "HTTPS 6 个并发（源站只说 HTTP/1.1）：隧道数",
+   "cases": [
+    "A08"
+   ],
+   "how": "tunnel_open 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R16",
+   "section": "基线",
+   "title": "明文 6 个并发：代理连接数",
+   "cases": [
+    "A09"
+   ],
+   "how": "代理端口上 accept 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R17",
+   "section": "基线",
+   "title": "目标是 localhost 的明文请求",
+   "cases": [
+    "A10"
+   ],
+   "how": "带 k 的请求出现在代理端口上是“经代理”；出现在源站端口的直连上是“直连”；都没有且驱动这一步失败是“报错”。",
+   "values": [
+    "经代理",
+    "直连",
+    "报错"
+   ]
+  },
+  {
+   "id": "R18",
+   "section": "基线",
+   "title": "目标是 localhost 的 HTTPS 请求",
+   "cases": [
+    "A11"
+   ],
+   "how": "同 R17；经代理指请求出现在隧道里。",
+   "values": [
+    "经代理",
+    "直连",
+    "报错"
+   ]
+  },
+  {
+   "id": "R19",
+   "section": "基线",
+   "title": "明文 POST 的正文怎么分帧",
+   "cases": [
+    "A12"
+   ],
+   "how": "带 k 的 http_request 有 Transfer-Encoding: chunked 是 chunked，否则看 Content-Length。",
+   "values": [
+    "Content-Length",
+    "chunked"
+   ]
+  },
+  {
+   "id": "R20",
+   "section": "基线",
+   "title": "2 MiB 的明文 POST 先不先发 Expect: 100-continue",
+   "cases": [
+    "A14"
+   ],
+   "how": "带 k 的 http_request 有没有 Expect 头。",
+   "values": [
+    "发",
+    "不发"
+   ]
+  },
+  {
+   "id": "R21",
+   "section": "基线",
+   "title": "ws:// 经代理的方式",
+   "cases": [
+    "A15"
+   ],
+   "how": "带 k=A15.w1 的请求：出现在到 80 端口的隧道里（origin_request）是第一种；出现在代理端口上的绝对形式请求里是第二种。",
+   "values": [
+    "CONNECT 到 80 端口，隧道里明文升级",
+    "绝对形式的 GET 加 Upgrade",
+    "直连",
+    "没到"
+   ]
+  },
+  {
+   "id": "R22",
+   "section": "基线",
+   "title": "wss:// 经代理的方式",
+   "cases": [
+    "A16"
+   ],
+   "how": "带 k=A16.w1 的请求出现在到 443 端口的隧道里，且隧道首包是 TLS。",
+   "values": [
+    "CONNECT 到 443 端口，隧道里 TLS",
+    "直连",
+    "没到"
+   ]
+  },
+  {
+   "id": "R23",
+   "section": "基线",
+   "title": "代理连接上客户端发的第一个字节",
+   "cases": [
+    "A01",
+    "A02",
+    "S01"
+   ],
+   "how": "三个用例里第一条代理连接的 first_bytes 的第一个字节，可打印的写成字符，否则写两位十六进制，用“ / ”连接（顺序：明文、HTTPS、SOCKS5）。",
+   "values": [
+    "（原样）"
+   ]
+  },
+  {
+   "id": "R24",
+   "section": "基线",
+   "title": "POST 的正文是否完整到达源站",
+   "cases": [
+    "A12",
+    "A13",
+    "A14"
+   ],
+   "how": "三个用例里带 k 的 origin_request 的正文长度和 SHA-256 与 run.py 生成的正文文件相同。",
+   "values": [
+    "完整",
+    "不完整（用例号）"
+   ]
+  },
+  {
+   "id": "R30",
+   "section": "认证",
+   "title": "明文：第一个请求带不带凭据",
+   "cases": [
+    "B01"
+   ],
+   "how": "代理端口上按时间第一个 http_request 的 auth 判定不是 none 就是“先带”；是 none 而后面有带凭据的请求是“等 407 再带”。",
+   "values": [
+    "先带",
+    "等 407 再带",
+    "始终不带"
+   ]
+  },
+  {
+   "id": "R31",
+   "section": "认证",
+   "title": "CONNECT：第一个 CONNECT 带不带凭据",
+   "cases": [
+    "B02"
+   ],
+   "how": "同 R30，看 form=connect 的请求。",
+   "values": [
+    "先带",
+    "等 407 再带",
+    "始终不带"
+   ]
+  },
+  {
+   "id": "R32",
+   "section": "认证",
+   "title": "明文：407 之后的重试走哪条连接",
+   "cases": [
+    "B01"
+   ],
+   "how": "第一个收到 407 的请求和第一个带凭据的请求是否在同一条代理连接上。没有收到过 407 是“不适用”。",
+   "values": [
+    "原连接",
+    "新连接",
+    "不适用",
+    "没有重试"
+   ]
+  },
+  {
+   "id": "R33",
+   "section": "认证",
+   "title": "CONNECT：407 之后的重试走哪条连接",
+   "cases": [
+    "B02"
+   ],
+   "how": "同 R32。",
+   "values": [
+    "原连接",
+    "新连接",
+    "不适用",
+    "没有重试"
+   ]
+  },
+  {
+   "id": "R34",
+   "section": "认证",
+   "title": "明文：407 带 Connection: close",
+   "cases": [
+    "B03"
+   ],
+   "how": "驱动这一步 ok 且 status 为 200 是“成功”。没有收到过 407 是“不适用”。",
+   "values": [
+    "成功",
+    "失败",
+    "不适用"
+   ]
+  },
+  {
+   "id": "R35",
+   "section": "认证",
+   "title": "CONNECT：407 带 Connection: close",
+   "cases": [
+    "B04"
+   ],
+   "how": "同 R34。",
+   "values": [
+    "成功",
+    "失败",
+    "不适用"
+   ]
+  },
+  {
+   "id": "R36",
+   "section": "认证",
+   "title": "明文连续 3 次：代理收到的请求数 / 其中没带凭据的",
+   "cases": [
+    "B05"
+   ],
+   "how": "代理端口上 http_request 的总数，斜杠，其中 auth 判定为 none 的个数。",
+   "values": [
+    "（n/m）"
+   ]
+  },
+  {
+   "id": "R37",
+   "section": "认证",
+   "title": "访问第二个源时 CONNECT 带不带凭据",
+   "cases": [
+    "B06"
+   ],
+   "how": "目标是 b.kaoju.test 的 CONNECT 里按时间第一个的 auth 判定。",
+   "values": [
+    "先带",
+    "等 407 再带"
+   ]
+  },
+  {
+   "id": "R38",
+   "section": "认证",
+   "title": "HTTPS 同一个源连续 3 次（要认证）：隧道数",
+   "cases": [
+    "B07"
+   ],
+   "how": "tunnel_open 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R39",
+   "section": "认证",
+   "title": "代理凭据有没有被带到源站",
+   "cases": [
+    "B02",
+    "B07",
+    "B08",
+    "B09",
+    "B10",
+    "B12"
+   ],
+   "how": "这些用例里隧道内或直连的 origin_request 有没有带 Proxy-Authorization 的。绝对形式的请求由仪器转给源站，不算。有的话列出用例号。",
+   "values": [
+    "没有",
+    "有（用例号）"
+   ]
+  },
+  {
+   "id": "R40",
+   "section": "认证",
+   "title": "三种重定向是否都走通",
+   "cases": [
+    "B08",
+    "B09",
+    "B10"
+   ],
+   "how": "三个用例里跳转后的请求（k 以 b 结尾）都到达源站且驱动拿到 200。",
+   "values": [
+    "都成功",
+    "失败（用例号）"
+   ]
+  },
+  {
+   "id": "R41",
+   "section": "认证",
+   "title": "明文，同一个进程两个用户交替",
+   "cases": [
+    "B11"
+   ],
+   "how": "每一步带 k 的、auth 判定为 ok 的 http_request，解出的用户名是否等于这一步该用的用户。驱动报 unsupported 是“不支持”。",
+   "values": [
+    "各用各的凭据",
+    "用错了凭据",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R42",
+   "section": "认证",
+   "title": "HTTPS，同一个进程两个用户交替",
+   "cases": [
+    "B12"
+   ],
+   "how": "每一步带 k 的 origin_request 所在的隧道，建立它的 CONNECT 解出的用户名是否等于这一步该用的用户。",
+   "values": [
+    "各开各的隧道",
+    "用了别人的隧道",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R43",
+   "section": "认证",
+   "title": "带正文的明文 POST 遇到认证：完整的正文发了几遍",
+   "cases": [
+    "B13"
+   ],
+   "how": "带 k 的 http_request 里正文长度等于 65536 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R44",
+   "section": "认证",
+   "title": "HTTPS 6 个并发（要认证）：收到几个 407",
+   "cases": [
+    "B14"
+   ],
+   "how": "状态码是 407 的 http_response 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R45",
+   "section": "认证",
+   "title": "没配凭据，明文：调用方看到什么",
+   "cases": [
+    "C01"
+   ],
+   "how": "驱动结果里这一步 ok 为真且 status 等于 407，是“拿到 407 响应”；ok 为假时看 default_text 里有没有 \\b407\\b。其余情况原样写出 status。",
+   "values": [
+    "拿到 407 响应",
+    "报错，提到 407",
+    "报错，没提 407"
+   ]
+  },
+  {
+   "id": "R46",
+   "section": "认证",
+   "title": "没配凭据，HTTPS：调用方看到什么",
+   "cases": [
+    "C02"
+   ],
+   "how": "驱动结果里这一步 ok 为真且 status 等于 407，是“拿到 407 响应”；ok 为假时看 default_text 里有没有 \\b407\\b。其余情况原样写出 status。",
+   "values": [
+    "拿到 407 响应",
+    "报错，提到 407",
+    "报错，没提 407"
+   ]
+  },
+  {
+   "id": "R47",
+   "section": "认证",
+   "title": "密码错，明文：带着凭据试了几次",
+   "cases": [
+    "C03"
+   ],
+   "how": "auth 判定不是 none 的 http_request 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R48",
+   "section": "认证",
+   "title": "密码错，HTTPS：带着凭据试了几次",
+   "cases": [
+    "C04"
+   ],
+   "how": "同 R47。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R49",
+   "section": "认证",
+   "title": "密码错，HTTPS，代理一直回 407：调用方看到什么",
+   "cases": [
+    "C04"
+   ],
+   "how": "驱动结果里这一步 ok 为真且 status 等于 407，是“拿到 407 响应”；ok 为假时看 default_text 里有没有 \\b407\\b。其余情况原样写出 status。",
+   "values": [
+    "拿到 407 响应",
+    "报错，提到 407",
+    "报错，没提 407"
+   ]
+  },
+  {
+   "id": "R50",
+   "section": "认证",
+   "title": "密码错，HTTPS，代理回 403：调用方看到什么",
+   "cases": [
+    "C05"
+   ],
+   "how": "驱动结果里这一步 ok 为真且 status 等于 403，是“拿到 403 响应”；ok 为假时看 default_text 里有没有 \\b403\\b。其余情况原样写出 status。",
+   "values": [
+    "拿到 403 响应",
+    "报错，提到 403",
+    "报错，没提 403"
+   ]
+  },
+  {
+   "id": "R51",
+   "section": "认证",
+   "title": "密码错，明文，代理回 403：调用方看到什么",
+   "cases": [
+    "C08"
+   ],
+   "how": "驱动结果里这一步 ok 为真且 status 等于 403，是“拿到 403 响应”；ok 为假时看 default_text 里有没有 \\b403\\b。其余情况原样写出 status。",
+   "values": [
+    "拿到 403 响应",
+    "报错，提到 403",
+    "报错，没提 403"
+   ]
+  },
+  {
+   "id": "R52",
+   "section": "认证",
+   "title": "代理没要求认证，明文请求带不带凭据",
+   "cases": [
+    "C06"
+   ],
+   "how": "代理端口上有没有 auth 判定不是 none 的 http_request。",
+   "values": [
+    "带",
+    "不带"
+   ]
+  },
+  {
+   "id": "R53",
+   "section": "认证",
+   "title": "代理没要求认证，CONNECT 带不带凭据",
+   "cases": [
+    "C07"
+   ],
+   "how": "同 R52。",
+   "values": [
+    "带",
+    "不带"
+   ]
+  },
+  {
+   "id": "R60",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "常见的参数写法（连字符）",
+   "cases": [
+    "D01"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R61",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "下划线、点、波浪号、等号、分号、逗号",
+   "cases": [
+    "D02"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R62",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "要转义的字符：@ % + / 和空格",
+   "cases": [
+    "D03"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R63",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "UTF-8 用户名，质询不带 charset",
+   "cases": [
+    "D04"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R64",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "UTF-8 用户名，质询带 charset=\"UTF-8\"",
+   "cases": [
+    "D05"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R65",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "用户名 255 字节",
+   "cases": [
+    "D06"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R66",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "用户名 256 字节",
+   "cases": [
+    "D07"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R67",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "用户名 1024 字节",
+   "cases": [
+    "D08"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R68",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "密码里有冒号、@、空格、%2F、加号",
+   "cases": [
+    "D09"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R69",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "空密码",
+   "cases": [
+    "D10"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R70",
+   "section": "用户名和密码的字节（HTTP 代理）",
+   "title": "用户名里有冒号（“原样”指原样拼接，服务端只能按第一个冒号拆）",
+   "cases": [
+    "D11"
+   ],
+   "how": "取代理端口上最后一个带 Proxy-Authorization 的 http_request，把 Basic 后面的 base64 解开，与“用例里的用户名、冒号、密码”的 UTF-8 字节逐字节比较。没有任何带凭据的请求：驱动这一步失败是“客户端报错”，否则是“没发凭据”。变了的格子，实际收到的字节记在脚注。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错"
+   ]
+  },
+  {
+   "id": "R80",
+   "section": "代理报错时调用方能看到什么",
+   "title": "CONNECT 回 502：默认用法",
+   "cases": [
+    "E01"
+   ],
+   "how": "在这一步的 default_text 里找：状态码看 \\b502\\b 是否出现；原因短语看 KaojuReasonMarker；响应头看 KaojuHeaderMarker 或 KaojuStatusMarker；正文看 KaojuBodyMarker。把看得见的按“状态码、原因短语、响应头、正文”的顺序用顿号连起来；一样都看不见写“都看不到”",
+   "values": [
+    "（列表）",
+    "都看不到"
+   ]
+  },
+  {
+   "id": "R81",
+   "section": "代理报错时调用方能看到什么",
+   "title": "CONNECT 回 502：加上需要主动打开的手段",
+   "cases": [
+    "E01"
+   ],
+   "how": "在这一步的 default_text 和 extra_text 里找：状态码看 \\b502\\b 是否出现；原因短语看 KaojuReasonMarker；响应头看 KaojuHeaderMarker 或 KaojuStatusMarker；正文看 KaojuBodyMarker。把看得见的按“状态码、原因短语、响应头、正文”的顺序用顿号连起来；一样都看不见写“都看不到”。驱动没有用任何额外手段（extra_text 为空）写“没有这样的手段”。",
+   "values": [
+    "（列表）",
+    "都看不到",
+    "没有这样的手段"
+   ]
+  },
+  {
+   "id": "R82",
+   "section": "代理报错时调用方能看到什么",
+   "title": "CONNECT 回 403：默认用法",
+   "cases": [
+    "E02"
+   ],
+   "how": "在这一步的 default_text 里找：状态码看 \\b403\\b 是否出现；原因短语看 KaojuReasonMarker；响应头看 KaojuHeaderMarker 或 KaojuStatusMarker；正文看 KaojuBodyMarker。把看得见的按“状态码、原因短语、响应头、正文”的顺序用顿号连起来；一样都看不见写“都看不到”",
+   "values": [
+    "（列表）",
+    "都看不到"
+   ]
+  },
+  {
+   "id": "R83",
+   "section": "代理报错时调用方能看到什么",
+   "title": "CONNECT 回 503 带 Retry-After: 1：发了几次 CONNECT",
+   "cases": [
+    "E03"
+   ],
+   "how": "form=connect 的 http_request 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R84",
+   "section": "代理报错时调用方能看到什么",
+   "title": "CONNECT 成功时 200 里附加的头：默认用法",
+   "cases": [
+    "E04"
+   ],
+   "how": "default_text 里有没有 KaojuHeaderMarker 或 KaojuStatusMarker。",
+   "values": [
+    "看得到",
+    "看不到"
+   ]
+  },
+  {
+   "id": "R85",
+   "section": "代理报错时调用方能看到什么",
+   "title": "CONNECT 成功时 200 里附加的头：加上需要主动打开的手段",
+   "cases": [
+    "E04"
+   ],
+   "how": "default_text 和 extra_text 里有没有那两个记号。extra_text 为空写“没有这样的手段”。",
+   "values": [
+    "看得到",
+    "看不到",
+    "没有这样的手段"
+   ]
+  },
+  {
+   "id": "R86",
+   "section": "代理报错时调用方能看到什么",
+   "title": "明文请求被代理回 403：默认用法",
+   "cases": [
+    "E05"
+   ],
+   "how": "在这一步的 default_text 里找：状态码看 \\b403\\b 是否出现；原因短语看 KaojuReasonMarker；响应头看 KaojuHeaderMarker 或 KaojuStatusMarker；正文看 KaojuBodyMarker。把看得见的按“状态码、原因短语、响应头、正文”的顺序用顿号连起来；一样都看不见写“都看不到”",
+   "values": [
+    "（列表）",
+    "都看不到"
+   ]
+  },
+  {
+   "id": "R87",
+   "section": "代理报错时调用方能看到什么",
+   "title": "明文请求成功时代理附加的响应头：默认用法",
+   "cases": [
+    "E06"
+   ],
+   "how": "default_text 里有没有 KaojuHeaderMarker 或 KaojuStatusMarker。",
+   "values": [
+    "看得到",
+    "看不到"
+   ]
+  },
+  {
+   "id": "R88",
+   "section": "代理报错时调用方能看到什么",
+   "title": "CONNECT 失败但代理没关连接：下一个 CONNECT 走哪条连接",
+   "cases": [
+    "E07"
+   ],
+   "how": "目标是 a.kaoju.test 的 CONNECT 与目标是 fail.kaoju.test 的 CONNECT 是否在同一条代理连接上。",
+   "values": [
+    "原连接",
+    "新连接",
+    "没有第二个 CONNECT"
+   ]
+  },
+  {
+   "id": "R89",
+   "section": "代理报错时调用方能看到什么",
+   "title": "CONNECT 失败之后，对另一个源的请求",
+   "cases": [
+    "E07"
+   ],
+   "how": "驱动的 s2 这一步 ok 且 status 为 200。",
+   "values": [
+    "成功",
+    "失败"
+   ]
+  },
+  {
+   "id": "R90",
+   "section": "连接被关以后",
+   "title": "明文：空闲连接被代理关掉后再请求",
+   "cases": [
+    "F01"
+   ],
+   "how": "s2 成功且它的请求与 s1 的请求不在同一条代理连接上是第一种。",
+   "values": [
+    "换新连接，成功",
+    "失败"
+   ]
+  },
+  {
+   "id": "R91",
+   "section": "连接被关以后",
+   "title": "HTTPS：空闲隧道被代理关掉后再请求",
+   "cases": [
+    "F02"
+   ],
+   "how": "s2 成功且它的 origin_request 与 s1 的不在同一条隧道里是第一种。",
+   "values": [
+    "换新隧道，成功",
+    "失败"
+   ]
+  },
+  {
+   "id": "R92",
+   "section": "连接被关以后",
+   "title": "明文，复用的连接，GET，连接被关（FIN）：请求到达几次，结果",
+   "cases": [
+    "F03"
+   ],
+   "how": "仪器的丢弃动作没有发生（action 事件里没有）写“未触发”。否则写：被丢弃的那一步的请求到达代理（带 k 的 http_request）的次数（含被丢弃的那次），逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）",
+    "未触发"
+   ]
+  },
+  {
+   "id": "R93",
+   "section": "连接被关以后",
+   "title": "明文，复用的连接，POST，连接被关（FIN）：请求到达几次，结果",
+   "cases": [
+    "F04"
+   ],
+   "how": "仪器的丢弃动作没有发生（action 事件里没有）写“未触发”。否则写：被丢弃的那一步的请求到达代理（带 k 的 http_request）的次数（含被丢弃的那次），逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）",
+    "未触发"
+   ]
+  },
+  {
+   "id": "R94",
+   "section": "连接被关以后",
+   "title": "HTTPS，复用的隧道，GET，隧道被切断（FIN）：请求到达几次，结果",
+   "cases": [
+    "F05"
+   ],
+   "how": "仪器的丢弃动作没有发生（action 事件里没有）写“未触发”。否则写：被丢弃的那一步的请求到达源站（带 k 的 origin_request）的次数（含被丢弃的那次），逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）",
+    "未触发"
+   ]
+  },
+  {
+   "id": "R95",
+   "section": "连接被关以后",
+   "title": "HTTPS，复用的隧道，POST，隧道被切断（FIN）：请求到达几次，结果",
+   "cases": [
+    "F06"
+   ],
+   "how": "仪器的丢弃动作没有发生（action 事件里没有）写“未触发”。否则写：被丢弃的那一步的请求到达源站（带 k 的 origin_request）的次数（含被丢弃的那次），逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）",
+    "未触发"
+   ]
+  },
+  {
+   "id": "R96",
+   "section": "连接被关以后",
+   "title": "明文，新连接上的第一个 GET，连接被关：请求到达几次，结果",
+   "cases": [
+    "F07"
+   ],
+   "how": "仪器的丢弃动作没有发生（action 事件里没有）写“未触发”。否则写：被丢弃的那一步的请求到达代理（带 k 的 http_request）的次数（含被丢弃的那次），逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）",
+    "未触发"
+   ]
+  },
+  {
+   "id": "R97",
+   "section": "连接被关以后",
+   "title": "HTTPS，新隧道里的第一个 GET，隧道被切断：请求到达几次，结果",
+   "cases": [
+    "F08"
+   ],
+   "how": "仪器的丢弃动作没有发生（action 事件里没有）写“未触发”。否则写：被丢弃的那一步的请求到达源站（带 k 的 origin_request）的次数（含被丢弃的那次），逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）",
+    "未触发"
+   ]
+  },
+  {
+   "id": "R98",
+   "section": "连接被关以后",
+   "title": "明文，复用的连接，GET，连接被复位（RST）：请求到达几次，结果",
+   "cases": [
+    "F09"
+   ],
+   "how": "仪器的丢弃动作没有发生（action 事件里没有）写“未触发”。否则写：被丢弃的那一步的请求到达代理（带 k 的 http_request）的次数（含被丢弃的那次），逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）",
+    "未触发"
+   ]
+  },
+  {
+   "id": "R99",
+   "section": "连接被关以后",
+   "title": "HTTPS，复用的隧道，GET，隧道被复位（RST）：请求到达几次，结果",
+   "cases": [
+    "F10"
+   ],
+   "how": "仪器的丢弃动作没有发生（action 事件里没有）写“未触发”。否则写：被丢弃的那一步的请求到达源站（带 k 的 origin_request）的次数（含被丢弃的那次），逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）",
+    "未触发"
+   ]
+  },
+  {
+   "id": "R100",
+   "section": "连接被关以后",
+   "title": "CONNECT 发出后代理不回应就关连接：发了几次 CONNECT，结果",
+   "cases": [
+    "F11"
+   ],
+   "how": "form=connect 的 http_request 的个数，逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）"
+   ]
+  },
+  {
+   "id": "R101",
+   "section": "连接被关以后",
+   "title": "HTTPS（源站支持 h2），复用的隧道，GET，隧道被切断：请求到达几次，结果",
+   "cases": [
+    "F12"
+   ],
+   "how": "仪器的丢弃动作没有发生（action 事件里没有）写“未触发”。否则写：被丢弃的那一步的请求到达源站（带 k 的 origin_request）的次数（含被丢弃的那次），逗号，驱动这一步是否 ok 且 status 为 200。",
+   "values": [
+    "（n 次，成功）",
+    "（n 次，失败）",
+    "未触发"
+   ]
+  },
+  {
+   "id": "R110",
+   "section": "SOCKS5 入口",
+   "title": "没配凭据时提供的认证方法",
+   "cases": [
+    "S01"
+   ],
+   "how": "第一条 SOCKS5 连接的 socks5_greeting 里的方法，两位十六进制，用逗号连接。",
+   "values": [
+    "（原样）"
+   ]
+  },
+  {
+   "id": "R111",
+   "section": "SOCKS5 入口",
+   "title": "配了凭据时提供的认证方法",
+   "cases": [
+    "S05"
+   ],
+   "how": "同 R110。",
+   "values": [
+    "（原样）",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R112",
+   "section": "SOCKS5 入口",
+   "title": "socks5h：请求里的地址类型",
+   "cases": [
+    "S01"
+   ],
+   "how": "第一个 socks5_request 的地址类型。",
+   "values": [
+    "域名",
+    "IPv4",
+    "IPv6"
+   ]
+  },
+  {
+   "id": "R113",
+   "section": "SOCKS5 入口",
+   "title": "socks5（客户端自己解析），目标是 localhost：请求里的地址类型",
+   "cases": [
+    "S03"
+   ],
+   "how": "同 R112。代理端口上没有连接而源站端口上有直连是“直连”；都没有是“没连代理”。",
+   "values": [
+    "域名",
+    "IPv4",
+    "IPv6",
+    "直连",
+    "没连代理"
+   ]
+  },
+  {
+   "id": "R114",
+   "section": "SOCKS5 入口",
+   "title": "socks5（客户端自己解析），域名本机解析不了",
+   "cases": [
+    "S04"
+   ],
+   "how": "代理端口上没有任何连接且驱动这一步失败是第一种；socks5_request 的地址类型是域名是第二种。",
+   "values": [
+    "没连代理就报错",
+    "把域名交给了代理",
+    "其他"
+   ]
+  },
+  {
+   "id": "R115",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 建好以后的首包（HTTPS）",
+   "cases": [
+    "S01"
+   ],
+   "how": "第一条隧道的 tunnel_first_bytes 的归类。",
+   "values": [
+    "TLS ClientHello",
+    "明文 HTTP",
+    "其他"
+   ]
+  },
+  {
+   "id": "R116",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 建好以后的首包（明文）",
+   "cases": [
+    "S02"
+   ],
+   "how": "同 R115。",
+   "values": [
+    "TLS ClientHello",
+    "明文 HTTP",
+    "其他"
+   ]
+  },
+  {
+   "id": "R117",
+   "section": "SOCKS5 入口",
+   "title": "用户名密码认证，凭据正确",
+   "cases": [
+    "S05"
+   ],
+   "how": "驱动这一步 ok 且 status 为 200，且 socks5_auth 的状态是 0。",
+   "values": [
+    "成功",
+    "失败",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R118",
+   "section": "SOCKS5 入口",
+   "title": "配了凭据而代理选了无认证",
+   "cases": [
+    "S06"
+   ],
+   "how": "驱动这一步 ok 且 status 为 200。",
+   "values": [
+    "成功",
+    "失败",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R119",
+   "section": "SOCKS5 入口",
+   "title": "代理回 0xFF（没有可接受的方法）时的报错",
+   "cases": [
+    "S07"
+   ],
+   "how": "default_text 转小写后含有 auth、method、credential、password、认证、方法 之一是“提到认证或方法”，否则是“只说失败”。",
+   "values": [
+    "提到认证或方法",
+    "只说失败"
+   ]
+  },
+  {
+   "id": "R120",
+   "section": "SOCKS5 入口",
+   "title": "用户名密码不对时的报错",
+   "cases": [
+    "S08"
+   ],
+   "how": "default_text 转小写后含有 auth、method、credential、password、认证、方法 之一是“提到认证或方法”，否则是“只说失败”。",
+   "values": [
+    "提到认证或方法",
+    "只说失败",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R121",
+   "section": "SOCKS5 入口",
+   "title": "应答码 2、4、5 的报错能否区分",
+   "cases": [
+    "S09",
+    "S10",
+    "S11"
+   ],
+   "how": "取三个用例里失败那一步的 default_text，去掉用例号（S09、S10、S11）和 3 位以上的数字串以后两两不同是“能区分”。",
+   "values": [
+    "能区分",
+    "不能区分"
+   ]
+  },
+  {
+   "id": "R122",
+   "section": "SOCKS5 入口",
+   "title": "HTTPS 同一个源连续 3 次：SOCKS5 连接数",
+   "cases": [
+    "S12"
+   ],
+   "how": "代理端口上 accept 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R123",
+   "section": "SOCKS5 入口",
+   "title": "HTTPS 6 个并发（源站只说 HTTP/1.1）：SOCKS5 连接数",
+   "cases": [
+    "S13"
+   ],
+   "how": "代理端口上 accept 的个数。",
+   "values": [
+    "（整数）"
+   ]
+  },
+  {
+   "id": "R124",
+   "section": "SOCKS5 入口",
+   "title": "同一个进程两个用户交替",
+   "cases": [
+    "S14"
+   ],
+   "how": "每一步带 k 的 origin_request 所在的隧道，它那条连接的 socks5_auth 的用户名是否等于这一步该用的用户。",
+   "values": [
+    "各开各的连接",
+    "用了别人的连接",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R125",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 用户名密码：常见的参数写法（连字符）",
+   "cases": [
+    "S15"
+   ],
+   "how": "取最后一个 socks5_auth，用户名和密码的字节分别与用例里的 UTF-8 字节比较，两样都相同是“原样”。没有 socks5_auth：驱动这一步失败是“客户端报错”，否则是“没发凭据”。驱动报 unsupported 是“不支持”。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R126",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 用户名密码：要转义的字符：@ % + / 和空格",
+   "cases": [
+    "S16"
+   ],
+   "how": "取最后一个 socks5_auth，用户名和密码的字节分别与用例里的 UTF-8 字节比较，两样都相同是“原样”。没有 socks5_auth：驱动这一步失败是“客户端报错”，否则是“没发凭据”。驱动报 unsupported 是“不支持”。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R127",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 用户名密码：UTF-8 用户名",
+   "cases": [
+    "S17"
+   ],
+   "how": "取最后一个 socks5_auth，用户名和密码的字节分别与用例里的 UTF-8 字节比较，两样都相同是“原样”。没有 socks5_auth：驱动这一步失败是“客户端报错”，否则是“没发凭据”。驱动报 unsupported 是“不支持”。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R128",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 用户名密码：用户名 255 字节",
+   "cases": [
+    "S18"
+   ],
+   "how": "取最后一个 socks5_auth，用户名和密码的字节分别与用例里的 UTF-8 字节比较，两样都相同是“原样”。没有 socks5_auth：驱动这一步失败是“客户端报错”，否则是“没发凭据”。驱动报 unsupported 是“不支持”。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R129",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 用户名密码：用户名 256 字节（超出 RFC 1929 的上限）",
+   "cases": [
+    "S19"
+   ],
+   "how": "取最后一个 socks5_auth，用户名和密码的字节分别与用例里的 UTF-8 字节比较，两样都相同是“原样”。没有 socks5_auth：驱动这一步失败是“客户端报错”，否则是“没发凭据”。驱动报 unsupported 是“不支持”。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R130",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 用户名密码：密码里有冒号、@、空格、%2F、加号",
+   "cases": [
+    "S20"
+   ],
+   "how": "取最后一个 socks5_auth，用户名和密码的字节分别与用例里的 UTF-8 字节比较，两样都相同是“原样”。没有 socks5_auth：驱动这一步失败是“客户端报错”，否则是“没发凭据”。驱动报 unsupported 是“不支持”。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R131",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 用户名密码：空密码",
+   "cases": [
+    "S21"
+   ],
+   "how": "取最后一个 socks5_auth，用户名和密码的字节分别与用例里的 UTF-8 字节比较，两样都相同是“原样”。没有 socks5_auth：驱动这一步失败是“客户端报错”，否则是“没发凭据”。驱动报 unsupported 是“不支持”。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错",
+    "不支持"
+   ]
+  },
+  {
+   "id": "R132",
+   "section": "SOCKS5 入口",
+   "title": "SOCKS5 用户名密码：用户名里有冒号",
+   "cases": [
+    "S22"
+   ],
+   "how": "取最后一个 socks5_auth，用户名和密码的字节分别与用例里的 UTF-8 字节比较，两样都相同是“原样”。没有 socks5_auth：驱动这一步失败是“客户端报错”，否则是“没发凭据”。驱动报 unsupported 是“不支持”。",
+   "values": [
+    "原样",
+    "变了",
+    "没发凭据",
+    "客户端报错",
+    "不支持"
+   ]
+  }
+ ]
+}
