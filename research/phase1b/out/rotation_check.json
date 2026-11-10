@@ -1,0 +1,63 @@
+{
+ "summary_generated_hour_utc": "2026-11-09T08:00Z",
+ "hidden_judge_files": [
+  "20261109-08",
+  "20261109-09"
+ ],
+ "modules": {
+  "instrument": {
+   "mismatches_before": [
+    "findings.同一请求被 judge 收到多次（重放）.attempts",
+    "findings.同一请求被 judge 收到多次（重放）.candidates",
+    "judge.noise(+dropped n)",
+    "judge.req",
+    "judge.tls_fail"
+   ],
+   "mismatches_after_hiding": [],
+   "all_resolved": true
+  },
+  "integrity": {
+   "mismatches_before": [
+    "anonymity.anonymous",
+    "anonymity.elite",
+    "anonymity.transparent",
+    "egress.1 个出口地址",
+    "egress.2 到 3 个出口地址",
+    "egress.4 个以上出口地址",
+    "extras.observer_vs_judge.different_ip",
+    "extras.observer_vs_judge.same_ip",
+    "findings.出口地址与列表里的地址不同.attempts",
+    "findings.出口地址与列表里的地址不同.candidates",
+    "findings.同一请求被 judge 收到多次（重放）.attempts",
+    "findings.同一请求被 judge 收到多次（重放）.candidates",
+    "findings.请求头被改动.attempts",
+    "findings.请求头里带出了探测器的地址.attempts",
+    "findings.请求头里带出了探测器的地址.candidates",
+    "findings.重放来自别的地址.attempts",
+    "findings.重放来自别的地址.candidates",
+    "judge.req（judge 每 2 秒落盘，summary 可能少几条）",
+    "nodes.egress.与入口不同",
+    "nodes.egress.与入口相同"
+   ],
+   "mismatches_after_hiding": [],
+   "all_resolved": true
+  },
+  "nodes": {
+   "mismatches_before": [
+    "nodes.egress.与入口不同",
+    "nodes.egress.与入口相同"
+   ],
+   "mismatches_after_hiding": [],
+   "all_resolved": true
+  },
+  "literature": {
+   "mismatches_before": [
+    "findings.请求头里带出了探测器的地址.attempts",
+    "findings.请求头里带出了探测器的地址.candidates"
+   ],
+   "mismatches_after_hiding": [],
+   "all_resolved": true
+  }
+ },
+ "all_resolved": true
+}

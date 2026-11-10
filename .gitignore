@@ -1,3 +1,21 @@
 __pycache__/
 *.pyc
 research/fieldtest/dist/
+
+# 实测的原始数据和分析用的 SQLite 库不进仓库（含第三方地址、证据正文里有 judge 的联系方式）。
+# research/phase1b/run_all.sh 和 ingest.py 也拒绝把库放在仓库里；这里再挡一次，防止误把数据拷进来
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+probe-*.jsonl
+probe-*.jsonl.gz
+judge-*.jsonl
+judge-*.jsonl.gz
+snap-*.jsonl
+snap-*.jsonl.gz
+state.json
+state.json.gz
+evidence/
+fieldtest-pack*.tar.gz

@@ -1,0 +1,8 @@
+# 原始数据和 SQLite 库都不进仓库；out/ 里只放脚本生成的统计结果
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+__pycache__/
+certcheck/certcheck

@@ -1,0 +1,7993 @@
+{
+ "module": "m_instrument",
+ "generated_utc": "2026-11-10T06:42:21Z",
+ "ingest_version": "3",
+ "whitelist_source": "ingest.OUTPUT_WHITELIST",
+ "definitions": {
+  "对照成功率": "对照组尝试（att.cand 为 control:*，不经代理直接访问）里 class='ok' 的比例，按对照项（cand × dst）分列；跳过 class 含 canceled 的（程序退出时没发起连接，summary.go attempt() 也跳过）。PROTOCOL“对照与自检”；对应 summary.go Control",
+  "对照的期望次数": "prober.go controlLoop：每次启动立即一轮，之后每分钟一轮；回环与公网各 HTTP、HTTPS 一次，第二观察者每 5 轮一次。期望次数 = 各运行段 floor(时长/周期)+1 之和；运行段见“运行段与中断”。实际/期望明显小于 1 说明探测器停过或卡过",
+  "对照失败时段": "同一对照项按时间排序，连续非 ok 的尝试合成一段（起止取整到分钟，给次数和失败类别）。回环对照失败的时段里代理的失败不算“死亡”（PROTOCOL“对照与自检”），这里另给回环两项合并后的失败时段供其他模块排除。PROTOCOL 没定这种时段的边界，给两种取法：loopback_fail_spans 按分钟取并集（止点是最后一次失败所在的分钟，不含失败之后、下一次成功之前的空档）；loopback_fail_spans_to_next_ok 从每次失败到该项下一次成功为止（之后没有成功的到所在运行段的段末），起点向下、止点向上取整到分钟。排除代理失败时建议用后者",
+  "对照没按时运行": "同一对照项相邻两次尝试间隔超过周期 × 3；空洞里有已知中断的端点（段末或下一条 start）、或有任何一条 start 的标为“重启解释”（含没有 stop 的崩溃重启），其余是无记录的停顿",
+  "不变量·judge 收到": "探测器 class='ok'、带 nonce、目的地是 judge（dst judge_tls / judge_http）的尝试，judge 的 req 里必须有同一 nonce。只核对 ts 早于“judge 最后一条记录前 10 秒”的尝试（judge 每 2 秒落盘，summary.go judgeHorizon）；之后的记为“余量内无法判定”。PROTOCOL“对照与自检·不变量”；对应 summary.go “探测器认为成功，但 judge 没收到请求”",
+  "不变量·TLS 内请求一致": "TLS 校验通过（att.tls_ok=1）、class='ok'、到 judge_tls 且 judge 收到的尝试，judge 记下的请求必须与探测器发出的完全一致：照 derive.go Derive：方法是 GET；User-Agent / Accept / Accept-Language / Accept-Encoding 与发出的相同；Cookie 为 pc=<金丝雀>（req_canary='ok' 时用 X-Probe-Canary 头的值当金丝雀；不是 ok 时 Cookie 无法单独判定，并入金丝雀项）；X-Probe-Canary 核对为 ok；没有多出任何头（Host 除外，Connection 缺失不算）。判“被改”的任何一项或多出任何头都算违反。对应 summary.go “仪器异常：TLS 内的请求到达 judge 时与发出时不同”（它的条件是 Tamper 非空或 AddedReq 非空或指纹不同；这里把指纹单列）",
+  "不变量·ClientHello 指纹": "TLS 校验通过、到 judge_tls、judge 收到的尝试，judge 看到的 ClientHello 指纹（req.hello_fp）必须等于直连对照时的指纹（基线 = control:* 到 judge_tls 成功尝试对应 req 的 hello_fp 集合，应恰好 1 个；summary.go baseFP）。列出不同的指纹及次数。另给全部 TLS 请求和 tls_fail 的指纹分布作参考（后者多是扫描器）",
+  "不变量·节点出口不是本机": "节点（proto='node'）class='ok' 且 judge 收到的尝试（judge_tls 与 judge_http 都算），judge 看到的对端地址（req.remote，最早到达的一份）不能是探测器所在机器的地址。本机地址 = self_ips 里 start.judge_ip（配置的公网 IP，summary.go selfIPs 只用它）、judge_remote:control:public（judge 日志里公网对照的对端地址，即本机出去的流量 judge 看到的地址，云主机做 NAT 时是内网地址）、judge_remote:control:loopback（回环）。只用 start.judge_ip 时 NAT 主机上这条永远不会触发，所以公网对照经过 NAT 而本机地址里缺实测对端地址时标为“无法判定”（determinable=false），不报 0 违反。judge_remote_public_equals_judge_ip 是 NAT 信号（false = 经过 NAT）。违反说明流量没走节点。只输出计数，不输出地址",
+  "不变量·回显与日志一致": "judge 在响应头 X-Judge-Remote 里回显的对端地址（att.ip）必须等于 judge 日志里同一 nonce 的 remote。对应 summary.go “响应头里回显的地址与 judge 日志不一致”。PROTOCOL“指标定义·出口地址”说回显只用来和日志互相核对",
+  "不变量·对照请求原样到达": "对照组（不经代理）的成功尝试，judge 记下的请求必须与发出的一致、没有多出的头、同一 nonce 只收到一次、对端地址是本机。这是对仪器自身（探测器 + judge）的检查：对照组都不一致，就不能拿 judge 的记录判代理",
+  "不变量·配置唯一": "多条 start 记录里 judge 主机名、judge 公网 IP、三种载荷的期望哈希应各只有一个取值（中途改配置会留下不同的值）。只输出 DISTINCT 个数",
+  "连接速率": "真正发起过连接的记录数：class 不含 canceled 的 att（canceled 在排队领配额时放弃，没有连接）加上有 tcp 对象的 npre（没有 tcp 对象的预检没发起连接：DNS 失败、skip_ipv6、skip_not_public、canceled）。按分钟和按 10 分钟分桶，峰值与平均都换算成每秒，与 start.probe.conn_per_sec（配置 40 条/秒）比较。注意 npre 的 ts 在排队领配额之前就记下了（nodes.go precheck 先建 NPreRec 再 Lim.Wait），att 的 ts 在领到配额之后（attempt.go Run），所以 npre 这部分最多会提前一个排队时长落到前一个桶里；att 的排队时间不算进 ms。summary.go Rate 只数 att，这里另算一份同口径的作交叉核对。PROTOCOL“频率与限速”",
+  "运行段与中断": "start 记录（prober.Run 写，字段 resumed_candidates、load_err、http_port、https_port、probe、payload_sha256）到段末为一个运行段。段末 = 其后（下一条 start 之前）第一条 stop（字段 visits）；没有 stop 的（进程被杀、OOM、断电：prober.Run 只在 ctx 结束后正常退出时才写 stop）取本段里探测器写的最后一条记录（att / visit / stat / npre / nround / nerr / error / snap / nsnap / agg_sample 的最大 ts；judge 是另一个进程，不算），并标 ended_by_stop=false。中断 = 段末到下一条 start。PROTOCOL“正式测量的起止”写的是“两次 stop 与 start 之间”，那是按正常停止写的，崩溃重启没有 stop，这里推广为段末。运行时长按段末算。resumed_candidates=0 的 start 说明状态被清空。版本号在单独的 version 记录里（cmd/fieldtest/main.go 写，紧接在 start 之前），应只有一个取值",
+  "stat 空洞": "stat 记录每 5 分钟一条（prober.go housekeeping）加正常停止时一条；相邻两条间隔超过 5 分钟 × 1.5 的算空洞。空洞里有已知中断的端点或任何一条 start 的标为“重启解释”，其余是无记录的中断或进程卡住。另核对 stat.up_min 与“stat 时刻 − 本段 start 时刻”是否一致（差超过 1 分钟算异常）",
+  "空闲空洞": "运行段内连续 5 分钟以上没有任何连接记录（按分钟计数表），也是疑似卡住的信号；对照探测每分钟都有连接，正常运行时不该出现",
+  "复测间隔比": "同一候选相邻两次非 aborted 探访的实际间隔 ÷ 前一次 visit 的 next_min（计划间隔，含 ±10% 随机浮动），按前一次探访所在的小时（自正式起点起算）和探访后的状态（visit.state：working / open / dead）分组取中位数和 p90。next_min=0（不再探访）的不算；两次探访之间有一条 start（重启，含没有 stop 的崩溃重启）的对子不算（中断不是积压）；第一次探访早于正式起点的对子不算（pairs_before_formal_start_excluded，单位是对子；visits_before_formal_start 是探访条数）。恢复的小时 = 最后一个“至少 5 对且中位数在 [0.9, 1.1] 之外”的小时 + 1（PROTOCOL“已知局限”说积压“之后恢复正常”，恢复后应持续正常）；没有区间外的小时为 0；hours_out_of_band 列出区间外的小时供核对；hours_p90_over_2 列出对子数够数、p90 超过 2（实际间隔超过计划的两倍）的小时，中位数正常不等于没有长尾",
+  "节点轮次时长": "nround.ms 换算成分钟；轮次编号在重启后从 1 重新开始，所以按运行段编号列出。PROTOCOL“频率与限速”（每 60 分钟一轮）",
+  "证据库缺失": "att.ev（证书链，evidence/<前两位>/<哈希>.der）和 att.http_ev（正文，.body）引用的哈希在 evidence 表（数据目录里实际存在的文件）里找不到的个数。证据库有上限（每个候选最多 12 份、总共 1 GB，rec.Evidence.Put 超限不保存），找不到的就是超限未保存的。另给孤儿文件数：evidence 里有、att 里没有任何引用的（.der 对 att.ev，.body 对 att.http_ev）。只输出个数，不输出哈希",
+  "快照完整性": "每个列表文件（来源 × 标签）的抓取次数、失败次数（err 非空或 status 不是 200/304，summary.go snapLine）、304 次数、有变化次数、首次快照（base）次数。期望次数：常规列表每 snapshot_min 分钟一次（start.probe.snapshot_min，默认 10），每个运行段 floor(时长/间隔)+1；聚合器每 6 小时一次，每段 floor(时长/6h)+1（抽样没成功时会在下个常规周期重试，所以实际可以多于期望）；订阅每 30 分钟一次（节点配置不在记录里，按 cfg.Default 的 30 分钟）",
+  "启动时的候选池": "正式起点之后第一条 stat 记录里的 pool（sched.go Pool 的计数：total 是池里的条目数，new 是还没探访过的），以及正式起点之后 pool.total 的最大值。状态文件从空开始时，首次快照后的条目都在 new 里排队等第一次探访",
+  "被排除的条目": "stat.pool 里 skipped_<原因> 的值：判为不探测的上榜条目数（judge 自己的地址、私网地址、知名端口、退出名单、解析不了）。这是每个进程内的累计计数（sched.go Pool.Skipped 不存进状态文件），重启后归零且首次快照会把全部条目再过一遍，所以按运行段给每段最后一条 stat 的值，不跨段相加。PROTOCOL“频率与限速”",
+  "测量机上的仪器自检": "fieldtest preflight 在测量机上写下的 preflight.txt（--preflight 给的文件，没给就找入库时数据目录里的那份）。只取四样：预检时间、“仪器自检”一节核对的项数和不符的项数、sing-box 版本、结论行的失败和注意项数；其余行（含主机名和地址）不读进输出。PROTOCOL“对照与自检”：selftest 在预检时于测量用的机器上跑一遍，有任何一项不符，数据不可信。preflight.txt 不记探测器版本，它与正式测量是不是同一个二进制，只能按时间先后推断",
+  "交叉核对": "与 fieldtest 自带 summary.json（--summary 给的文件，没给就找入库时数据目录里的那份，再没有就只用 meta.summary_json 里抄下的 records / judge）比对：自动检查（warnings，按开头归类计数）、control、rate、records、judge、snapshots、nodes.subscriptions、nodes.precheck、pool、与仪器有关的 findings。summary.go 不裁窗口、按整份数据算，这里同样按整份数据算。summary 的 control 键与本模块一样把含点号的观察者名换成 obs:<观察者>；snapshots / nodes.subscriptions 只比库里也有的来源（其余只计数）",
+  "交叉核对·findings 口径": "比对 findings 时按 summary.go 的口径另算一份（findings_summary_go_caliber）：五条都不含对照组（attempt() 对 control:* 在 integrity() 之前 return）；节点出口只看 judge_tls（nodeEgress 只在 a.Dst == judge_tls 时调用），本机地址只用 start.judge_ip；TLS 内不同的指纹条件是“最近一次对照指纹非空且本条 hello_fp 与之不等”，hello_fp 为空也算不等（summary.go 第 614 行）。本模块各条不变量的主结果更严（对照组也查、节点 judge_http 也查、本机地址含实测对端地址），另列为 findings_module_caliber，不参与比对",
+  "记录文件缺失小时": "files 表里同一前缀首末小时之间没有文件的小时。整小时落在已知中断里（或第一条 start 之前、最后一段结束之后）的标 explained_by_restart：探测器停着就不写 probe- / snap-，judge 也收不到对照请求",
+  "参考·TLS 通过后 HTTP 失败": "att.tls_ok=1、到 judge_tls、class 不是 ok（也不含 canceled）的尝试，按类别计数。内容层（http_status、http_body_mismatch、http_malformed、http_canary_*）在钉扎通过的隧道里不该出现，非 0 就是仪器或 judge 的异常信号。http_body_mismatch 里收到的正文恰为期望正文前缀的（代理提前断开）另计为 body_truncated、不算内容层：这个细分是 72 小时实测结束、看过数据以后加的（决策 D14，引用时标“事后”），按原定义内容层 = content_level + body_truncated；连接层（http_timeout / http_eof / http_reset 等）代理随时可以造成，只作参考。PROTOCOL 不变量说的是“TLS 校验通过的请求”，几条不变量只核对了 class='ok' 的，这一项补上其余的；summary.go integrity 对非 ok 直接跳过",
+  "百分比": "100 × 分子 / 分母，保留一位小数；分母为 0 时为 null。每个比例都同时给出分子、分母"
+ },
+ "window": {
+  "first_record_utc": "2026-11-06T08:06Z",
+  "last_record_utc": "2026-11-09T08:59Z",
+  "span_hours": 72.88,
+  "formal_start_utc": "2026-11-06T08:06Z",
+  "formal_start_rule": "第一条 start",
+  "formal_hours": 72.88,
+  "starts": [
+   {
+    "utc": "2026-11-06T08:06Z",
+    "resumed_candidates": 0
+   }
+  ],
+  "stops": [
+   {
+    "utc": "2026-11-09T08:59Z",
+    "visits": 2278166
+   }
+  ],
+  "versions": [
+   "0.1.1-20261106"
+  ],
+  "version_records": 1,
+  "version_unique": true,
+  "segments": [
+   {
+    "idx": 1,
+    "start_utc": "2026-11-06T08:06Z",
+    "end_utc": "2026-11-09T08:59Z",
+    "minutes": 4372.9,
+    "resumed_candidates": 0,
+    "ended_by_stop": true,
+    "end_rule": "stop 记录",
+    "stop_visits": 2278166
+   }
+  ],
+  "segments_without_stop": 0,
+  "last_segment_ended_by_stop": true,
+  "interruptions": [],
+  "interruptions_without_stop": 0,
+  "interruption_minutes_total": 0.0,
+  "uptime_minutes_total": 4372.9,
+  "state_cleared_restarts": 0
+ },
+ "n": {
+  "att": 5069198,
+  "att_not_canceled": 5069083,
+  "att_by_kind": {
+   "control": 19242,
+   "node": 929761,
+   "proxy": 4120195
+  },
+  "att_control": 19242,
+  "att_with_nonce_to_judge": 1824970,
+  "att_ok_with_nonce_to_judge": 1107757,
+  "att_tls_ok_to_judge_tls_ok_seen": 685494,
+  "att_node_ok_seen": 435184,
+  "req": 1116154,
+  "req_distinct_nonce": 1115968,
+  "noise": 39982,
+  "tls_fail": 35142,
+  "npre": 948842,
+  "nround": 140,
+  "stat": 875,
+  "start": 1,
+  "stop": 1,
+  "version": 1,
+  "error": 0,
+  "visit": 2278229,
+  "snap": 22095,
+  "nsnap": 1540,
+  "agg_sample": 4,
+  "evidence": 80482,
+  "npre_with_tcp": 929775,
+  "files_read": 220
+ },
+ "controls": {
+  "items": {
+   "control:loopback judge_http": {
+    "cand": "control:loopback",
+    "dst": "judge_http",
+    "classes": {
+     "ok": 4373
+    },
+    "成功率": {
+     "num": 4373,
+     "den": 4373,
+     "pct": 100.0
+    },
+    "period_s": 60,
+    "期望次数": 4373,
+    "实际/期望": 1.0
+   },
+   "control:loopback judge_tls": {
+    "cand": "control:loopback",
+    "dst": "judge_tls",
+    "classes": {
+     "ok": 4373
+    },
+    "成功率": {
+     "num": 4373,
+     "den": 4373,
+     "pct": 100.0
+    },
+    "period_s": 60,
+    "期望次数": 4373,
+    "实际/期望": 1.0
+   },
+   "control:observer obs:aws": {
+    "cand": "control:observer",
+    "dst": "obs:aws",
+    "classes": {
+     "ok": 875
+    },
+    "成功率": {
+     "num": 875,
+     "den": 875,
+     "pct": 100.0
+    },
+    "period_s": 300,
+    "期望次数": 875,
+    "实际/期望": 1.0
+   },
+   "control:observer obs:cloudflare": {
+    "cand": "control:observer",
+    "dst": "obs:cloudflare",
+    "classes": {
+     "ok": 875
+    },
+    "成功率": {
+     "num": 875,
+     "den": 875,
+     "pct": 100.0
+    },
+    "period_s": 300,
+    "期望次数": 875,
+    "实际/期望": 1.0
+   },
+   "control:public judge_http": {
+    "cand": "control:public",
+    "dst": "judge_http",
+    "classes": {
+     "ok": 4373
+    },
+    "成功率": {
+     "num": 4373,
+     "den": 4373,
+     "pct": 100.0
+    },
+    "period_s": 60,
+    "期望次数": 4373,
+    "实际/期望": 1.0
+   },
+   "control:public judge_tls": {
+    "cand": "control:public",
+    "dst": "judge_tls",
+    "classes": {
+     "ok": 4373
+    },
+    "成功率": {
+     "num": 4373,
+     "den": 4373,
+     "pct": 100.0
+    },
+    "period_s": 60,
+    "期望次数": 4373,
+    "实际/期望": 1.0
+   }
+  },
+  "fail_spans": [],
+  "fail_spans_count": 0,
+  "fail_attempts_total": 0,
+  "loopback_fail_spans": [],
+  "loopback_fail_spans_count": 0,
+  "loopback_fail_minutes_total": 0,
+  "loopback_fail_spans_rule": "按分钟取并集：任一回环尝试失败的分钟算失败分钟，相邻的合成一段；止点是最后一次失败所在的分钟",
+  "loopback_fail_spans_to_next_ok": [],
+  "loopback_fail_spans_to_next_ok_count": 0,
+  "loopback_fail_minutes_to_next_ok_total": 0,
+  "loopback_fail_spans_to_next_ok_rule": "每次回环失败到该项下一次成功为止（之后没有成功的到所在运行段的段末），两项取并集；from_utc 向下、to_utc 向上取整到分钟，排除代理失败时用这一种更稳妥",
+  "schedule_gaps": [],
+  "schedule_gaps_count": 0,
+  "schedule_gaps_unexplained": 0
+ },
+ "invariants": {
+  "judge_last_record_utc": "2026-11-09T09:05Z",
+  "judge_horizon_utc": "2026-11-09T09:05Z",
+  "judge_lag_s": 10,
+  "judge_received": {
+   "violations": 0,
+   "attempts_involved": 0,
+   "candidates_involved": 0,
+   "denominator_ok_attempts_with_nonce_to_judge": 1107757,
+   "违反率": {
+    "num": 0,
+    "den": 1107757,
+    "pct": 0.0
+   },
+   "undeterminable_within_lag": 0,
+   "by_kind_violations": {},
+   "by_kind_denominator": {
+    "control": 17492,
+    "node": 435184,
+    "proxy": 655081
+   },
+   "req_nonces_without_attempt": 0,
+   "req_nonces_total": 1115968,
+   "attempts_not_ok_but_seen": 8211,
+   "judge_req_dropped_total": 0,
+   "judge_noise_dropped_total": 505
+  },
+  "tls_request_identical": {
+   "violations": 0,
+   "attempts_involved": 0,
+   "candidates_involved": 0,
+   "denominator_tls_ok_seen_attempts": 685494,
+   "违反率": {
+    "num": 0,
+    "den": 685494,
+    "pct": 0.0
+   },
+   "by_kind_violations": {},
+   "by_kind_denominator": {
+    "control": 8746,
+    "node": 396765,
+    "proxy": 279983
+   },
+   "tamper_breakdown": {},
+   "with_added_headers": 0,
+   "added_header_names": [],
+   "reference_all_ok_seen": {
+    "attempts": 1107757,
+    "tamper": 256409,
+    "added_headers": 336786
+   }
+  },
+  "tls_hello_fingerprint": {
+   "baseline_fps": [
+    "59d59aa4ff3be6d4"
+   ],
+   "baseline_count": 1,
+   "baseline_unique": true,
+   "violations": 0,
+   "attempts_involved": 0,
+   "candidates_involved": 0,
+   "denominator_tls_ok_seen_attempts": 685494,
+   "违反率": {
+    "num": 0,
+    "den": 685494,
+    "pct": 0.0
+   },
+   "without_fp_in_judge_log": 0,
+   "other_fps": [],
+   "all_tls_requests_by_fp": [
+    {
+     "hello_fp": "59d59aa4ff3be6d4",
+     "requests": 686871,
+     "is_baseline": true
+    },
+    {
+     "hello_fp": "bc434286c6c8afba",
+     "requests": 199,
+     "is_baseline": false
+    },
+    {
+     "hello_fp": "9de617b056d22292",
+     "requests": 171,
+     "is_baseline": false
+    },
+    {
+     "hello_fp": "5ef0e95dc2b5e0d7",
+     "requests": 111,
+     "is_baseline": false
+    },
+    {
+     "hello_fp": "aca9b71f04121c86",
+     "requests": 66,
+     "is_baseline": false
+    },
+    {
+     "hello_fp": "26e3ef7f66937325",
+     "requests": 42,
+     "is_baseline": false
+    },
+    {
+     "hello_fp": "12cba1a2e4193643",
+     "requests": 2,
+     "is_baseline": false
+    }
+   ],
+   "tls_fail_fps": {
+    "total": 35142,
+    "with_baseline_fp": 5529,
+    "distinct_fps": 491,
+    "without_fp": 27978
+   }
+  },
+  "node_egress_not_self": {
+   "violations": 0,
+   "attempts_involved": 0,
+   "nodes_involved": 0,
+   "denominator_node_ok_seen_attempts": 435184,
+   "违反率": {
+    "num": 0,
+    "den": 435184,
+    "pct": 0.0
+   },
+   "by_arm_violations": {},
+   "self_ip_source": "judge_remote:control:loopback、judge_remote:control:public、start.judge_ip",
+   "self_ip_sources_used": [
+    "judge_remote:control:loopback",
+    "judge_remote:control:public",
+    "start.judge_ip"
+   ],
+   "judge_remote_public_equals_judge_ip": true,
+   "determinable": true,
+   "status": "可判定（本机地址含 judge 日志里公网对照的实测对端地址）",
+   "by_dst_denominator": {
+    "judge_http": 38419,
+    "judge_tls": 396765
+   }
+  },
+  "echo_matches_log": {
+   "violations": 0,
+   "attempts_involved": 0,
+   "candidates_involved": 0,
+   "denominator_ok_seen_with_echo": 1107757,
+   "违反率": {
+    "num": 0,
+    "den": 1107757,
+    "pct": 0.0
+   },
+   "by_kind_violations": {},
+   "ok_seen_without_echo": 0
+  },
+  "control_request_intact": {
+   "violations": 0,
+   "attempts_involved": 0,
+   "denominator_control_ok_seen": 17492,
+   "tamper_or_added": 0,
+   "duplicate_nonce": 0,
+   "echo_mismatch": 0,
+   "control_public_remote_not_judge_ip": 0,
+   "judge_remote_public_equals_judge_ip": true,
+   "control_loopback_remote_not_loopback": 0,
+   "note": "control_public_remote_not_judge_ip 只拿 start.judge_ip 比：> 0 说明本机访问自己的公网地址经过了 NAT（云主机常见），不影响代理的判定；但这时 derive.go 按 judge_ip 判“带出探测器地址”会漏判，另见 SCHEMA“judge 的身份从哪里取”。“节点出口不是本机”已把 judge 日志里实测的对端地址并入本机地址，不受 NAT 影响"
+  },
+  "tls_ok_but_http_failed": {
+   "attempts": 3719,
+   "by_class": {
+    "http_body_mismatch": 707,
+    "http_eof": 2245,
+    "http_other": 2,
+    "http_reset": 148,
+    "http_timeout": 617
+   },
+   "content_level": 0,
+   "content_level_by_kind": {},
+   "body_truncated": 707,
+   "transport_level": 3012,
+   "payload_len_used": {
+    "h": 2784
+   },
+   "denominator_tls_ok_to_judge_tls_not_canceled": 689213,
+   "note": "内容层（http_status、http_body_mismatch、http_malformed、http_canary_*，不含截断）在钉扎通过的隧道里不该出现，非 0 就要查仪器或 judge；body_truncated 是 http_body_mismatch 里收到的正文恰为期望正文前缀的那部分（代理提前断开，BodyChange 判“截断”）；连接层（http_timeout / http_eof / http_reset 等）和截断都只作参考。截断单列是看过数据以后加的（决策 D14，事后），按原定义内容层是 content_level + body_truncated"
+  },
+  "config_unique": {
+   "start_records": 1,
+   "distinct_judge_host": 1,
+   "distinct_judge_ip": 1,
+   "distinct_payload_sha256_sets": 1,
+   "distinct_http_port": 1,
+   "distinct_https_port": 1,
+   "distinct_probe_config": 1,
+   "probe_config_keys_differing": [],
+   "conn_per_sec_values": [
+    40
+   ],
+   "snapshot_min_values": [
+    10
+   ],
+   "alive_interval_min_values": [
+    20
+   ],
+   "load_err_records": 0,
+   "judge_leaf_observed_count": "1",
+   "judge_leaf_tls_ok_extra_count": "0",
+   "all_unique": true,
+   "schedule_config_changed": false
+  },
+  "summary": {
+   "any_violation": false,
+   "violations_total": 0
+  }
+ },
+ "rate": {
+  "configured_conn_per_sec": 40,
+  "configured_values_seen": [
+   40
+  ],
+  "configured_from_default": false,
+  "connections_total": 5998858,
+  "att_connections": 5069083,
+  "npre_connections": 929775,
+  "canceled_att_excluded": 115,
+  "npre_without_tcp_excluded": 19067,
+  "minutes_with_connections": 4374,
+  "uptime_minutes": 4372.9,
+  "per_sec_avg_over_uptime": 22.86,
+  "per_sec_avg_over_minutes_with_data": 22.86,
+  "per_sec_peak_minute": 41.23,
+  "per_sec_minute_quantiles_p50_p90_p99": [
+   19.92,
+   39.85,
+   40.18
+  ],
+  "minutes_over_limit": {
+   "minutes": 205,
+   "connections": 493642,
+   "limit_per_minute": 2400
+  },
+  "top_minutes": [
+   {
+    "minute_utc": "2026-11-06T23:12Z",
+    "connections": 2474,
+    "per_sec": 41.23,
+    "att": 656,
+    "npre": 1818
+   },
+   {
+    "minute_utc": "2026-11-07T19:27Z",
+    "connections": 2462,
+    "per_sec": 41.03,
+    "att": 692,
+    "npre": 1770
+   },
+   {
+    "minute_utc": "2026-11-06T10:09Z",
+    "connections": 2451,
+    "per_sec": 40.85,
+    "att": 1478,
+    "npre": 973
+   },
+   {
+    "minute_utc": "2026-11-08T17:34Z",
+    "connections": 2433,
+    "per_sec": 40.55,
+    "att": 865,
+    "npre": 1568
+   },
+   {
+    "minute_utc": "2026-11-06T12:55Z",
+    "connections": 2430,
+    "per_sec": 40.5,
+    "att": 702,
+    "npre": 1728
+   },
+   {
+    "minute_utc": "2026-11-07T13:50Z",
+    "connections": 2427,
+    "per_sec": 40.45,
+    "att": 853,
+    "npre": 1574
+   },
+   {
+    "minute_utc": "2026-11-06T10:47Z",
+    "connections": 2426,
+    "per_sec": 40.43,
+    "att": 1060,
+    "npre": 1366
+   },
+   {
+    "minute_utc": "2026-11-07T20:01Z",
+    "connections": 2424,
+    "per_sec": 40.4,
+    "att": 837,
+    "npre": 1587
+   },
+   {
+    "minute_utc": "2026-11-07T13:47Z",
+    "connections": 2423,
+    "per_sec": 40.38,
+    "att": 765,
+    "npre": 1658
+   },
+   {
+    "minute_utc": "2026-11-06T23:42Z",
+    "connections": 2420,
+    "per_sec": 40.33,
+    "att": 585,
+    "npre": 1835
+   }
+  ],
+  "per_sec_peak_10min": 40.02,
+  "windows_10min": 438,
+  "top_10min_windows": [
+   {
+    "window_utc": "2026-11-07T04:20Z",
+    "connections": 24012,
+    "per_sec": 40.02
+   },
+   {
+    "window_utc": "2026-11-06T08:10Z",
+    "connections": 24008,
+    "per_sec": 40.01
+   },
+   {
+    "window_utc": "2026-11-06T10:40Z",
+    "connections": 24007,
+    "per_sec": 40.01
+   },
+   {
+    "window_utc": "2026-11-08T20:30Z",
+    "connections": 23998,
+    "per_sec": 40.0
+   },
+   {
+    "window_utc": "2026-11-06T08:20Z",
+    "connections": 23995,
+    "per_sec": 39.99
+   }
+  ],
+  "by_hour": [
+   {
+    "hour_utc": "2026-11-06T08:00Z",
+    "connections": 127256,
+    "att": 108691,
+    "npre": 18565,
+    "per_sec": 35.35,
+    "peak_minute_per_sec": 40.22
+   },
+   {
+    "hour_utc": "2026-11-06T09:00Z",
+    "connections": 108655,
+    "att": 89674,
+    "npre": 18981,
+    "per_sec": 30.18,
+    "peak_minute_per_sec": 40.23
+   },
+   {
+    "hour_utc": "2026-11-06T10:00Z",
+    "connections": 104214,
+    "att": 82666,
+    "npre": 21548,
+    "per_sec": 28.95,
+    "peak_minute_per_sec": 40.85
+   },
+   {
+    "hour_utc": "2026-11-06T11:00Z",
+    "connections": 65708,
+    "att": 60101,
+    "npre": 5607,
+    "per_sec": 18.25,
+    "peak_minute_per_sec": 40.13
+   },
+   {
+    "hour_utc": "2026-11-06T12:00Z",
+    "connections": 80666,
+    "att": 59846,
+    "npre": 20820,
+    "per_sec": 22.41,
+    "peak_minute_per_sec": 40.5
+   },
+   {
+    "hour_utc": "2026-11-06T13:00Z",
+    "connections": 60841,
+    "att": 55407,
+    "npre": 5434,
+    "per_sec": 16.9,
+    "peak_minute_per_sec": 34.8
+   },
+   {
+    "hour_utc": "2026-11-06T14:00Z",
+    "connections": 70783,
+    "att": 65803,
+    "npre": 4980,
+    "per_sec": 19.66,
+    "peak_minute_per_sec": 39.23
+   },
+   {
+    "hour_utc": "2026-11-06T15:00Z",
+    "connections": 70865,
+    "att": 54905,
+    "npre": 15960,
+    "per_sec": 19.68,
+    "peak_minute_per_sec": 40.25
+   },
+   {
+    "hour_utc": "2026-11-06T16:00Z",
+    "connections": 89242,
+    "att": 78676,
+    "npre": 10566,
+    "per_sec": 24.79,
+    "peak_minute_per_sec": 40.12
+   },
+   {
+    "hour_utc": "2026-11-06T17:00Z",
+    "connections": 54480,
+    "att": 48492,
+    "npre": 5988,
+    "per_sec": 15.13,
+    "peak_minute_per_sec": 39.93
+   },
+   {
+    "hour_utc": "2026-11-06T18:00Z",
+    "connections": 62804,
+    "att": 57234,
+    "npre": 5570,
+    "per_sec": 17.45,
+    "peak_minute_per_sec": 39.93
+   },
+   {
+    "hour_utc": "2026-11-06T19:00Z",
+    "connections": 79219,
+    "att": 59635,
+    "npre": 19584,
+    "per_sec": 22.01,
+    "peak_minute_per_sec": 40.22
+   },
+   {
+    "hour_utc": "2026-11-06T20:00Z",
+    "connections": 69428,
+    "att": 62895,
+    "npre": 6533,
+    "per_sec": 19.29,
+    "peak_minute_per_sec": 40.03
+   },
+   {
+    "hour_utc": "2026-11-06T21:00Z",
+    "connections": 69026,
+    "att": 63110,
+    "npre": 5916,
+    "per_sec": 19.17,
+    "peak_minute_per_sec": 40.17
+   },
+   {
+    "hour_utc": "2026-11-06T22:00Z",
+    "connections": 104797,
+    "att": 82060,
+    "npre": 22737,
+    "per_sec": 29.11,
+    "peak_minute_per_sec": 40.18
+   },
+   {
+    "hour_utc": "2026-11-06T23:00Z",
+    "connections": 60858,
+    "att": 53508,
+    "npre": 7350,
+    "per_sec": 16.91,
+    "peak_minute_per_sec": 41.23
+   },
+   {
+    "hour_utc": "2026-11-07T00:00Z",
+    "connections": 65962,
+    "att": 59572,
+    "npre": 6390,
+    "per_sec": 18.32,
+    "peak_minute_per_sec": 40.07
+   },
+   {
+    "hour_utc": "2026-11-07T01:00Z",
+    "connections": 90922,
+    "att": 67597,
+    "npre": 23325,
+    "per_sec": 25.26,
+    "peak_minute_per_sec": 40.18
+   },
+   {
+    "hour_utc": "2026-11-07T02:00Z",
+    "connections": 76243,
+    "att": 67212,
+    "npre": 9031,
+    "per_sec": 21.18,
+    "peak_minute_per_sec": 40.05
+   },
+   {
+    "hour_utc": "2026-11-07T03:00Z",
+    "connections": 77578,
+    "att": 69476,
+    "npre": 8102,
+    "per_sec": 21.55,
+    "peak_minute_per_sec": 40.2
+   },
+   {
+    "hour_utc": "2026-11-07T04:00Z",
+    "connections": 103727,
+    "att": 79963,
+    "npre": 23764,
+    "per_sec": 28.81,
+    "peak_minute_per_sec": 40.32
+   },
+   {
+    "hour_utc": "2026-11-07T05:00Z",
+    "connections": 69307,
+    "att": 60947,
+    "npre": 8360,
+    "per_sec": 19.25,
+    "peak_minute_per_sec": 39.95
+   },
+   {
+    "hour_utc": "2026-11-07T06:00Z",
+    "connections": 71286,
+    "att": 63997,
+    "npre": 7289,
+    "per_sec": 19.8,
+    "peak_minute_per_sec": 40.08
+   },
+   {
+    "hour_utc": "2026-11-07T07:00Z",
+    "connections": 87466,
+    "att": 68786,
+    "npre": 18680,
+    "per_sec": 24.3,
+    "peak_minute_per_sec": 40.3
+   },
+   {
+    "hour_utc": "2026-11-07T08:00Z",
+    "connections": 83540,
+    "att": 75675,
+    "npre": 7865,
+    "per_sec": 23.21,
+    "peak_minute_per_sec": 40.0
+   },
+   {
+    "hour_utc": "2026-11-07T09:00Z",
+    "connections": 83608,
+    "att": 74592,
+    "npre": 9016,
+    "per_sec": 23.22,
+    "peak_minute_per_sec": 40.18
+   },
+   {
+    "hour_utc": "2026-11-07T10:00Z",
+    "connections": 103659,
+    "att": 81414,
+    "npre": 22245,
+    "per_sec": 28.79,
+    "peak_minute_per_sec": 40.27
+   },
+   {
+    "hour_utc": "2026-11-07T11:00Z",
+    "connections": 76350,
+    "att": 68426,
+    "npre": 7924,
+    "per_sec": 21.21,
+    "peak_minute_per_sec": 40.08
+   },
+   {
+    "hour_utc": "2026-11-07T12:00Z",
+    "connections": 70179,
+    "att": 62071,
+    "npre": 8108,
+    "per_sec": 19.49,
+    "peak_minute_per_sec": 39.95
+   },
+   {
+    "hour_utc": "2026-11-07T13:00Z",
+    "connections": 78399,
+    "att": 57010,
+    "npre": 21389,
+    "per_sec": 21.78,
+    "peak_minute_per_sec": 40.45
+   },
+   {
+    "hour_utc": "2026-11-07T14:00Z",
+    "connections": 83796,
+    "att": 75892,
+    "npre": 7904,
+    "per_sec": 23.28,
+    "peak_minute_per_sec": 40.13
+   },
+   {
+    "hour_utc": "2026-11-07T15:00Z",
+    "connections": 71497,
+    "att": 63153,
+    "npre": 8344,
+    "per_sec": 19.86,
+    "peak_minute_per_sec": 40.18
+   },
+   {
+    "hour_utc": "2026-11-07T16:00Z",
+    "connections": 86461,
+    "att": 66532,
+    "npre": 19929,
+    "per_sec": 24.02,
+    "peak_minute_per_sec": 40.33
+   },
+   {
+    "hour_utc": "2026-11-07T17:00Z",
+    "connections": 80695,
+    "att": 70949,
+    "npre": 9746,
+    "per_sec": 22.42,
+    "peak_minute_per_sec": 40.02
+   },
+   {
+    "hour_utc": "2026-11-07T18:00Z",
+    "connections": 67340,
+    "att": 59092,
+    "npre": 8248,
+    "per_sec": 18.71,
+    "peak_minute_per_sec": 40.18
+   },
+   {
+    "hour_utc": "2026-11-07T19:00Z",
+    "connections": 66709,
+    "att": 58472,
+    "npre": 8237,
+    "per_sec": 18.53,
+    "peak_minute_per_sec": 41.03
+   },
+   {
+    "hour_utc": "2026-11-07T20:00Z",
+    "connections": 91278,
+    "att": 73834,
+    "npre": 17444,
+    "per_sec": 25.36,
+    "peak_minute_per_sec": 40.4
+   },
+   {
+    "hour_utc": "2026-11-07T21:00Z",
+    "connections": 72624,
+    "att": 64311,
+    "npre": 8313,
+    "per_sec": 20.17,
+    "peak_minute_per_sec": 40.02
+   },
+   {
+    "hour_utc": "2026-11-07T22:00Z",
+    "connections": 80526,
+    "att": 71886,
+    "npre": 8640,
+    "per_sec": 22.37,
+    "peak_minute_per_sec": 40.17
+   },
+   {
+    "hour_utc": "2026-11-07T23:00Z",
+    "connections": 95220,
+    "att": 73797,
+    "npre": 21423,
+    "per_sec": 26.45,
+    "peak_minute_per_sec": 40.3
+   },
+   {
+    "hour_utc": "2026-11-08T00:00Z",
+    "connections": 74534,
+    "att": 65751,
+    "npre": 8783,
+    "per_sec": 20.7,
+    "peak_minute_per_sec": 40.17
+   },
+   {
+    "hour_utc": "2026-11-08T01:00Z",
+    "connections": 73543,
+    "att": 64215,
+    "npre": 9328,
+    "per_sec": 20.43,
+    "peak_minute_per_sec": 40.05
+   },
+   {
+    "hour_utc": "2026-11-08T02:00Z",
+    "connections": 101575,
+    "att": 78851,
+    "npre": 22724,
+    "per_sec": 28.22,
+    "peak_minute_per_sec": 40.27
+   },
+   {
+    "hour_utc": "2026-11-08T03:00Z",
+    "connections": 79346,
+    "att": 69268,
+    "npre": 10078,
+    "per_sec": 22.04,
+    "peak_minute_per_sec": 40.15
+   },
+   {
+    "hour_utc": "2026-11-08T04:00Z",
+    "connections": 85912,
+    "att": 76122,
+    "npre": 9790,
+    "per_sec": 23.86,
+    "peak_minute_per_sec": 40.1
+   },
+   {
+    "hour_utc": "2026-11-08T05:00Z",
+    "connections": 100912,
+    "att": 78669,
+    "npre": 22243,
+    "per_sec": 28.03,
+    "peak_minute_per_sec": 40.2
+   },
+   {
+    "hour_utc": "2026-11-08T06:00Z",
+    "connections": 83055,
+    "att": 71976,
+    "npre": 11079,
+    "per_sec": 23.07,
+    "peak_minute_per_sec": 40.05
+   },
+   {
+    "hour_utc": "2026-11-08T07:00Z",
+    "connections": 77435,
+    "att": 67544,
+    "npre": 9891,
+    "per_sec": 21.51,
+    "peak_minute_per_sec": 40.07
+   },
+   {
+    "hour_utc": "2026-11-08T08:00Z",
+    "connections": 102792,
+    "att": 80925,
+    "npre": 21867,
+    "per_sec": 28.55,
+    "peak_minute_per_sec": 40.17
+   },
+   {
+    "hour_utc": "2026-11-08T09:00Z",
+    "connections": 83176,
+    "att": 73906,
+    "npre": 9270,
+    "per_sec": 23.1,
+    "peak_minute_per_sec": 40.12
+   },
+   {
+    "hour_utc": "2026-11-08T10:00Z",
+    "connections": 84100,
+    "att": 75779,
+    "npre": 8321,
+    "per_sec": 23.36,
+    "peak_minute_per_sec": 40.13
+   },
+   {
+    "hour_utc": "2026-11-08T11:00Z",
+    "connections": 96038,
+    "att": 75462,
+    "npre": 20576,
+    "per_sec": 26.68,
+    "peak_minute_per_sec": 40.27
+   },
+   {
+    "hour_utc": "2026-11-08T12:00Z",
+    "connections": 76609,
+    "att": 67652,
+    "npre": 8957,
+    "per_sec": 21.28,
+    "peak_minute_per_sec": 40.08
+   },
+   {
+    "hour_utc": "2026-11-08T13:00Z",
+    "connections": 76159,
+    "att": 67552,
+    "npre": 8607,
+    "per_sec": 21.16,
+    "peak_minute_per_sec": 40.07
+   },
+   {
+    "hour_utc": "2026-11-08T14:00Z",
+    "connections": 97096,
+    "att": 76010,
+    "npre": 21086,
+    "per_sec": 26.97,
+    "peak_minute_per_sec": 40.32
+   },
+   {
+    "hour_utc": "2026-11-08T15:00Z",
+    "connections": 74245,
+    "att": 65806,
+    "npre": 8439,
+    "per_sec": 20.62,
+    "peak_minute_per_sec": 40.18
+   },
+   {
+    "hour_utc": "2026-11-08T16:00Z",
+    "connections": 77478,
+    "att": 68716,
+    "npre": 8762,
+    "per_sec": 21.52,
+    "peak_minute_per_sec": 40.23
+   },
+   {
+    "hour_utc": "2026-11-08T17:00Z",
+    "connections": 88985,
+    "att": 72072,
+    "npre": 16913,
+    "per_sec": 24.72,
+    "peak_minute_per_sec": 40.55
+   },
+   {
+    "hour_utc": "2026-11-08T18:00Z",
+    "connections": 71513,
+    "att": 63693,
+    "npre": 7820,
+    "per_sec": 19.86,
+    "peak_minute_per_sec": 40.12
+   },
+   {
+    "hour_utc": "2026-11-08T19:00Z",
+    "connections": 74209,
+    "att": 64663,
+    "npre": 9546,
+    "per_sec": 20.61,
+    "peak_minute_per_sec": 40.0
+   },
+   {
+    "hour_utc": "2026-11-08T20:00Z",
+    "connections": 94569,
+    "att": 74331,
+    "npre": 20238,
+    "per_sec": 26.27,
+    "peak_minute_per_sec": 40.25
+   },
+   {
+    "hour_utc": "2026-11-08T21:00Z",
+    "connections": 75305,
+    "att": 67488,
+    "npre": 7817,
+    "per_sec": 20.92,
+    "peak_minute_per_sec": 39.93
+   },
+   {
+    "hour_utc": "2026-11-08T22:00Z",
+    "connections": 79004,
+    "att": 69649,
+    "npre": 9355,
+    "per_sec": 21.95,
+    "peak_minute_per_sec": 40.15
+   },
+   {
+    "hour_utc": "2026-11-08T23:00Z",
+    "connections": 93102,
+    "att": 72721,
+    "npre": 20381,
+    "per_sec": 25.86,
+    "peak_minute_per_sec": 40.23
+   },
+   {
+    "hour_utc": "2026-11-09T00:00Z",
+    "connections": 79244,
+    "att": 70638,
+    "npre": 8606,
+    "per_sec": 22.01,
+    "peak_minute_per_sec": 40.08
+   },
+   {
+    "hour_utc": "2026-11-09T01:00Z",
+    "connections": 80432,
+    "att": 69948,
+    "npre": 10484,
+    "per_sec": 22.34,
+    "peak_minute_per_sec": 40.12
+   },
+   {
+    "hour_utc": "2026-11-09T02:00Z",
+    "connections": 96132,
+    "att": 74140,
+    "npre": 21992,
+    "per_sec": 26.7,
+    "peak_minute_per_sec": 40.18
+   },
+   {
+    "hour_utc": "2026-11-09T03:00Z",
+    "connections": 86474,
+    "att": 76339,
+    "npre": 10135,
+    "per_sec": 24.02,
+    "peak_minute_per_sec": 40.03
+   },
+   {
+    "hour_utc": "2026-11-09T04:00Z",
+    "connections": 84062,
+    "att": 72907,
+    "npre": 11155,
+    "per_sec": 23.35,
+    "peak_minute_per_sec": 40.17
+   },
+   {
+    "hour_utc": "2026-11-09T05:00Z",
+    "connections": 91126,
+    "att": 69756,
+    "npre": 21370,
+    "per_sec": 25.31,
+    "peak_minute_per_sec": 40.2
+   },
+   {
+    "hour_utc": "2026-11-09T06:00Z",
+    "connections": 85797,
+    "att": 76813,
+    "npre": 8984,
+    "per_sec": 23.83,
+    "peak_minute_per_sec": 40.0
+   },
+   {
+    "hour_utc": "2026-11-09T07:00Z",
+    "connections": 75604,
+    "att": 66166,
+    "npre": 9438,
+    "per_sec": 21.0,
+    "peak_minute_per_sec": 40.12
+   },
+   {
+    "hour_utc": "2026-11-09T08:00Z",
+    "connections": 86081,
+    "att": 66196,
+    "npre": 19885,
+    "per_sec": 23.91,
+    "peak_minute_per_sec": 40.13
+   }
+  ],
+  "summary_go_style_att_only": {
+   "attempts_per_sec_avg": "19.3",
+   "attempts_per_sec_peak_minute": "40.2",
+   "configured_conn_per_sec": 40
+  },
+  "idle_gaps": [],
+  "idle_gaps_count": 0,
+  "idle_gaps_unexplained": 0,
+  "note": "真正发起过连接的记录数：class 不含 canceled 的 att（canceled 在排队领配额时放弃，没有连接）加上有 tcp 对象的 npre（没有 tcp 对象的预检没发起连接：DNS 失败、skip_ipv6、skip_not_public、canceled）。按分钟和按 10 分钟分桶，峰值与平均都换算成每秒，与 start.probe.conn_per_sec（配置 40 条/秒）比较。注意 npre 的 ts 在排队领配额之前就记下了（nodes.go precheck 先建 NPreRec 再 Lim.Wait），att 的 ts 在领到配额之后（attempt.go Run），所以 npre 这部分最多会提前一个排队时长落到前一个桶里；att 的排队时间不算进 ms。summary.go Rate 只数 att，这里另算一份同口径的作交叉核对。PROTOCOL“频率与限速”"
+ },
+ "runtime": {
+  "stat": {
+   "records": 875,
+   "expected_records": 875,
+   "expected_rule": "每段 floor(时长/5min) 条，加停止时的一条",
+   "gaps": [],
+   "gaps_count": 0,
+   "gaps_unexplained": 0,
+   "up_min_checked": 875,
+   "up_min_inconsistent": 0,
+   "last": {
+    "utc": "2026-11-09T08:59Z",
+    "up_min": 4372.9,
+    "visits": 2278166,
+    "records": 8572551
+   }
+  },
+  "errors": {
+   "records": 0,
+   "by_what": {}
+  },
+  "files": {
+   "probe": {
+    "hours_read": 73,
+    "first_hour": "20261106-08",
+    "last_hour": "20261109-08",
+    "missing_hours": [],
+    "missing_hours_count": 0,
+    "missing_hours_unexplained": 0,
+    "status_counts": {
+     "read": 73
+    },
+    "compressed": 72,
+    "bad_lines": 0
+   },
+   "judge": {
+    "hours_read": 74,
+    "first_hour": "20261106-08",
+    "last_hour": "20261109-09",
+    "missing_hours": [],
+    "missing_hours_count": 0,
+    "missing_hours_unexplained": 0,
+    "status_counts": {
+     "read": 74
+    },
+    "compressed": 73,
+    "bad_lines": 0
+   },
+   "snap": {
+    "hours_read": 73,
+    "first_hour": "20261106-08",
+    "last_hour": "20261109-08",
+    "missing_hours": [],
+    "missing_hours_count": 0,
+    "missing_hours_unexplained": 0,
+    "status_counts": {
+     "read": 73
+    },
+    "compressed": 72,
+    "bad_lines": 0
+   },
+   "duplicate_hour_files": [],
+   "unknown_fields": {},
+   "misplaced_kinds": {},
+   "misc_records": 0,
+   "bad_line_by_why": {}
+  },
+  "version_unique": true,
+  "versions": [
+   "0.1.1-20261106"
+  ]
+ },
+ "backlog": {
+  "revisit_ratio": {
+   "pairs_total": 2180277,
+   "pairs_excluded_spanning_interruption": 0,
+   "pairs_before_formal_start_excluded": 0,
+   "visits_before_formal_start": 0,
+   "by_hour": [
+    {
+     "hour": 0,
+     "hour_utc": "2026-11-06T08:00Z",
+     "dead": {
+      "pairs": 34707,
+      "median": 1.001,
+      "p90": 1.435
+     },
+     "open": {
+      "pairs": 9118,
+      "median": 1.001,
+      "p90": 1.001
+     },
+     "working": {
+      "pairs": 6544,
+      "median": 1.002,
+      "p90": 1.836
+     }
+    },
+    {
+     "hour": 1,
+     "hour_utc": "2026-11-06T09:00Z",
+     "dead": {
+      "pairs": 20066,
+      "median": 1.001,
+      "p90": 1.014
+     },
+     "open": {
+      "pairs": 3658,
+      "median": 1.001,
+      "p90": 1.04
+     },
+     "working": {
+      "pairs": 9413,
+      "median": 1.003,
+      "p90": 1.005
+     }
+    },
+    {
+     "hour": 2,
+     "hour_utc": "2026-11-06T10:00Z",
+     "dead": {
+      "pairs": 17299,
+      "median": 1.007,
+      "p90": 1.026
+     },
+     "open": {
+      "pairs": 9814,
+      "median": 1.001,
+      "p90": 1.047
+     },
+     "working": {
+      "pairs": 9775,
+      "median": 1.006,
+      "p90": 1.007
+     }
+    },
+    {
+     "hour": 3,
+     "hour_utc": "2026-11-06T11:00Z",
+     "dead": {
+      "pairs": 18472,
+      "median": 1.003,
+      "p90": 1.03
+     },
+     "open": {
+      "pairs": 5060,
+      "median": 1.001,
+      "p90": 1.072
+     },
+     "working": {
+      "pairs": 7481,
+      "median": 1.006,
+      "p90": 1.008
+     }
+    },
+    {
+     "hour": 4,
+     "hour_utc": "2026-11-06T12:00Z",
+     "dead": {
+      "pairs": 15596,
+      "median": 1.004,
+      "p90": 1.031
+     },
+     "open": {
+      "pairs": 9772,
+      "median": 1.001,
+      "p90": 1.053
+     },
+     "working": {
+      "pairs": 6483,
+      "median": 1.007,
+      "p90": 1.008
+     }
+    },
+    {
+     "hour": 5,
+     "hour_utc": "2026-11-06T13:00Z",
+     "dead": {
+      "pairs": 10924,
+      "median": 1.005,
+      "p90": 3.694
+     },
+     "open": {
+      "pairs": 5454,
+      "median": 1.001,
+      "p90": 1.078
+     },
+     "working": {
+      "pairs": 6423,
+      "median": 1.007,
+      "p90": 1.009
+     }
+    },
+    {
+     "hour": 6,
+     "hour_utc": "2026-11-06T14:00Z",
+     "dead": {
+      "pairs": 17260,
+      "median": 1.001,
+      "p90": 1.138
+     },
+     "open": {
+      "pairs": 10351,
+      "median": 1.001,
+      "p90": 1.055
+     },
+     "working": {
+      "pairs": 6183,
+      "median": 1.006,
+      "p90": 1.008
+     }
+    },
+    {
+     "hour": 7,
+     "hour_utc": "2026-11-06T15:00Z",
+     "dead": {
+      "pairs": 16631,
+      "median": 1.002,
+      "p90": 1.244
+     },
+     "open": {
+      "pairs": 6370,
+      "median": 1.001,
+      "p90": 1.068
+     },
+     "working": {
+      "pairs": 6770,
+      "median": 1.006,
+      "p90": 1.008
+     }
+    },
+    {
+     "hour": 8,
+     "hour_utc": "2026-11-06T16:00Z",
+     "dead": {
+      "pairs": 14982,
+      "median": 1.003,
+      "p90": 2.667
+     },
+     "open": {
+      "pairs": 10472,
+      "median": 1.002,
+      "p90": 1.048
+     },
+     "working": {
+      "pairs": 7217,
+      "median": 1.007,
+      "p90": 1.008
+     }
+    },
+    {
+     "hour": 9,
+     "hour_utc": "2026-11-06T17:00Z",
+     "dead": {
+      "pairs": 9256,
+      "median": 1.01,
+      "p90": 2.547
+     },
+     "open": {
+      "pairs": 7015,
+      "median": 1.002,
+      "p90": 1.08
+     },
+     "working": {
+      "pairs": 7663,
+      "median": 1.009,
+      "p90": 1.01
+     }
+    },
+    {
+     "hour": 10,
+     "hour_utc": "2026-11-06T18:00Z",
+     "dead": {
+      "pairs": 8616,
+      "median": 1.012,
+      "p90": 1.046
+     },
+     "open": {
+      "pairs": 10843,
+      "median": 1.002,
+      "p90": 1.089
+     },
+     "working": {
+      "pairs": 7808,
+      "median": 1.01,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 11,
+     "hour_utc": "2026-11-06T19:00Z",
+     "dead": {
+      "pairs": 10832,
+      "median": 1.006,
+      "p90": 1.047
+     },
+     "open": {
+      "pairs": 7636,
+      "median": 1.002,
+      "p90": 1.104
+     },
+     "working": {
+      "pairs": 7087,
+      "median": 1.01,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 12,
+     "hour_utc": "2026-11-06T20:00Z",
+     "dead": {
+      "pairs": 14108,
+      "median": 1.002,
+      "p90": 1.043
+     },
+     "open": {
+      "pairs": 10650,
+      "median": 1.002,
+      "p90": 1.086
+     },
+     "working": {
+      "pairs": 7261,
+      "median": 1.01,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 13,
+     "hour_utc": "2026-11-06T21:00Z",
+     "dead": {
+      "pairs": 15052,
+      "median": 1.002,
+      "p90": 1.045
+     },
+     "open": {
+      "pairs": 8140,
+      "median": 1.002,
+      "p90": 1.102
+     },
+     "working": {
+      "pairs": 7696,
+      "median": 1.01,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 14,
+     "hour_utc": "2026-11-06T22:00Z",
+     "dead": {
+      "pairs": 14336,
+      "median": 1.005,
+      "p90": 1.047
+     },
+     "open": {
+      "pairs": 11182,
+      "median": 1.002,
+      "p90": 1.093
+     },
+     "working": {
+      "pairs": 8400,
+      "median": 1.01,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 15,
+     "hour_utc": "2026-11-06T23:00Z",
+     "dead": {
+      "pairs": 9390,
+      "median": 1.019,
+      "p90": 2.849
+     },
+     "open": {
+      "pairs": 8750,
+      "median": 1.002,
+      "p90": 1.114
+     },
+     "working": {
+      "pairs": 8003,
+      "median": 1.012,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 16,
+     "hour_utc": "2026-11-07T00:00Z",
+     "dead": {
+      "pairs": 9915,
+      "median": 1.013,
+      "p90": 1.072
+     },
+     "open": {
+      "pairs": 11228,
+      "median": 1.002,
+      "p90": 1.111
+     },
+     "working": {
+      "pairs": 7560,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 17,
+     "hour_utc": "2026-11-07T01:00Z",
+     "dead": {
+      "pairs": 10962,
+      "median": 1.007,
+      "p90": 1.058
+     },
+     "open": {
+      "pairs": 9077,
+      "median": 1.002,
+      "p90": 1.125
+     },
+     "working": {
+      "pairs": 7356,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 18,
+     "hour_utc": "2026-11-07T02:00Z",
+     "dead": {
+      "pairs": 13859,
+      "median": 1.002,
+      "p90": 1.053
+     },
+     "open": {
+      "pairs": 11346,
+      "median": 1.002,
+      "p90": 1.111
+     },
+     "working": {
+      "pairs": 7623,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 19,
+     "hour_utc": "2026-11-07T03:00Z",
+     "dead": {
+      "pairs": 14398,
+      "median": 1.002,
+      "p90": 1.055
+     },
+     "open": {
+      "pairs": 9763,
+      "median": 1.002,
+      "p90": 1.119
+     },
+     "working": {
+      "pairs": 8316,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 20,
+     "hour_utc": "2026-11-07T04:00Z",
+     "dead": {
+      "pairs": 14285,
+      "median": 1.006,
+      "p90": 1.055
+     },
+     "open": {
+      "pairs": 11753,
+      "median": 1.002,
+      "p90": 1.111
+     },
+     "working": {
+      "pairs": 8562,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 21,
+     "hour_utc": "2026-11-07T05:00Z",
+     "dead": {
+      "pairs": 10518,
+      "median": 1.024,
+      "p90": 5.744
+     },
+     "open": {
+      "pairs": 10003,
+      "median": 1.002,
+      "p90": 1.122
+     },
+     "working": {
+      "pairs": 8731,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 22,
+     "hour_utc": "2026-11-07T06:00Z",
+     "dead": {
+      "pairs": 10142,
+      "median": 1.024,
+      "p90": 4.907
+     },
+     "open": {
+      "pairs": 11826,
+      "median": 1.002,
+      "p90": 1.114
+     },
+     "working": {
+      "pairs": 8490,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 23,
+     "hour_utc": "2026-11-07T07:00Z",
+     "dead": {
+      "pairs": 13065,
+      "median": 1.012,
+      "p90": 3.425
+     },
+     "open": {
+      "pairs": 10521,
+      "median": 1.002,
+      "p90": 1.118
+     },
+     "working": {
+      "pairs": 7254,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 24,
+     "hour_utc": "2026-11-07T08:00Z",
+     "dead": {
+      "pairs": 14824,
+      "median": 1.003,
+      "p90": 1.053
+     },
+     "open": {
+      "pairs": 12100,
+      "median": 1.002,
+      "p90": 1.107
+     },
+     "working": {
+      "pairs": 6730,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 25,
+     "hour_utc": "2026-11-07T09:00Z",
+     "dead": {
+      "pairs": 14976,
+      "median": 1.002,
+      "p90": 1.053
+     },
+     "open": {
+      "pairs": 10424,
+      "median": 1.002,
+      "p90": 1.117
+     },
+     "working": {
+      "pairs": 6553,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 26,
+     "hour_utc": "2026-11-07T10:00Z",
+     "dead": {
+      "pairs": 13373,
+      "median": 1.004,
+      "p90": 1.056
+     },
+     "open": {
+      "pairs": 11847,
+      "median": 1.002,
+      "p90": 1.108
+     },
+     "working": {
+      "pairs": 6783,
+      "median": 1.013,
+      "p90": 1.015
+     }
+    },
+    {
+     "hour": 27,
+     "hour_utc": "2026-11-07T11:00Z",
+     "dead": {
+      "pairs": 10102,
+      "median": 1.012,
+      "p90": 1.512
+     },
+     "open": {
+      "pairs": 10392,
+      "median": 1.002,
+      "p90": 1.126
+     },
+     "working": {
+      "pairs": 6388,
+      "median": 1.013,
+      "p90": 1.015
+     }
+    },
+    {
+     "hour": 28,
+     "hour_utc": "2026-11-07T12:00Z",
+     "dead": {
+      "pairs": 9395,
+      "median": 1.014,
+      "p90": 4.364
+     },
+     "open": {
+      "pairs": 11764,
+      "median": 1.002,
+      "p90": 1.009
+     },
+     "working": {
+      "pairs": 6252,
+      "median": 1.013,
+      "p90": 1.015
+     }
+    },
+    {
+     "hour": 29,
+     "hour_utc": "2026-11-07T13:00Z",
+     "dead": {
+      "pairs": 11327,
+      "median": 1.007,
+      "p90": 2.748
+     },
+     "open": {
+      "pairs": 10385,
+      "median": 1.002,
+      "p90": 1.12
+     },
+     "working": {
+      "pairs": 6139,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 30,
+     "hour_utc": "2026-11-07T14:00Z",
+     "dead": {
+      "pairs": 13462,
+      "median": 1.002,
+      "p90": 2.059
+     },
+     "open": {
+      "pairs": 11507,
+      "median": 1.002,
+      "p90": 1.005
+     },
+     "working": {
+      "pairs": 6037,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 31,
+     "hour_utc": "2026-11-07T15:00Z",
+     "dead": {
+      "pairs": 14070,
+      "median": 1.002,
+      "p90": 2.343
+     },
+     "open": {
+      "pairs": 10344,
+      "median": 1.002,
+      "p90": 1.11
+     },
+     "working": {
+      "pairs": 6046,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 32,
+     "hour_utc": "2026-11-07T16:00Z",
+     "dead": {
+      "pairs": 13263,
+      "median": 1.004,
+      "p90": 3.862
+     },
+     "open": {
+      "pairs": 11396,
+      "median": 1.002,
+      "p90": 1.006
+     },
+     "working": {
+      "pairs": 6141,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 33,
+     "hour_utc": "2026-11-07T17:00Z",
+     "dead": {
+      "pairs": 9619,
+      "median": 1.01,
+      "p90": 2.98
+     },
+     "open": {
+      "pairs": 10258,
+      "median": 1.002,
+      "p90": 1.114
+     },
+     "working": {
+      "pairs": 6163,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 34,
+     "hour_utc": "2026-11-07T18:00Z",
+     "dead": {
+      "pairs": 9610,
+      "median": 1.019,
+      "p90": 7.759
+     },
+     "open": {
+      "pairs": 11129,
+      "median": 1.002,
+      "p90": 1.005
+     },
+     "working": {
+      "pairs": 6044,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 35,
+     "hour_utc": "2026-11-07T19:00Z",
+     "dead": {
+      "pairs": 11580,
+      "median": 1.008,
+      "p90": 5.373
+     },
+     "open": {
+      "pairs": 10185,
+      "median": 1.002,
+      "p90": 1.109
+     },
+     "working": {
+      "pairs": 6013,
+      "median": 1.011,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 36,
+     "hour_utc": "2026-11-07T20:00Z",
+     "dead": {
+      "pairs": 12904,
+      "median": 1.002,
+      "p90": 2.479
+     },
+     "open": {
+      "pairs": 11183,
+      "median": 1.002,
+      "p90": 1.03
+     },
+     "working": {
+      "pairs": 6043,
+      "median": 1.011,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 37,
+     "hour_utc": "2026-11-07T21:00Z",
+     "dead": {
+      "pairs": 14294,
+      "median": 1.002,
+      "p90": 2.837
+     },
+     "open": {
+      "pairs": 10109,
+      "median": 1.002,
+      "p90": 1.107
+     },
+     "working": {
+      "pairs": 6461,
+      "median": 1.011,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 38,
+     "hour_utc": "2026-11-07T22:00Z",
+     "dead": {
+      "pairs": 13863,
+      "median": 1.006,
+      "p90": 4.283
+     },
+     "open": {
+      "pairs": 10884,
+      "median": 1.002,
+      "p90": 1.009
+     },
+     "working": {
+      "pairs": 6776,
+      "median": 1.011,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 39,
+     "hour_utc": "2026-11-07T23:00Z",
+     "dead": {
+      "pairs": 10039,
+      "median": 1.012,
+      "p90": 3.717
+     },
+     "open": {
+      "pairs": 10235,
+      "median": 1.002,
+      "p90": 1.109
+     },
+     "working": {
+      "pairs": 7450,
+      "median": 1.011,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 40,
+     "hour_utc": "2026-11-08T00:00Z",
+     "dead": {
+      "pairs": 10350,
+      "median": 1.021,
+      "p90": 3.905
+     },
+     "open": {
+      "pairs": 10992,
+      "median": 1.002,
+      "p90": 1.106
+     },
+     "working": {
+      "pairs": 7441,
+      "median": 1.011,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 41,
+     "hour_utc": "2026-11-08T01:00Z",
+     "dead": {
+      "pairs": 12348,
+      "median": 1.01,
+      "p90": 2.61
+     },
+     "open": {
+      "pairs": 10082,
+      "median": 1.002,
+      "p90": 1.103
+     },
+     "working": {
+      "pairs": 7151,
+      "median": 1.01,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 42,
+     "hour_utc": "2026-11-08T02:00Z",
+     "dead": {
+      "pairs": 13948,
+      "median": 1.004,
+      "p90": 2.277
+     },
+     "open": {
+      "pairs": 10947,
+      "median": 1.002,
+      "p90": 1.096
+     },
+     "working": {
+      "pairs": 7331,
+      "median": 1.01,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 43,
+     "hour_utc": "2026-11-08T03:00Z",
+     "dead": {
+      "pairs": 15048,
+      "median": 1.004,
+      "p90": 2.574
+     },
+     "open": {
+      "pairs": 10045,
+      "median": 1.002,
+      "p90": 1.097
+     },
+     "working": {
+      "pairs": 7972,
+      "median": 1.01,
+      "p90": 1.011
+     }
+    },
+    {
+     "hour": 44,
+     "hour_utc": "2026-11-08T04:00Z",
+     "dead": {
+      "pairs": 14834,
+      "median": 1.009,
+      "p90": 3.544
+     },
+     "open": {
+      "pairs": 10952,
+      "median": 1.001,
+      "p90": 1.088
+     },
+     "working": {
+      "pairs": 8233,
+      "median": 1.009,
+      "p90": 1.011
+     }
+    },
+    {
+     "hour": 45,
+     "hour_utc": "2026-11-08T05:00Z",
+     "dead": {
+      "pairs": 12916,
+      "median": 1.018,
+      "p90": 4.097
+     },
+     "open": {
+      "pairs": 10167,
+      "median": 1.001,
+      "p90": 1.089
+     },
+     "working": {
+      "pairs": 8522,
+      "median": 1.009,
+      "p90": 1.01
+     }
+    },
+    {
+     "hour": 46,
+     "hour_utc": "2026-11-08T06:00Z",
+     "dead": {
+      "pairs": 13036,
+      "median": 1.018,
+      "p90": 5.389
+     },
+     "open": {
+      "pairs": 10882,
+      "median": 1.001,
+      "p90": 1.079
+     },
+     "working": {
+      "pairs": 8089,
+      "median": 1.008,
+      "p90": 1.009
+     }
+    },
+    {
+     "hour": 47,
+     "hour_utc": "2026-11-08T07:00Z",
+     "dead": {
+      "pairs": 15350,
+      "median": 1.014,
+      "p90": 5.939
+     },
+     "open": {
+      "pairs": 10028,
+      "median": 1.001,
+      "p90": 1.07
+     },
+     "working": {
+      "pairs": 7555,
+      "median": 1.007,
+      "p90": 1.008
+     }
+    },
+    {
+     "hour": 48,
+     "hour_utc": "2026-11-08T08:00Z",
+     "dead": {
+      "pairs": 15164,
+      "median": 1.004,
+      "p90": 1.618
+     },
+     "open": {
+      "pairs": 10840,
+      "median": 1.001,
+      "p90": 1.064
+     },
+     "working": {
+      "pairs": 7179,
+      "median": 1.007,
+      "p90": 1.008
+     }
+    },
+    {
+     "hour": 49,
+     "hour_utc": "2026-11-08T09:00Z",
+     "dead": {
+      "pairs": 14561,
+      "median": 1.003,
+      "p90": 1.188
+     },
+     "open": {
+      "pairs": 9903,
+      "median": 1.002,
+      "p90": 1.076
+     },
+     "working": {
+      "pairs": 7344,
+      "median": 1.008,
+      "p90": 1.009
+     }
+    },
+    {
+     "hour": 50,
+     "hour_utc": "2026-11-08T10:00Z",
+     "dead": {
+      "pairs": 13046,
+      "median": 1.005,
+      "p90": 1.275
+     },
+     "open": {
+      "pairs": 10581,
+      "median": 1.002,
+      "p90": 1.075
+     },
+     "working": {
+      "pairs": 7691,
+      "median": 1.008,
+      "p90": 1.01
+     }
+    },
+    {
+     "hour": 51,
+     "hour_utc": "2026-11-08T11:00Z",
+     "dead": {
+      "pairs": 11486,
+      "median": 1.01,
+      "p90": 1.479
+     },
+     "open": {
+      "pairs": 10015,
+      "median": 1.002,
+      "p90": 1.086
+     },
+     "working": {
+      "pairs": 7593,
+      "median": 1.009,
+      "p90": 1.01
+     }
+    },
+    {
+     "hour": 52,
+     "hour_utc": "2026-11-08T12:00Z",
+     "dead": {
+      "pairs": 10635,
+      "median": 1.01,
+      "p90": 1.475
+     },
+     "open": {
+      "pairs": 10875,
+      "median": 1.002,
+      "p90": 1.087
+     },
+     "working": {
+      "pairs": 7860,
+      "median": 1.009,
+      "p90": 1.011
+     }
+    },
+    {
+     "hour": 53,
+     "hour_utc": "2026-11-08T13:00Z",
+     "dead": {
+      "pairs": 12947,
+      "median": 1.009,
+      "p90": 1.046
+     },
+     "open": {
+      "pairs": 9949,
+      "median": 1.002,
+      "p90": 1.093
+     },
+     "working": {
+      "pairs": 7559,
+      "median": 1.01,
+      "p90": 1.011
+     }
+    },
+    {
+     "hour": 54,
+     "hour_utc": "2026-11-08T14:00Z",
+     "dead": {
+      "pairs": 14990,
+      "median": 1.005,
+      "p90": 1.044
+     },
+     "open": {
+      "pairs": 10986,
+      "median": 1.002,
+      "p90": 1.088
+     },
+     "working": {
+      "pairs": 6995,
+      "median": 1.009,
+      "p90": 1.011
+     }
+    },
+    {
+     "hour": 55,
+     "hour_utc": "2026-11-08T15:00Z",
+     "dead": {
+      "pairs": 14538,
+      "median": 1.003,
+      "p90": 1.044
+     },
+     "open": {
+      "pairs": 10058,
+      "median": 1.002,
+      "p90": 1.085
+     },
+     "working": {
+      "pairs": 6806,
+      "median": 1.009,
+      "p90": 1.011
+     }
+    },
+    {
+     "hour": 56,
+     "hour_utc": "2026-11-08T16:00Z",
+     "dead": {
+      "pairs": 13719,
+      "median": 1.005,
+      "p90": 1.05
+     },
+     "open": {
+      "pairs": 10913,
+      "median": 1.002,
+      "p90": 1.085
+     },
+     "working": {
+      "pairs": 6810,
+      "median": 1.009,
+      "p90": 1.011
+     }
+    },
+    {
+     "hour": 57,
+     "hour_utc": "2026-11-08T17:00Z",
+     "dead": {
+      "pairs": 10536,
+      "median": 1.007,
+      "p90": 1.048
+     },
+     "open": {
+      "pairs": 9999,
+      "median": 1.002,
+      "p90": 1.082
+     },
+     "working": {
+      "pairs": 6681,
+      "median": 1.01,
+      "p90": 1.011
+     }
+    },
+    {
+     "hour": 58,
+     "hour_utc": "2026-11-08T18:00Z",
+     "dead": {
+      "pairs": 9455,
+      "median": 1.01,
+      "p90": 1.047
+     },
+     "open": {
+      "pairs": 10808,
+      "median": 1.002,
+      "p90": 1.01
+     },
+     "working": {
+      "pairs": 6971,
+      "median": 1.01,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 59,
+     "hour_utc": "2026-11-08T19:00Z",
+     "dead": {
+      "pairs": 11084,
+      "median": 1.006,
+      "p90": 1.049
+     },
+     "open": {
+      "pairs": 10248,
+      "median": 1.002,
+      "p90": 1.102
+     },
+     "working": {
+      "pairs": 7174,
+      "median": 1.011,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 60,
+     "hour_utc": "2026-11-08T20:00Z",
+     "dead": {
+      "pairs": 13072,
+      "median": 1.003,
+      "p90": 1.048
+     },
+     "open": {
+      "pairs": 10863,
+      "median": 1.002,
+      "p90": 1.094
+     },
+     "working": {
+      "pairs": 7525,
+      "median": 1.011,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 61,
+     "hour_utc": "2026-11-08T21:00Z",
+     "dead": {
+      "pairs": 13345,
+      "median": 1.003,
+      "p90": 1.048
+     },
+     "open": {
+      "pairs": 10352,
+      "median": 1.002,
+      "p90": 1.103
+     },
+     "working": {
+      "pairs": 7853,
+      "median": 1.011,
+      "p90": 1.012
+     }
+    },
+    {
+     "hour": 62,
+     "hour_utc": "2026-11-08T22:00Z",
+     "dead": {
+      "pairs": 12250,
+      "median": 1.005,
+      "p90": 1.049
+     },
+     "open": {
+      "pairs": 10991,
+      "median": 1.002,
+      "p90": 1.104
+     },
+     "working": {
+      "pairs": 8033,
+      "median": 1.011,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 63,
+     "hour_utc": "2026-11-08T23:00Z",
+     "dead": {
+      "pairs": 10639,
+      "median": 1.011,
+      "p90": 1.052
+     },
+     "open": {
+      "pairs": 10375,
+      "median": 1.002,
+      "p90": 1.11
+     },
+     "working": {
+      "pairs": 8140,
+      "median": 1.012,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 64,
+     "hour_utc": "2026-11-09T00:00Z",
+     "dead": {
+      "pairs": 10174,
+      "median": 1.012,
+      "p90": 1.053
+     },
+     "open": {
+      "pairs": 10867,
+      "median": 1.002,
+      "p90": 1.111
+     },
+     "working": {
+      "pairs": 8001,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 65,
+     "hour_utc": "2026-11-09T01:00Z",
+     "dead": {
+      "pairs": 11666,
+      "median": 1.007,
+      "p90": 1.052
+     },
+     "open": {
+      "pairs": 10590,
+      "median": 1.002,
+      "p90": 1.115
+     },
+     "working": {
+      "pairs": 8063,
+      "median": 1.012,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 66,
+     "hour_utc": "2026-11-09T02:00Z",
+     "dead": {
+      "pairs": 11853,
+      "median": 1.006,
+      "p90": 1.05
+     },
+     "open": {
+      "pairs": 11003,
+      "median": 1.002,
+      "p90": 1.109
+     },
+     "working": {
+      "pairs": 8159,
+      "median": 1.011,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 67,
+     "hour_utc": "2026-11-09T03:00Z",
+     "dead": {
+      "pairs": 8184,
+      "median": 1.022,
+      "p90": 1.052
+     },
+     "open": {
+      "pairs": 10552,
+      "median": 1.002,
+      "p90": 1.108
+     },
+     "working": {
+      "pairs": 8371,
+      "median": 1.011,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 68,
+     "hour_utc": "2026-11-09T04:00Z",
+     "dead": {
+      "pairs": 7796,
+      "median": 1.023,
+      "p90": 1.051
+     },
+     "open": {
+      "pairs": 10863,
+      "median": 1.002,
+      "p90": 1.105
+     },
+     "working": {
+      "pairs": 8485,
+      "median": 1.011,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 69,
+     "hour_utc": "2026-11-09T05:00Z",
+     "dead": {
+      "pairs": 7702,
+      "median": 1.023,
+      "p90": 1.052
+     },
+     "open": {
+      "pairs": 10622,
+      "median": 1.002,
+      "p90": 1.11
+     },
+     "working": {
+      "pairs": 8244,
+      "median": 1.012,
+      "p90": 1.013
+     }
+    },
+    {
+     "hour": 70,
+     "hour_utc": "2026-11-09T06:00Z",
+     "dead": {
+      "pairs": 8291,
+      "median": 1.024,
+      "p90": 1.053
+     },
+     "open": {
+      "pairs": 9566,
+      "median": 1.002,
+      "p90": 1.113
+     },
+     "working": {
+      "pairs": 7301,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 71,
+     "hour_utc": "2026-11-09T07:00Z",
+     "dead": {
+      "pairs": 6716,
+      "median": 1.024,
+      "p90": 1.053
+     },
+     "open": {
+      "pairs": 1097,
+      "median": 1.124,
+      "p90": 1.141
+     },
+     "working": {
+      "pairs": 6489,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    },
+    {
+     "hour": 72,
+     "hour_utc": "2026-11-09T08:00Z",
+     "dead": {
+      "pairs": 3303,
+      "median": 1.027,
+      "p90": 1.053
+     },
+     "open": {
+      "pairs": 898,
+      "median": 1.124,
+      "p90": 1.141
+     },
+     "working": {
+      "pairs": 2331,
+      "median": 1.012,
+      "p90": 1.014
+     }
+    }
+   ],
+   "recovered_hour": {
+    "working": 0,
+    "open": null,
+    "dead": 0
+   },
+   "recover_band": [
+    0.9,
+    1.1
+   ],
+   "recover_min_pairs": 5,
+   "recovered_hour_rule": "最后一个对子数 ≥ 5 且中位数在区间外的小时 + 1（此后各个够数的小时都在区间内，且至少有一个）；没有区间外的小时则为 0；最后一个区间外的小时之后再没有够数的小时、或一个够数的小时都没有，为 null",
+   "hours_out_of_band": {
+    "working": [],
+    "open": [
+     {
+      "hour": 71,
+      "pairs": 1097,
+      "median": 1.124
+     },
+     {
+      "hour": 72,
+      "pairs": 898,
+      "median": 1.124
+     }
+    ],
+    "dead": []
+   },
+   "hours_p90_over_2": {
+    "working": {
+     "hours_with_enough_pairs": 73,
+     "hours": 0,
+     "hour_list": [],
+     "max_p90": 1.836,
+     "max_p90_hour": 0
+    },
+    "open": {
+     "hours_with_enough_pairs": 73,
+     "hours": 0,
+     "hour_list": [],
+     "max_p90": 1.141,
+     "max_p90_hour": 71
+    },
+    "dead": {
+     "hours_with_enough_pairs": 73,
+     "hours": 27,
+     "hour_list": [
+      5,
+      8,
+      9,
+      15,
+      21,
+      22,
+      23,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47
+     ],
+     "max_p90": 7.759,
+     "max_p90_hour": 34
+    }
+   },
+   "overall_median": {
+    "dead": {
+     "pairs": 926354,
+     "median": 1.006
+    },
+    "open": {
+     "pairs": 721853,
+     "median": 1.002
+    },
+    "working": {
+     "pairs": 532070,
+     "median": 1.01
+    }
+   },
+   "working_first_6h_by_group": {
+    "regular": {
+     "0": {
+      "pairs": 4563,
+      "median": 1.003
+     },
+     "1": {
+      "pairs": 7445,
+      "median": 1.004
+     },
+     "2": {
+      "pairs": 7832,
+      "median": 1.006
+     },
+     "3": {
+      "pairs": 5549,
+      "median": 1.006
+     },
+     "4": {
+      "pairs": 4538,
+      "median": 1.007
+     },
+     "5": {
+      "pairs": 4494,
+      "median": 1.007
+     }
+    },
+    "aggregator_sample": {
+     "0": {
+      "pairs": 1981,
+      "median": 1.001
+     },
+     "1": {
+      "pairs": 1968,
+      "median": 1.002
+     },
+     "2": {
+      "pairs": 1943,
+      "median": 1.002
+     },
+     "3": {
+      "pairs": 1932,
+      "median": 1.002
+     },
+     "4": {
+      "pairs": 1945,
+      "median": 1.003
+     },
+     "5": {
+      "pairs": 1929,
+      "median": 1.002
+     }
+    }
+   },
+   "by_dense_24": {
+    "threshold": 100,
+    "dense_prefixes": 101,
+    "by_state": {
+     "dead": {
+      "其他 /24": {
+       "对子": 790708,
+       "间隔比超过 2 的对子": {
+        "num": 113,
+        "den": 790708,
+        "pct": 0.0
+       }
+      },
+      "密集 /24": {
+       "对子": 135646,
+       "间隔比超过 2 的对子": {
+        "num": 76966,
+        "den": 135646,
+        "pct": 56.7
+       }
+      }
+     },
+     "open": {
+      "其他 /24": {
+       "对子": 366706,
+       "间隔比超过 2 的对子": {
+        "num": 120,
+        "den": 366706,
+        "pct": 0.0
+       }
+      },
+      "密集 /24": {
+       "对子": 355147,
+       "间隔比超过 2 的对子": {
+        "num": 8047,
+        "den": 355147,
+        "pct": 2.3
+       }
+      }
+     },
+     "working": {
+      "其他 /24": {
+       "对子": 476410,
+       "间隔比超过 2 的对子": {
+        "num": 331,
+        "den": 476410,
+        "pct": 0.1
+       }
+      },
+      "密集 /24": {
+       "对子": 55660,
+       "间隔比超过 2 的对子": {
+        "num": 10169,
+        "den": 55660,
+        "pct": 18.3
+       }
+      }
+     }
+    },
+    "hours_p90_over_2_excluding_dense": {
+     "working": {
+      "hours_with_enough_pairs": 73,
+      "hours": 0,
+      "hour_list": [],
+      "max_p90": 1.757,
+      "max_p90_hour": 0
+     },
+     "open": {
+      "hours_with_enough_pairs": 73,
+      "hours": 0,
+      "hour_list": [],
+      "max_p90": 1.137,
+      "max_p90_hour": 71
+     },
+     "dead": {
+      "hours_with_enough_pairs": 73,
+      "hours": 0,
+      "hour_list": [],
+      "max_p90": 1.406,
+      "max_p90_hour": 0
+     }
+    },
+    "note": "复测间隔比（实际 / 计划）按前一次探访后的状态和候选所在 /24 是否候选密集分开。候选密集的 /24 里同时最多 4 个探访（PROTOCOL“频率与限速”），排不上队的复测会晚。这是看过数据以后加的分解，只用来找复测偏晚的原因，不改任何原定口径"
+   }
+  },
+  "node_rounds": {
+   "rounds": [
+    {
+     "segment": 1,
+     "round": 1,
+     "start_utc": "2026-11-06T08:06Z",
+     "minutes": 80.92,
+     "since_prev_round_min": null,
+     "known": 21415,
+     "listed": 21415,
+     "supported": 19069,
+     "backoff": 0,
+     "tcp_ok": 13485,
+     "probed": 13477,
+     "ok_strict": 2283,
+     "ok_linked": 82,
+     "bad_config": 8,
+     "batches": 34,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 2,
+     "start_utc": "2026-11-06T09:28Z",
+     "minutes": 40.86,
+     "since_prev_round_min": 81.1,
+     "known": 21961,
+     "listed": 21382,
+     "supported": 19033,
+     "backoff": 0,
+     "tcp_ok": 13423,
+     "probed": 13415,
+     "ok_strict": 2223,
+     "ok_linked": 76,
+     "bad_config": 8,
+     "batches": 34,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 3,
+     "start_utc": "2026-11-06T10:09Z",
+     "minutes": 7.35,
+     "since_prev_round_min": 41.1,
+     "known": 21967,
+     "listed": 21382,
+     "supported": 19033,
+     "backoff": 16457,
+     "tcp_ok": 2612,
+     "probed": 2612,
+     "ok_strict": 2126,
+     "ok_linked": 70,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 4,
+     "start_utc": "2026-11-06T10:39Z",
+     "minutes": 38.53,
+     "since_prev_round_min": 30.0,
+     "known": 22071,
+     "listed": 21398,
+     "supported": 19091,
+     "backoff": 673,
+     "tcp_ok": 13322,
+     "probed": 13314,
+     "ok_strict": 2144,
+     "ok_linked": 66,
+     "bad_config": 8,
+     "batches": 34,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 5,
+     "start_utc": "2026-11-06T11:17Z",
+     "minutes": 7.11,
+     "since_prev_round_min": 38.7,
+     "known": 22074,
+     "listed": 21296,
+     "supported": 19060,
+     "backoff": 16471,
+     "tcp_ok": 2685,
+     "probed": 2685,
+     "ok_strict": 2095,
+     "ok_linked": 71,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 6,
+     "start_utc": "2026-11-06T11:47Z",
+     "minutes": 6.37,
+     "since_prev_round_min": 30.0,
+     "known": 22074,
+     "listed": 21296,
+     "supported": 19060,
+     "backoff": 17194,
+     "tcp_ok": 2411,
+     "probed": 2411,
+     "ok_strict": 2033,
+     "ok_linked": 63,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 7,
+     "start_utc": "2026-11-06T12:17Z",
+     "minutes": 6.75,
+     "since_prev_round_min": 30.0,
+     "known": 22080,
+     "listed": 21273,
+     "supported": 19039,
+     "backoff": 17138,
+     "tcp_ok": 2511,
+     "probed": 2511,
+     "ok_strict": 2028,
+     "ok_linked": 65,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 8,
+     "start_utc": "2026-11-06T12:47Z",
+     "minutes": 33.1,
+     "since_prev_round_min": 30.0,
+     "known": 22080,
+     "listed": 21273,
+     "supported": 19039,
+     "backoff": 940,
+     "tcp_ok": 13082,
+     "probed": 13074,
+     "ok_strict": 2079,
+     "ok_linked": 75,
+     "bad_config": 8,
+     "batches": 33,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 9,
+     "start_utc": "2026-11-06T13:21Z",
+     "minutes": 6.76,
+     "since_prev_round_min": 33.3,
+     "known": 22090,
+     "listed": 21272,
+     "supported": 19038,
+     "backoff": 16625,
+     "tcp_ok": 2562,
+     "probed": 2562,
+     "ok_strict": 2075,
+     "ok_linked": 72,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 10,
+     "start_utc": "2026-11-06T13:51Z",
+     "minutes": 5.55,
+     "since_prev_round_min": 30.0,
+     "known": 22090,
+     "listed": 21272,
+     "supported": 19038,
+     "backoff": 17245,
+     "tcp_ok": 2380,
+     "probed": 2380,
+     "ok_strict": 1983,
+     "ok_linked": 67,
+     "bad_config": 0,
+     "batches": 6,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 11,
+     "start_utc": "2026-11-06T14:21Z",
+     "minutes": 7.06,
+     "since_prev_round_min": 30.0,
+     "known": 22110,
+     "listed": 21274,
+     "supported": 19041,
+     "backoff": 17152,
+     "tcp_ok": 2523,
+     "probed": 2523,
+     "ok_strict": 2052,
+     "ok_linked": 74,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 12,
+     "start_utc": "2026-11-06T14:51Z",
+     "minutes": 7.16,
+     "since_prev_round_min": 30.0,
+     "known": 22110,
+     "listed": 21274,
+     "supported": 19041,
+     "backoff": 17321,
+     "tcp_ok": 2352,
+     "probed": 2352,
+     "ok_strict": 1962,
+     "ok_linked": 71,
+     "bad_config": 0,
+     "batches": 6,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 13,
+     "start_utc": "2026-11-06T15:21Z",
+     "minutes": 10.3,
+     "since_prev_round_min": 30.0,
+     "known": 22116,
+     "listed": 21281,
+     "supported": 19045,
+     "backoff": 17308,
+     "tcp_ok": 2349,
+     "probed": 2349,
+     "ok_strict": 1975,
+     "ok_linked": 68,
+     "bad_config": 0,
+     "batches": 6,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 14,
+     "start_utc": "2026-11-06T15:51Z",
+     "minutes": 36.99,
+     "since_prev_round_min": 30.0,
+     "known": 22116,
+     "listed": 21281,
+     "supported": 19045,
+     "backoff": 1100,
+     "tcp_ok": 12918,
+     "probed": 12910,
+     "ok_strict": 1927,
+     "ok_linked": 67,
+     "bad_config": 8,
+     "batches": 33,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 15,
+     "start_utc": "2026-11-06T16:28Z",
+     "minutes": 10.74,
+     "since_prev_round_min": 37.2,
+     "known": 22854,
+     "listed": 21265,
+     "supported": 19116,
+     "backoff": 16753,
+     "tcp_ok": 3119,
+     "probed": 3119,
+     "ok_strict": 2140,
+     "ok_linked": 78,
+     "bad_config": 0,
+     "batches": 8,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 16,
+     "start_utc": "2026-11-06T16:58Z",
+     "minutes": 8.51,
+     "since_prev_round_min": 30.0,
+     "known": 22854,
+     "listed": 21265,
+     "supported": 19116,
+     "backoff": 17346,
+     "tcp_ok": 2983,
+     "probed": 2983,
+     "ok_strict": 2127,
+     "ok_linked": 70,
+     "bad_config": 0,
+     "batches": 8,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 17,
+     "start_utc": "2026-11-06T17:28Z",
+     "minutes": 8.82,
+     "since_prev_round_min": 30.0,
+     "known": 23148,
+     "listed": 21256,
+     "supported": 19108,
+     "backoff": 17747,
+     "tcp_ok": 2655,
+     "probed": 2655,
+     "ok_strict": 2136,
+     "ok_linked": 77,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 18,
+     "start_utc": "2026-11-06T17:58Z",
+     "minutes": 8.08,
+     "since_prev_round_min": 30.0,
+     "known": 23148,
+     "listed": 21256,
+     "supported": 19108,
+     "backoff": 17388,
+     "tcp_ok": 3004,
+     "probed": 3004,
+     "ok_strict": 2142,
+     "ok_linked": 77,
+     "bad_config": 0,
+     "batches": 8,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 19,
+     "start_utc": "2026-11-06T18:28Z",
+     "minutes": 7.95,
+     "since_prev_round_min": 30.0,
+     "known": 23171,
+     "listed": 21265,
+     "supported": 19117,
+     "backoff": 18145,
+     "tcp_ok": 2524,
+     "probed": 2524,
+     "ok_strict": 2138,
+     "ok_linked": 76,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 20,
+     "start_utc": "2026-11-06T18:58Z",
+     "minutes": 33.86,
+     "since_prev_round_min": 30.0,
+     "known": 23247,
+     "listed": 21374,
+     "supported": 19185,
+     "backoff": 1617,
+     "tcp_ok": 13159,
+     "probed": 13151,
+     "ok_strict": 2142,
+     "ok_linked": 68,
+     "bad_config": 8,
+     "batches": 33,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 21,
+     "start_utc": "2026-11-06T19:32Z",
+     "minutes": 6.76,
+     "since_prev_round_min": 34.1,
+     "known": 23274,
+     "listed": 21339,
+     "supported": 19162,
+     "backoff": 17553,
+     "tcp_ok": 2724,
+     "probed": 2724,
+     "ok_strict": 2182,
+     "ok_linked": 69,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 22,
+     "start_utc": "2026-11-06T20:02Z",
+     "minutes": 8.86,
+     "since_prev_round_min": 30.0,
+     "known": 23626,
+     "listed": 21294,
+     "supported": 19199,
+     "backoff": 17700,
+     "tcp_ok": 3252,
+     "probed": 3252,
+     "ok_strict": 2257,
+     "ok_linked": 59,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 23,
+     "start_utc": "2026-11-06T20:32Z",
+     "minutes": 7.68,
+     "since_prev_round_min": 30.0,
+     "known": 23628,
+     "listed": 21292,
+     "supported": 19198,
+     "backoff": 18051,
+     "tcp_ok": 2928,
+     "probed": 2928,
+     "ok_strict": 2333,
+     "ok_linked": 61,
+     "bad_config": 0,
+     "batches": 8,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 24,
+     "start_utc": "2026-11-06T21:02Z",
+     "minutes": 7.93,
+     "since_prev_round_min": 30.0,
+     "known": 23635,
+     "listed": 21259,
+     "supported": 19166,
+     "backoff": 18144,
+     "tcp_ok": 2733,
+     "probed": 2733,
+     "ok_strict": 2385,
+     "ok_linked": 71,
+     "bad_config": 0,
+     "batches": 7,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 25,
+     "start_utc": "2026-11-06T21:32Z",
+     "minutes": 10.3,
+     "since_prev_round_min": 30.0,
+     "known": 23636,
+     "listed": 21258,
+     "supported": 19164,
+     "backoff": 18188,
+     "tcp_ok": 2811,
+     "probed": 2811,
+     "ok_strict": 2423,
+     "ok_linked": 72,
+     "bad_config": 0,
+     "batches": 8,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 26,
+     "start_utc": "2026-11-06T22:02Z",
+     "minutes": 38.91,
+     "since_prev_round_min": 30.0,
+     "known": 24157,
+     "listed": 20783,
+     "supported": 18682,
+     "backoff": 2135,
+     "tcp_ok": 13707,
+     "probed": 13699,
+     "ok_strict": 2632,
+     "ok_linked": 70,
+     "bad_config": 8,
+     "batches": 35,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 27,
+     "start_utc": "2026-11-06T22:41Z",
+     "minutes": 8.61,
+     "since_prev_round_min": 39.1,
+     "known": 24160,
+     "listed": 20786,
+     "supported": 18686,
+     "backoff": 17697,
+     "tcp_ok": 3360,
+     "probed": 3360,
+     "ok_strict": 2666,
+     "ok_linked": 76,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 28,
+     "start_utc": "2026-11-06T23:12Z",
+     "minutes": 7.44,
+     "since_prev_round_min": 30.0,
+     "known": 24317,
+     "listed": 20697,
+     "supported": 18597,
+     "backoff": 18131,
+     "tcp_ok": 3410,
+     "probed": 3410,
+     "ok_strict": 2710,
+     "ok_linked": 76,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 29,
+     "start_utc": "2026-11-06T23:42Z",
+     "minutes": 7.48,
+     "since_prev_round_min": 30.0,
+     "known": 24317,
+     "listed": 20697,
+     "supported": 18597,
+     "backoff": 17963,
+     "tcp_ok": 3482,
+     "probed": 3482,
+     "ok_strict": 2732,
+     "ok_linked": 85,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 30,
+     "start_utc": "2026-11-07T00:12Z",
+     "minutes": 6.28,
+     "since_prev_round_min": 30.0,
+     "known": 24320,
+     "listed": 20698,
+     "supported": 18598,
+     "backoff": 18503,
+     "tcp_ok": 2988,
+     "probed": 2988,
+     "ok_strict": 2739,
+     "ok_linked": 80,
+     "bad_config": 0,
+     "batches": 8,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 31,
+     "start_utc": "2026-11-07T00:42Z",
+     "minutes": 6.13,
+     "since_prev_round_min": 30.0,
+     "known": 24437,
+     "listed": 20839,
+     "supported": 18671,
+     "backoff": 18606,
+     "tcp_ok": 3042,
+     "probed": 3042,
+     "ok_strict": 2768,
+     "ok_linked": 83,
+     "bad_config": 0,
+     "batches": 8,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 32,
+     "start_utc": "2026-11-07T01:12Z",
+     "minutes": 33.91,
+     "since_prev_round_min": 30.0,
+     "known": 24444,
+     "listed": 20783,
+     "supported": 18645,
+     "backoff": 2536,
+     "tcp_ok": 13545,
+     "probed": 13537,
+     "ok_strict": 3442,
+     "ok_linked": 82,
+     "bad_config": 8,
+     "batches": 34,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 33,
+     "start_utc": "2026-11-07T01:46Z",
+     "minutes": 9.66,
+     "since_prev_round_min": 34.1,
+     "known": 24444,
+     "listed": 20783,
+     "supported": 18645,
+     "backoff": 17180,
+     "tcp_ok": 4101,
+     "probed": 4101,
+     "ok_strict": 3532,
+     "ok_linked": 80,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 34,
+     "start_utc": "2026-11-07T02:16Z",
+     "minutes": 10.65,
+     "since_prev_round_min": 30.0,
+     "known": 24690,
+     "listed": 20686,
+     "supported": 18536,
+     "backoff": 17515,
+     "tcp_ok": 4441,
+     "probed": 4441,
+     "ok_strict": 3684,
+     "ok_linked": 81,
+     "bad_config": 0,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 35,
+     "start_utc": "2026-11-07T02:46Z",
+     "minutes": 10.57,
+     "since_prev_round_min": 30.0,
+     "known": 24690,
+     "listed": 20686,
+     "supported": 18536,
+     "backoff": 17506,
+     "tcp_ok": 4217,
+     "probed": 4217,
+     "ok_strict": 3518,
+     "ok_linked": 83,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 36,
+     "start_utc": "2026-11-07T03:16Z",
+     "minutes": 10.21,
+     "since_prev_round_min": 30.0,
+     "known": 24694,
+     "listed": 20683,
+     "supported": 18533,
+     "backoff": 17835,
+     "tcp_ok": 3951,
+     "probed": 3951,
+     "ok_strict": 3485,
+     "ok_linked": 82,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 37,
+     "start_utc": "2026-11-07T03:46Z",
+     "minutes": 11.68,
+     "since_prev_round_min": 30.0,
+     "known": 24694,
+     "listed": 20683,
+     "supported": 18533,
+     "backoff": 18100,
+     "tcp_ok": 3895,
+     "probed": 3895,
+     "ok_strict": 3419,
+     "ok_linked": 82,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 38,
+     "start_utc": "2026-11-07T04:16Z",
+     "minutes": 38.85,
+     "since_prev_round_min": 30.0,
+     "known": 24736,
+     "listed": 20705,
+     "supported": 18554,
+     "backoff": 2592,
+     "tcp_ok": 13681,
+     "probed": 13674,
+     "ok_strict": 3101,
+     "ok_linked": 80,
+     "bad_config": 7,
+     "batches": 35,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 39,
+     "start_utc": "2026-11-07T04:55Z",
+     "minutes": 10.92,
+     "since_prev_round_min": 39.1,
+     "known": 24998,
+     "listed": 20671,
+     "supported": 18519,
+     "backoff": 17416,
+     "tcp_ok": 4186,
+     "probed": 4186,
+     "ok_strict": 3044,
+     "ok_linked": 81,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 40,
+     "start_utc": "2026-11-07T05:25Z",
+     "minutes": 9.65,
+     "since_prev_round_min": 30.0,
+     "known": 25000,
+     "listed": 20668,
+     "supported": 18515,
+     "backoff": 18178,
+     "tcp_ok": 3907,
+     "probed": 3907,
+     "ok_strict": 2925,
+     "ok_linked": 82,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 41,
+     "start_utc": "2026-11-07T05:55Z",
+     "minutes": 9.24,
+     "since_prev_round_min": 30.0,
+     "known": 25000,
+     "listed": 20668,
+     "supported": 18515,
+     "backoff": 18080,
+     "tcp_ok": 3931,
+     "probed": 3931,
+     "ok_strict": 2836,
+     "ok_linked": 84,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 42,
+     "start_utc": "2026-11-07T06:25Z",
+     "minutes": 8.22,
+     "since_prev_round_min": 30.0,
+     "known": 25061,
+     "listed": 20711,
+     "supported": 18529,
+     "backoff": 18386,
+     "tcp_ok": 3551,
+     "probed": 3551,
+     "ok_strict": 2739,
+     "ok_linked": 84,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 43,
+     "start_utc": "2026-11-07T06:55Z",
+     "minutes": 8.18,
+     "since_prev_round_min": 30.0,
+     "known": 25061,
+     "listed": 20711,
+     "supported": 18529,
+     "backoff": 18996,
+     "tcp_ok": 3261,
+     "probed": 3261,
+     "ok_strict": 2609,
+     "ok_linked": 86,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 44,
+     "start_utc": "2026-11-07T07:25Z",
+     "minutes": 34.08,
+     "since_prev_round_min": 30.0,
+     "known": 25063,
+     "listed": 20716,
+     "supported": 18536,
+     "backoff": 3556,
+     "tcp_ok": 13107,
+     "probed": 13100,
+     "ok_strict": 2560,
+     "ok_linked": 90,
+     "bad_config": 7,
+     "batches": 33,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 45,
+     "start_utc": "2026-11-07T07:59Z",
+     "minutes": 9.92,
+     "since_prev_round_min": 34.3,
+     "known": 25063,
+     "listed": 20716,
+     "supported": 18536,
+     "backoff": 18031,
+     "tcp_ok": 3745,
+     "probed": 3745,
+     "ok_strict": 2500,
+     "ok_linked": 86,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 46,
+     "start_utc": "2026-11-07T08:29Z",
+     "minutes": 9.57,
+     "since_prev_round_min": 30.0,
+     "known": 25064,
+     "listed": 20717,
+     "supported": 18535,
+     "backoff": 18628,
+     "tcp_ok": 3491,
+     "probed": 3491,
+     "ok_strict": 2504,
+     "ok_linked": 90,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 47,
+     "start_utc": "2026-11-07T08:59Z",
+     "minutes": 13.19,
+     "since_prev_round_min": 30.0,
+     "known": 26201,
+     "listed": 21413,
+     "supported": 19245,
+     "backoff": 18723,
+     "tcp_ok": 4321,
+     "probed": 4321,
+     "ok_strict": 2619,
+     "ok_linked": 86,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 48,
+     "start_utc": "2026-11-07T09:29Z",
+     "minutes": 11.38,
+     "since_prev_round_min": 30.0,
+     "known": 26201,
+     "listed": 21411,
+     "supported": 19245,
+     "backoff": 18847,
+     "tcp_ok": 4141,
+     "probed": 4141,
+     "ok_strict": 2602,
+     "ok_linked": 89,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 49,
+     "start_utc": "2026-11-07T09:59Z",
+     "minutes": 11.95,
+     "since_prev_round_min": 30.0,
+     "known": 26269,
+     "listed": 21494,
+     "supported": 19324,
+     "backoff": 20038,
+     "tcp_ok": 3248,
+     "probed": 3248,
+     "ok_strict": 2579,
+     "ok_linked": 81,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 50,
+     "start_utc": "2026-11-07T10:29Z",
+     "minutes": 42.94,
+     "since_prev_round_min": 30.0,
+     "known": 26313,
+     "listed": 21400,
+     "supported": 19302,
+     "backoff": 3760,
+     "tcp_ok": 13947,
+     "probed": 13940,
+     "ok_strict": 2555,
+     "ok_linked": 87,
+     "bad_config": 7,
+     "batches": 35,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 51,
+     "start_utc": "2026-11-07T11:13Z",
+     "minutes": 12.19,
+     "since_prev_round_min": 43.1,
+     "known": 26316,
+     "listed": 21402,
+     "supported": 19306,
+     "backoff": 19113,
+     "tcp_ok": 3673,
+     "probed": 3673,
+     "ok_strict": 2507,
+     "ok_linked": 83,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 52,
+     "start_utc": "2026-11-07T11:43Z",
+     "minutes": 11.47,
+     "since_prev_round_min": 30.0,
+     "known": 26317,
+     "listed": 21403,
+     "supported": 19307,
+     "backoff": 19578,
+     "tcp_ok": 3543,
+     "probed": 3543,
+     "ok_strict": 2538,
+     "ok_linked": 83,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 53,
+     "start_utc": "2026-11-07T12:13Z",
+     "minutes": 9.42,
+     "since_prev_round_min": 30.0,
+     "known": 26317,
+     "listed": 21401,
+     "supported": 19304,
+     "backoff": 19655,
+     "tcp_ok": 3366,
+     "probed": 3366,
+     "ok_strict": 2558,
+     "ok_linked": 79,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 54,
+     "start_utc": "2026-11-07T12:43Z",
+     "minutes": 11.93,
+     "since_prev_round_min": 30.0,
+     "known": 26370,
+     "listed": 21412,
+     "supported": 19314,
+     "backoff": 18949,
+     "tcp_ok": 4084,
+     "probed": 4084,
+     "ok_strict": 2613,
+     "ok_linked": 81,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 55,
+     "start_utc": "2026-11-07T13:13Z",
+     "minutes": 8.15,
+     "since_prev_round_min": 30.0,
+     "known": 26372,
+     "listed": 21416,
+     "supported": 19320,
+     "backoff": 20166,
+     "tcp_ok": 3134,
+     "probed": 3134,
+     "ok_strict": 2582,
+     "ok_linked": 79,
+     "bad_config": 0,
+     "batches": 8,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 56,
+     "start_utc": "2026-11-07T13:43Z",
+     "minutes": 35.31,
+     "since_prev_round_min": 30.0,
+     "known": 26372,
+     "listed": 21416,
+     "supported": 19320,
+     "backoff": 4845,
+     "tcp_ok": 12954,
+     "probed": 12947,
+     "ok_strict": 2567,
+     "ok_linked": 74,
+     "bad_config": 7,
+     "batches": 33,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 57,
+     "start_utc": "2026-11-07T14:18Z",
+     "minutes": 11.61,
+     "since_prev_round_min": 35.5,
+     "known": 26397,
+     "listed": 21430,
+     "supported": 19333,
+     "backoff": 19180,
+     "tcp_ok": 3657,
+     "probed": 3657,
+     "ok_strict": 2592,
+     "ok_linked": 81,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 58,
+     "start_utc": "2026-11-07T14:48Z",
+     "minutes": 9.24,
+     "since_prev_round_min": 30.0,
+     "known": 26397,
+     "listed": 21430,
+     "supported": 19333,
+     "backoff": 19719,
+     "tcp_ok": 3481,
+     "probed": 3481,
+     "ok_strict": 2567,
+     "ok_linked": 74,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 59,
+     "start_utc": "2026-11-07T15:18Z",
+     "minutes": 9.66,
+     "since_prev_round_min": 30.0,
+     "known": 26398,
+     "listed": 21430,
+     "supported": 19335,
+     "backoff": 19782,
+     "tcp_ok": 3371,
+     "probed": 3371,
+     "ok_strict": 2520,
+     "ok_linked": 77,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 60,
+     "start_utc": "2026-11-07T15:48Z",
+     "minutes": 13.47,
+     "since_prev_round_min": 30.0,
+     "known": 26779,
+     "listed": 21347,
+     "supported": 19256,
+     "backoff": 19044,
+     "tcp_ok": 4367,
+     "probed": 4367,
+     "ok_strict": 2628,
+     "ok_linked": 76,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 61,
+     "start_utc": "2026-11-07T16:18Z",
+     "minutes": 12.94,
+     "since_prev_round_min": 30.0,
+     "known": 26780,
+     "listed": 21352,
+     "supported": 19259,
+     "backoff": 20195,
+     "tcp_ok": 3432,
+     "probed": 3432,
+     "ok_strict": 2592,
+     "ok_linked": 75,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 62,
+     "start_utc": "2026-11-07T16:48Z",
+     "minutes": 37.89,
+     "since_prev_round_min": 30.0,
+     "known": 26780,
+     "listed": 21352,
+     "supported": 19259,
+     "backoff": 5070,
+     "tcp_ok": 12550,
+     "probed": 12546,
+     "ok_strict": 2525,
+     "ok_linked": 76,
+     "bad_config": 4,
+     "batches": 32,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 63,
+     "start_utc": "2026-11-07T17:26Z",
+     "minutes": 13.17,
+     "since_prev_round_min": 38.1,
+     "known": 27003,
+     "listed": 21342,
+     "supported": 19233,
+     "backoff": 18845,
+     "tcp_ok": 3946,
+     "probed": 3946,
+     "ok_strict": 2579,
+     "ok_linked": 81,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 64,
+     "start_utc": "2026-11-07T17:56Z",
+     "minutes": 11.67,
+     "since_prev_round_min": 30.0,
+     "known": 27042,
+     "listed": 21346,
+     "supported": 19239,
+     "backoff": 19421,
+     "tcp_ok": 3644,
+     "probed": 3644,
+     "ok_strict": 2508,
+     "ok_linked": 69,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 65,
+     "start_utc": "2026-11-07T18:26Z",
+     "minutes": 10.69,
+     "since_prev_round_min": 30.0,
+     "known": 27054,
+     "listed": 21372,
+     "supported": 19304,
+     "backoff": 19619,
+     "tcp_ok": 3424,
+     "probed": 3424,
+     "ok_strict": 2510,
+     "ok_linked": 69,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 66,
+     "start_utc": "2026-11-07T18:56Z",
+     "minutes": 13.52,
+     "since_prev_round_min": 30.0,
+     "known": 27083,
+     "listed": 21318,
+     "supported": 19251,
+     "backoff": 18882,
+     "tcp_ok": 4119,
+     "probed": 4119,
+     "ok_strict": 2468,
+     "ok_linked": 70,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 67,
+     "start_utc": "2026-11-07T19:27Z",
+     "minutes": 8.74,
+     "since_prev_round_min": 30.0,
+     "known": 27084,
+     "listed": 21316,
+     "supported": 19250,
+     "backoff": 19927,
+     "tcp_ok": 3360,
+     "probed": 3360,
+     "ok_strict": 2535,
+     "ok_linked": 73,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 68,
+     "start_utc": "2026-11-07T19:57Z",
+     "minutes": 33.07,
+     "since_prev_round_min": 30.0,
+     "known": 27084,
+     "listed": 21316,
+     "supported": 19250,
+     "backoff": 5313,
+     "tcp_ok": 12448,
+     "probed": 12444,
+     "ok_strict": 2568,
+     "ok_linked": 77,
+     "bad_config": 4,
+     "batches": 32,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 69,
+     "start_utc": "2026-11-07T20:30Z",
+     "minutes": 12.33,
+     "since_prev_round_min": 33.3,
+     "known": 27721,
+     "listed": 21089,
+     "supported": 18971,
+     "backoff": 19023,
+     "tcp_ok": 4082,
+     "probed": 4080,
+     "ok_strict": 2709,
+     "ok_linked": 78,
+     "bad_config": 2,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 70,
+     "start_utc": "2026-11-07T21:00Z",
+     "minutes": 11.17,
+     "since_prev_round_min": 30.0,
+     "known": 27816,
+     "listed": 21092,
+     "supported": 18963,
+     "backoff": 19395,
+     "tcp_ok": 4010,
+     "probed": 4008,
+     "ok_strict": 2747,
+     "ok_linked": 86,
+     "bad_config": 2,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 71,
+     "start_utc": "2026-11-07T21:30Z",
+     "minutes": 9.41,
+     "since_prev_round_min": 30.0,
+     "known": 27846,
+     "listed": 21200,
+     "supported": 18986,
+     "backoff": 19771,
+     "tcp_ok": 3662,
+     "probed": 3662,
+     "ok_strict": 2823,
+     "ok_linked": 93,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 72,
+     "start_utc": "2026-11-07T22:00Z",
+     "minutes": 11.36,
+     "since_prev_round_min": 30.0,
+     "known": 27846,
+     "listed": 21183,
+     "supported": 18971,
+     "backoff": 18775,
+     "tcp_ok": 4573,
+     "probed": 4571,
+     "ok_strict": 2837,
+     "ok_linked": 98,
+     "bad_config": 2,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 73,
+     "start_utc": "2026-11-07T22:30Z",
+     "minutes": 10.57,
+     "since_prev_round_min": 30.0,
+     "known": 27846,
+     "listed": 21185,
+     "supported": 18973,
+     "backoff": 19345,
+     "tcp_ok": 3598,
+     "probed": 3598,
+     "ok_strict": 2878,
+     "ok_linked": 99,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 74,
+     "start_utc": "2026-11-07T23:00Z",
+     "minutes": 33.73,
+     "since_prev_round_min": 30.0,
+     "known": 27846,
+     "listed": 21185,
+     "supported": 18973,
+     "backoff": 5433,
+     "tcp_ok": 12231,
+     "probed": 12228,
+     "ok_strict": 2892,
+     "ok_linked": 98,
+     "bad_config": 3,
+     "batches": 31,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 75,
+     "start_utc": "2026-11-07T23:34Z",
+     "minutes": 9.4,
+     "since_prev_round_min": 33.9,
+     "known": 27866,
+     "listed": 21199,
+     "supported": 18986,
+     "backoff": 18632,
+     "tcp_ok": 3841,
+     "probed": 3841,
+     "ok_strict": 2867,
+     "ok_linked": 97,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 76,
+     "start_utc": "2026-11-08T00:04Z",
+     "minutes": 9.29,
+     "since_prev_round_min": 30.0,
+     "known": 28043,
+     "listed": 21098,
+     "supported": 18910,
+     "backoff": 18702,
+     "tcp_ok": 4165,
+     "probed": 4162,
+     "ok_strict": 3089,
+     "ok_linked": 99,
+     "bad_config": 3,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 77,
+     "start_utc": "2026-11-08T00:34Z",
+     "minutes": 9.71,
+     "since_prev_round_min": 30.0,
+     "known": 28147,
+     "listed": 21089,
+     "supported": 18890,
+     "backoff": 18879,
+     "tcp_ok": 4046,
+     "probed": 4045,
+     "ok_strict": 3189,
+     "ok_linked": 103,
+     "bad_config": 1,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 78,
+     "start_utc": "2026-11-08T01:04Z",
+     "minutes": 11.88,
+     "since_prev_round_min": 30.0,
+     "known": 28148,
+     "listed": 21086,
+     "supported": 18888,
+     "backoff": 18220,
+     "tcp_ok": 4626,
+     "probed": 4626,
+     "ok_strict": 3503,
+     "ok_linked": 104,
+     "bad_config": 0,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 79,
+     "start_utc": "2026-11-08T01:34Z",
+     "minutes": 9.01,
+     "since_prev_round_min": 30.0,
+     "known": 28148,
+     "listed": 21090,
+     "supported": 18893,
+     "backoff": 18815,
+     "tcp_ok": 4249,
+     "probed": 4248,
+     "ok_strict": 3586,
+     "ok_linked": 103,
+     "bad_config": 1,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 80,
+     "start_utc": "2026-11-08T02:04Z",
+     "minutes": 32.0,
+     "since_prev_round_min": 30.0,
+     "known": 28149,
+     "listed": 21092,
+     "supported": 18895,
+     "backoff": 4912,
+     "tcp_ok": 12887,
+     "probed": 12884,
+     "ok_strict": 3654,
+     "ok_linked": 102,
+     "bad_config": 3,
+     "batches": 33,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 81,
+     "start_utc": "2026-11-08T02:36Z",
+     "minutes": 10.99,
+     "since_prev_round_min": 32.2,
+     "known": 28149,
+     "listed": 21091,
+     "supported": 18892,
+     "backoff": 17907,
+     "tcp_ok": 4495,
+     "probed": 4495,
+     "ok_strict": 3884,
+     "ok_linked": 101,
+     "bad_config": 0,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 82,
+     "start_utc": "2026-11-08T03:06Z",
+     "minutes": 10.6,
+     "since_prev_round_min": 30.0,
+     "known": 28153,
+     "listed": 21093,
+     "supported": 18894,
+     "backoff": 17810,
+     "tcp_ok": 4830,
+     "probed": 4828,
+     "ok_strict": 3798,
+     "ok_linked": 100,
+     "bad_config": 2,
+     "batches": 13,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 83,
+     "start_utc": "2026-11-08T03:36Z",
+     "minutes": 11.51,
+     "since_prev_round_min": 30.0,
+     "known": 28153,
+     "listed": 21094,
+     "supported": 18896,
+     "backoff": 17990,
+     "tcp_ok": 4629,
+     "probed": 4628,
+     "ok_strict": 3713,
+     "ok_linked": 98,
+     "bad_config": 1,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 84,
+     "start_utc": "2026-11-08T04:06Z",
+     "minutes": 12.53,
+     "since_prev_round_min": 30.0,
+     "known": 28154,
+     "listed": 21091,
+     "supported": 18895,
+     "backoff": 17690,
+     "tcp_ok": 4878,
+     "probed": 4878,
+     "ok_strict": 3623,
+     "ok_linked": 101,
+     "bad_config": 0,
+     "batches": 13,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 85,
+     "start_utc": "2026-11-08T04:36Z",
+     "minutes": 12.37,
+     "since_prev_round_min": 30.0,
+     "known": 28206,
+     "listed": 21097,
+     "supported": 18911,
+     "backoff": 18432,
+     "tcp_ok": 4397,
+     "probed": 4397,
+     "ok_strict": 3465,
+     "ok_linked": 100,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 86,
+     "start_utc": "2026-11-08T05:06Z",
+     "minutes": 36.25,
+     "since_prev_round_min": 30.0,
+     "known": 28280,
+     "listed": 21214,
+     "supported": 18995,
+     "backoff": 4838,
+     "tcp_ok": 12755,
+     "probed": 12752,
+     "ok_strict": 3302,
+     "ok_linked": 99,
+     "bad_config": 3,
+     "batches": 32,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 87,
+     "start_utc": "2026-11-08T05:43Z",
+     "minutes": 10.66,
+     "since_prev_round_min": 36.4,
+     "known": 28280,
+     "listed": 21214,
+     "supported": 18995,
+     "backoff": 18096,
+     "tcp_ok": 4217,
+     "probed": 4217,
+     "ok_strict": 3227,
+     "ok_linked": 98,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 88,
+     "start_utc": "2026-11-08T06:13Z",
+     "minutes": 14.69,
+     "since_prev_round_min": 30.1,
+     "known": 29327,
+     "listed": 21560,
+     "supported": 19272,
+     "backoff": 18151,
+     "tcp_ok": 5350,
+     "probed": 5348,
+     "ok_strict": 3370,
+     "ok_linked": 99,
+     "bad_config": 2,
+     "batches": 14,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 89,
+     "start_utc": "2026-11-08T06:43Z",
+     "minutes": 12.77,
+     "since_prev_round_min": 30.0,
+     "known": 29385,
+     "listed": 21596,
+     "supported": 19299,
+     "backoff": 18417,
+     "tcp_ok": 5100,
+     "probed": 5099,
+     "ok_strict": 3276,
+     "ok_linked": 100,
+     "bad_config": 1,
+     "batches": 13,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 90,
+     "start_utc": "2026-11-08T07:13Z",
+     "minutes": 12.89,
+     "since_prev_round_min": 30.0,
+     "known": 29385,
+     "listed": 21595,
+     "supported": 19298,
+     "backoff": 18814,
+     "tcp_ok": 4654,
+     "probed": 4654,
+     "ok_strict": 3230,
+     "ok_linked": 100,
+     "bad_config": 0,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 91,
+     "start_utc": "2026-11-08T07:43Z",
+     "minutes": 11.11,
+     "since_prev_round_min": 30.0,
+     "known": 29385,
+     "listed": 21595,
+     "supported": 19298,
+     "backoff": 18930,
+     "tcp_ok": 4697,
+     "probed": 4697,
+     "ok_strict": 3089,
+     "ok_linked": 100,
+     "bad_config": 0,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 92,
+     "start_utc": "2026-11-08T08:13Z",
+     "minutes": 34.83,
+     "since_prev_round_min": 30.0,
+     "known": 29385,
+     "listed": 21596,
+     "supported": 19300,
+     "backoff": 5995,
+     "tcp_ok": 12546,
+     "probed": 12543,
+     "ok_strict": 3049,
+     "ok_linked": 105,
+     "bad_config": 3,
+     "batches": 32,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 93,
+     "start_utc": "2026-11-08T08:48Z",
+     "minutes": 12.04,
+     "since_prev_round_min": 35.0,
+     "known": 29385,
+     "listed": 21596,
+     "supported": 19300,
+     "backoff": 19235,
+     "tcp_ok": 4047,
+     "probed": 4047,
+     "ok_strict": 2951,
+     "ok_linked": 105,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 94,
+     "start_utc": "2026-11-08T09:18Z",
+     "minutes": 12.14,
+     "since_prev_round_min": 30.0,
+     "known": 29385,
+     "listed": 21597,
+     "supported": 19299,
+     "backoff": 18783,
+     "tcp_ok": 4144,
+     "probed": 4142,
+     "ok_strict": 2849,
+     "ok_linked": 91,
+     "bad_config": 2,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 95,
+     "start_utc": "2026-11-08T09:48Z",
+     "minutes": 12.79,
+     "since_prev_round_min": 30.0,
+     "known": 29385,
+     "listed": 21597,
+     "supported": 19299,
+     "backoff": 18422,
+     "tcp_ok": 4495,
+     "probed": 4494,
+     "ok_strict": 2751,
+     "ok_linked": 87,
+     "bad_config": 1,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 96,
+     "start_utc": "2026-11-08T10:18Z",
+     "minutes": 11.31,
+     "since_prev_round_min": 30.0,
+     "known": 29403,
+     "listed": 21580,
+     "supported": 19278,
+     "backoff": 18699,
+     "tcp_ok": 4149,
+     "probed": 4149,
+     "ok_strict": 2677,
+     "ok_linked": 98,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 97,
+     "start_utc": "2026-11-08T10:48Z",
+     "minutes": 13.92,
+     "since_prev_round_min": 30.0,
+     "known": 29403,
+     "listed": 21580,
+     "supported": 19278,
+     "backoff": 19406,
+     "tcp_ok": 3599,
+     "probed": 3599,
+     "ok_strict": 2576,
+     "ok_linked": 94,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 98,
+     "start_utc": "2026-11-08T11:18Z",
+     "minutes": 34.31,
+     "since_prev_round_min": 30.0,
+     "known": 29403,
+     "listed": 21580,
+     "supported": 19279,
+     "backoff": 6159,
+     "tcp_ok": 11697,
+     "probed": 11694,
+     "ok_strict": 2557,
+     "ok_linked": 102,
+     "bad_config": 3,
+     "batches": 30,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 99,
+     "start_utc": "2026-11-08T11:53Z",
+     "minutes": 11.02,
+     "since_prev_round_min": 34.5,
+     "known": 29403,
+     "listed": 21579,
+     "supported": 19278,
+     "backoff": 19109,
+     "tcp_ok": 3578,
+     "probed": 3578,
+     "ok_strict": 2563,
+     "ok_linked": 90,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 100,
+     "start_utc": "2026-11-08T12:23Z",
+     "minutes": 12.89,
+     "since_prev_round_min": 30.0,
+     "known": 29403,
+     "listed": 21578,
+     "supported": 19277,
+     "backoff": 19043,
+     "tcp_ok": 3868,
+     "probed": 3867,
+     "ok_strict": 2581,
+     "ok_linked": 83,
+     "bad_config": 1,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 101,
+     "start_utc": "2026-11-08T12:53Z",
+     "minutes": 15.59,
+     "since_prev_round_min": 30.0,
+     "known": 29734,
+     "listed": 21762,
+     "supported": 19432,
+     "backoff": 18651,
+     "tcp_ok": 4395,
+     "probed": 4394,
+     "ok_strict": 2623,
+     "ok_linked": 92,
+     "bad_config": 1,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 102,
+     "start_utc": "2026-11-08T13:23Z",
+     "minutes": 13.71,
+     "since_prev_round_min": 30.0,
+     "known": 29734,
+     "listed": 21764,
+     "supported": 19433,
+     "backoff": 18877,
+     "tcp_ok": 4135,
+     "probed": 4135,
+     "ok_strict": 2616,
+     "ok_linked": 94,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 103,
+     "start_utc": "2026-11-08T13:53Z",
+     "minutes": 10.33,
+     "since_prev_round_min": 30.0,
+     "known": 30105,
+     "listed": 21371,
+     "supported": 19137,
+     "backoff": 19738,
+     "tcp_ok": 3830,
+     "probed": 3830,
+     "ok_strict": 2690,
+     "ok_linked": 93,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 104,
+     "start_utc": "2026-11-08T14:23Z",
+     "minutes": 33.81,
+     "since_prev_round_min": 30.0,
+     "known": 30127,
+     "listed": 21382,
+     "supported": 19149,
+     "backoff": 6296,
+     "tcp_ok": 12116,
+     "probed": 12113,
+     "ok_strict": 2662,
+     "ok_linked": 92,
+     "bad_config": 3,
+     "batches": 31,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 105,
+     "start_utc": "2026-11-08T14:57Z",
+     "minutes": 12.74,
+     "since_prev_round_min": 34.0,
+     "known": 30127,
+     "listed": 21382,
+     "supported": 19149,
+     "backoff": 19586,
+     "tcp_ok": 3661,
+     "probed": 3661,
+     "ok_strict": 2602,
+     "ok_linked": 101,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 106,
+     "start_utc": "2026-11-08T15:27Z",
+     "minutes": 11.84,
+     "since_prev_round_min": 30.0,
+     "known": 30127,
+     "listed": 21385,
+     "supported": 19150,
+     "backoff": 19398,
+     "tcp_ok": 4053,
+     "probed": 4052,
+     "ok_strict": 2586,
+     "ok_linked": 91,
+     "bad_config": 1,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 107,
+     "start_utc": "2026-11-08T15:57Z",
+     "minutes": 12.01,
+     "since_prev_round_min": 30.0,
+     "known": 30127,
+     "listed": 21385,
+     "supported": 19150,
+     "backoff": 18869,
+     "tcp_ok": 4172,
+     "probed": 4172,
+     "ok_strict": 2381,
+     "ok_linked": 91,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 108,
+     "start_utc": "2026-11-08T16:27Z",
+     "minutes": 11.83,
+     "since_prev_round_min": 30.0,
+     "known": 30128,
+     "listed": 21380,
+     "supported": 19146,
+     "backoff": 19008,
+     "tcp_ok": 4020,
+     "probed": 4020,
+     "ok_strict": 2525,
+     "ok_linked": 89,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 109,
+     "start_utc": "2026-11-08T16:57Z",
+     "minutes": 13.8,
+     "since_prev_round_min": 30.0,
+     "known": 30128,
+     "listed": 21380,
+     "supported": 19146,
+     "backoff": 19796,
+     "tcp_ok": 3445,
+     "probed": 3445,
+     "ok_strict": 2475,
+     "ok_linked": 78,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 110,
+     "start_utc": "2026-11-08T17:27Z",
+     "minutes": 32.24,
+     "since_prev_round_min": 30.0,
+     "known": 30129,
+     "listed": 21379,
+     "supported": 19145,
+     "backoff": 6403,
+     "tcp_ok": 11497,
+     "probed": 11494,
+     "ok_strict": 2420,
+     "ok_linked": 90,
+     "bad_config": 3,
+     "batches": 29,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 111,
+     "start_utc": "2026-11-08T17:59Z",
+     "minutes": 11.9,
+     "since_prev_round_min": 32.4,
+     "known": 30129,
+     "listed": 21379,
+     "supported": 19145,
+     "backoff": 19312,
+     "tcp_ok": 3382,
+     "probed": 3382,
+     "ok_strict": 2408,
+     "ok_linked": 88,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 112,
+     "start_utc": "2026-11-08T18:29Z",
+     "minutes": 13.62,
+     "since_prev_round_min": 30.0,
+     "known": 30413,
+     "listed": 21512,
+     "supported": 19281,
+     "backoff": 19323,
+     "tcp_ok": 3814,
+     "probed": 3813,
+     "ok_strict": 2460,
+     "ok_linked": 90,
+     "bad_config": 1,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 113,
+     "start_utc": "2026-11-08T18:59Z",
+     "minutes": 13.35,
+     "since_prev_round_min": 30.1,
+     "known": 30771,
+     "listed": 20937,
+     "supported": 18685,
+     "backoff": 18762,
+     "tcp_ok": 4537,
+     "probed": 4536,
+     "ok_strict": 2535,
+     "ok_linked": 88,
+     "bad_config": 1,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 114,
+     "start_utc": "2026-11-08T19:29Z",
+     "minutes": 13.54,
+     "since_prev_round_min": 30.0,
+     "known": 30801,
+     "listed": 20983,
+     "supported": 18726,
+     "backoff": 19050,
+     "tcp_ok": 4215,
+     "probed": 4215,
+     "ok_strict": 2585,
+     "ok_linked": 92,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 115,
+     "start_utc": "2026-11-08T19:59Z",
+     "minutes": 10.6,
+     "since_prev_round_min": 30.0,
+     "known": 30801,
+     "listed": 20963,
+     "supported": 18713,
+     "backoff": 19862,
+     "tcp_ok": 3647,
+     "probed": 3647,
+     "ok_strict": 2615,
+     "ok_linked": 82,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 116,
+     "start_utc": "2026-11-08T20:29Z",
+     "minutes": 34.1,
+     "since_prev_round_min": 30.0,
+     "known": 30801,
+     "listed": 20964,
+     "supported": 18713,
+     "backoff": 6602,
+     "tcp_ok": 11809,
+     "probed": 11806,
+     "ok_strict": 2608,
+     "ok_linked": 83,
+     "bad_config": 3,
+     "batches": 30,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 117,
+     "start_utc": "2026-11-08T21:04Z",
+     "minutes": 9.56,
+     "since_prev_round_min": 34.3,
+     "known": 30801,
+     "listed": 20964,
+     "supported": 18713,
+     "backoff": 19194,
+     "tcp_ok": 3428,
+     "probed": 3428,
+     "ok_strict": 2552,
+     "ok_linked": 89,
+     "bad_config": 0,
+     "batches": 9,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 118,
+     "start_utc": "2026-11-08T21:34Z",
+     "minutes": 10.28,
+     "since_prev_round_min": 30.0,
+     "known": 30801,
+     "listed": 20968,
+     "supported": 18717,
+     "backoff": 19214,
+     "tcp_ok": 3657,
+     "probed": 3656,
+     "ok_strict": 2640,
+     "ok_linked": 83,
+     "bad_config": 1,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 119,
+     "start_utc": "2026-11-08T22:04Z",
+     "minutes": 12.21,
+     "since_prev_round_min": 30.0,
+     "known": 30805,
+     "listed": 20973,
+     "supported": 18722,
+     "backoff": 18484,
+     "tcp_ok": 4238,
+     "probed": 4237,
+     "ok_strict": 2652,
+     "ok_linked": 86,
+     "bad_config": 1,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 120,
+     "start_utc": "2026-11-08T22:34Z",
+     "minutes": 11.2,
+     "since_prev_round_min": 30.0,
+     "known": 31033,
+     "listed": 21069,
+     "supported": 18792,
+     "backoff": 18558,
+     "tcp_ok": 4302,
+     "probed": 4302,
+     "ok_strict": 2751,
+     "ok_linked": 95,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 121,
+     "start_utc": "2026-11-08T23:04Z",
+     "minutes": 9.91,
+     "since_prev_round_min": 30.0,
+     "known": 31175,
+     "listed": 20856,
+     "supported": 18607,
+     "backoff": 19503,
+     "tcp_ok": 3697,
+     "probed": 3697,
+     "ok_strict": 2778,
+     "ok_linked": 103,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 122,
+     "start_utc": "2026-11-08T23:34Z",
+     "minutes": 31.31,
+     "since_prev_round_min": 30.0,
+     "known": 31196,
+     "listed": 20825,
+     "supported": 18577,
+     "backoff": 6579,
+     "tcp_ok": 11570,
+     "probed": 11567,
+     "ok_strict": 2863,
+     "ok_linked": 111,
+     "bad_config": 3,
+     "batches": 29,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 123,
+     "start_utc": "2026-11-09T00:05Z",
+     "minutes": 10.38,
+     "since_prev_round_min": 31.5,
+     "known": 31199,
+     "listed": 20827,
+     "supported": 18577,
+     "backoff": 19003,
+     "tcp_ok": 3751,
+     "probed": 3751,
+     "ok_strict": 3071,
+     "ok_linked": 107,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 124,
+     "start_utc": "2026-11-09T00:35Z",
+     "minutes": 10.94,
+     "since_prev_round_min": 30.0,
+     "known": 31290,
+     "listed": 20909,
+     "supported": 18660,
+     "backoff": 18863,
+     "tcp_ok": 4172,
+     "probed": 4171,
+     "ok_strict": 3178,
+     "ok_linked": 110,
+     "bad_config": 1,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 125,
+     "start_utc": "2026-11-09T01:05Z",
+     "minutes": 12.35,
+     "since_prev_round_min": 30.0,
+     "known": 31318,
+     "listed": 20923,
+     "supported": 18676,
+     "backoff": 18085,
+     "tcp_ok": 4825,
+     "probed": 4824,
+     "ok_strict": 3436,
+     "ok_linked": 110,
+     "bad_config": 1,
+     "batches": 13,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 126,
+     "start_utc": "2026-11-09T01:35Z",
+     "minutes": 11.76,
+     "since_prev_round_min": 30.0,
+     "known": 31318,
+     "listed": 20921,
+     "supported": 18675,
+     "backoff": 17969,
+     "tcp_ok": 4911,
+     "probed": 4911,
+     "ok_strict": 3582,
+     "ok_linked": 110,
+     "bad_config": 0,
+     "batches": 13,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 127,
+     "start_utc": "2026-11-09T02:05Z",
+     "minutes": 11.91,
+     "since_prev_round_min": 30.0,
+     "known": 31366,
+     "listed": 20924,
+     "supported": 18688,
+     "backoff": 18624,
+     "tcp_ok": 4494,
+     "probed": 4494,
+     "ok_strict": 3738,
+     "ok_linked": 107,
+     "bad_config": 0,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 128,
+     "start_utc": "2026-11-09T02:35Z",
+     "minutes": 34.08,
+     "since_prev_round_min": 30.0,
+     "known": 31366,
+     "listed": 20924,
+     "supported": 18688,
+     "backoff": 5627,
+     "tcp_ok": 12414,
+     "probed": 12411,
+     "ok_strict": 3780,
+     "ok_linked": 106,
+     "bad_config": 3,
+     "batches": 32,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 129,
+     "start_utc": "2026-11-09T03:10Z",
+     "minutes": 11.54,
+     "since_prev_round_min": 34.3,
+     "known": 31489,
+     "listed": 20828,
+     "supported": 18616,
+     "backoff": 18312,
+     "tcp_ok": 4633,
+     "probed": 4633,
+     "ok_strict": 3704,
+     "ok_linked": 107,
+     "bad_config": 0,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 130,
+     "start_utc": "2026-11-09T03:40Z",
+     "minutes": 12.33,
+     "since_prev_round_min": 30.0,
+     "known": 31489,
+     "listed": 20828,
+     "supported": 18616,
+     "backoff": 18410,
+     "tcp_ok": 4796,
+     "probed": 4795,
+     "ok_strict": 3597,
+     "ok_linked": 105,
+     "bad_config": 1,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 131,
+     "start_utc": "2026-11-09T04:10Z",
+     "minutes": 12.18,
+     "since_prev_round_min": 30.0,
+     "known": 31491,
+     "listed": 20831,
+     "supported": 18617,
+     "backoff": 17852,
+     "tcp_ok": 5208,
+     "probed": 5207,
+     "ok_strict": 3509,
+     "ok_linked": 106,
+     "bad_config": 1,
+     "batches": 14,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 132,
+     "start_utc": "2026-11-09T04:40Z",
+     "minutes": 15.74,
+     "since_prev_round_min": 30.0,
+     "known": 31540,
+     "listed": 20832,
+     "supported": 18623,
+     "backoff": 17888,
+     "tcp_ok": 5148,
+     "probed": 5148,
+     "ok_strict": 3371,
+     "ok_linked": 106,
+     "bad_config": 0,
+     "batches": 13,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 133,
+     "start_utc": "2026-11-09T05:10Z",
+     "minutes": 11.63,
+     "since_prev_round_min": 30.0,
+     "known": 31540,
+     "listed": 20826,
+     "supported": 18619,
+     "backoff": 18946,
+     "tcp_ok": 4313,
+     "probed": 4313,
+     "ok_strict": 3287,
+     "ok_linked": 103,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 134,
+     "start_utc": "2026-11-09T05:40Z",
+     "minutes": 31.72,
+     "since_prev_round_min": 30.0,
+     "known": 31540,
+     "listed": 20826,
+     "supported": 18619,
+     "backoff": 6230,
+     "tcp_ok": 11998,
+     "probed": 11995,
+     "ok_strict": 3133,
+     "ok_linked": 108,
+     "bad_config": 3,
+     "batches": 30,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 135,
+     "start_utc": "2026-11-09T06:12Z",
+     "minutes": 11.51,
+     "since_prev_round_min": 31.9,
+     "known": 31541,
+     "listed": 20826,
+     "supported": 18618,
+     "backoff": 18782,
+     "tcp_ok": 4209,
+     "probed": 4209,
+     "ok_strict": 3073,
+     "ok_linked": 105,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 136,
+     "start_utc": "2026-11-09T06:42Z",
+     "minutes": 12.94,
+     "since_prev_round_min": 30.0,
+     "known": 31560,
+     "listed": 20825,
+     "supported": 18656,
+     "backoff": 18323,
+     "tcp_ok": 4105,
+     "probed": 4104,
+     "ok_strict": 2876,
+     "ok_linked": 98,
+     "bad_config": 1,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 137,
+     "start_utc": "2026-11-09T07:12Z",
+     "minutes": 12.98,
+     "since_prev_round_min": 30.0,
+     "known": 31561,
+     "listed": 20827,
+     "supported": 18657,
+     "backoff": 17783,
+     "tcp_ok": 4453,
+     "probed": 4452,
+     "ok_strict": 2800,
+     "ok_linked": 93,
+     "bad_config": 1,
+     "batches": 12,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 138,
+     "start_utc": "2026-11-09T07:42Z",
+     "minutes": 12.38,
+     "since_prev_round_min": 30.0,
+     "known": 31561,
+     "listed": 20827,
+     "supported": 18657,
+     "backoff": 17988,
+     "tcp_ok": 4227,
+     "probed": 4227,
+     "ok_strict": 2736,
+     "ok_linked": 99,
+     "bad_config": 0,
+     "batches": 11,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 139,
+     "start_utc": "2026-11-09T08:12Z",
+     "minutes": 10.11,
+     "since_prev_round_min": 30.0,
+     "known": 31561,
+     "listed": 20832,
+     "supported": 18663,
+     "backoff": 18705,
+     "tcp_ok": 3693,
+     "probed": 3693,
+     "ok_strict": 2667,
+     "ok_linked": 94,
+     "bad_config": 0,
+     "batches": 10,
+     "had_error": false
+    },
+    {
+     "segment": 1,
+     "round": 140,
+     "start_utc": "2026-11-09T08:42Z",
+     "minutes": 17.07,
+     "since_prev_round_min": 30.0,
+     "known": 31561,
+     "listed": 20832,
+     "supported": 18663,
+     "backoff": 6242,
+     "tcp_ok": 11171,
+     "probed": 3828,
+     "ok_strict": 914,
+     "ok_linked": 40,
+     "bad_config": 3,
+     "batches": 10,
+     "had_error": false
+    }
+   ],
+   "count": 140,
+   "first_round_minutes": 80.92,
+   "median_minutes_all": 11.63,
+   "median_minutes_after_first": 11.61,
+   "max_minutes": 80.92,
+   "rounds_with_error": 0
+  },
+  "pool_at_first_stat": {
+   "utc": "2026-11-06T08:11Z",
+   "minutes_after_formal_start": 5.0,
+   "pool": {
+    "aggregator_sample": 15101,
+    "dead": 2528,
+    "dropped": 0,
+    "listed": 40946,
+    "new": 37333,
+    "open": 741,
+    "total": 40946,
+    "working": 344
+   },
+   "pool_total_max": 75283,
+   "pool_total_max_utc": "2026-11-07T10:21Z",
+   "note": "正式起点之后第一条 stat 记录里的 pool（sched.go Pool 的计数：total 是池里的条目数，new 是还没探访过的），以及正式起点之后 pool.total 的最大值。状态文件从空开始时，首次快照后的条目都在 new 里排队等第一次探访"
+  }
+ },
+ "evidence": {
+  "evidence_table_present": true,
+  "files_by_ext": {
+   "body": {
+    "files": 65517,
+    "bytes": 60486582
+   },
+   "der": {
+    "files": 14965,
+    "bytes": 16685100
+   }
+  },
+  "meta_evidence_files": "80482",
+  "meta_evidence_bytes": "77171682",
+  "by_kind": {
+   "node": {
+    "der": {
+     "attempts_with_ev": 75,
+     "distinct_hashes": 17,
+     "attempts_missing_file": 0,
+     "distinct_hashes_missing_file": 0
+    },
+    "body": {
+     "attempts_with_http_ev": 352,
+     "distinct_hashes": 15,
+     "attempts_missing_file": 0,
+     "distinct_hashes_missing_file": 0
+    }
+   },
+   "proxy": {
+    "der": {
+     "attempts_with_ev": 262733,
+     "distinct_hashes": 15160,
+     "attempts_missing_file": 219,
+     "distinct_hashes_missing_file": 212
+    },
+    "body": {
+     "attempts_with_http_ev": 530264,
+     "distinct_hashes": 76497,
+     "attempts_missing_file": 10990,
+     "distinct_hashes_missing_file": 10986
+    }
+   }
+  },
+  "der": {
+   "attempts_with_ev": 262808,
+   "distinct_hashes_referenced": 15177,
+   "attempts_missing_file": 219,
+   "distinct_hashes_missing_file": 212,
+   "缺失率（按尝试）": {
+    "num": 219,
+    "den": 262808,
+    "pct": 0.1
+   }
+  },
+  "body": {
+   "attempts_with_http_ev": 530616,
+   "distinct_hashes_referenced": 76503,
+   "attempts_missing_file": 10990,
+   "distinct_hashes_missing_file": 10986,
+   "缺失率（按尝试）": {
+    "num": 10990,
+    "den": 530616,
+    "pct": 2.1
+   }
+  },
+  "orphan_files_not_referenced": {
+   "der": 0,
+   "body": 0
+  },
+  "files_other_ext": 0,
+  "limit_note": "rec.Evidence：每个候选最多 12 份、总共 1 GB，超限不保存；同一哈希只存一份"
+ },
+ "snapshots": {
+  "lists": {
+   "snapshot_min": 10,
+   "snapshot_min_values_seen": [
+    10
+   ],
+   "snapshot_min_from_default": false,
+   "expected_regular_fetches_per_file": 438,
+   "expected_aggregator_fetches_per_file": 13,
+   "files": [
+    {
+     "src": "ErcinDedeoglu/proxies",
+     "label": "http",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 12,
+     "changed": 1,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "ErcinDedeoglu/proxies",
+     "label": "https",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 12,
+     "changed": 1,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "ErcinDedeoglu/proxies",
+     "label": "socks4",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 12,
+     "changed": 1,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "ErcinDedeoglu/proxies",
+     "label": "socks5",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 12,
+     "changed": 1,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "SevenworksDev/proxy-list",
+     "label": "http",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 2,
+     "changed": 11,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "SevenworksDev/proxy-list",
+     "label": "https",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 2,
+     "changed": 11,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "SevenworksDev/proxy-list",
+     "label": "socks4",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 2,
+     "changed": 11,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "SevenworksDev/proxy-list",
+     "label": "socks5",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 2,
+     "changed": 11,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "TheSpeedX/PROXY-List",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 427,
+     "changed": 11,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "TheSpeedX/PROXY-List",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 427,
+     "changed": 11,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "TheSpeedX/PROXY-List",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 427,
+     "changed": 11,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "Vann-Dev/proxy-list",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 12,
+     "status_304": 426,
+     "changed": 12,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "Vann-Dev/proxy-list",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 12,
+     "status_304": 426,
+     "changed": 12,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "Vann-Dev/proxy-list",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 12,
+     "status_304": 426,
+     "changed": 12,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "Vann-Dev/proxy-list",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 12,
+     "status_304": 426,
+     "changed": 12,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "Zaeem20/FREE_PROXIES_LIST",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 424,
+     "changed": 14,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "Zaeem20/FREE_PROXIES_LIST",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 424,
+     "changed": 14,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "Zaeem20/FREE_PROXIES_LIST",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 424,
+     "changed": 14,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "Zaeem20/FREE_PROXIES_LIST",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 424,
+     "changed": 14,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "dpangestuw/Free-Proxy",
+     "label": "http",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 13,
+     "status_304": 0,
+     "changed": 13,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "dpangestuw/Free-Proxy",
+     "label": "socks4",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 13,
+     "status_304": 0,
+     "changed": 13,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "dpangestuw/Free-Proxy",
+     "label": "socks5",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 13,
+     "status_304": 0,
+     "changed": 13,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "gfpcom/free-proxy-list (wiki)",
+     "label": "http",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 2,
+     "changed": 11,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "gfpcom/free-proxy-list (wiki)",
+     "label": "https",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 2,
+     "changed": 11,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "gfpcom/free-proxy-list (wiki)",
+     "label": "socks4",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 2,
+     "changed": 11,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "gfpcom/free-proxy-list (wiki)",
+     "label": "socks5",
+     "aggregator": true,
+     "fetches": 13,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 2,
+     "changed": 11,
+     "base_snapshots": 0,
+     "expected_fetches": 13,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 13,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:07Z"
+    },
+    {
+     "src": "hookzof/socks5_list",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 424,
+     "changed": 14,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "iplocate/free-proxy-list",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 147,
+     "status_304": 291,
+     "changed": 147,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "iplocate/free-proxy-list",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 147,
+     "status_304": 291,
+     "changed": 147,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "iplocate/free-proxy-list",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 147,
+     "status_304": 291,
+     "changed": 147,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "iplocate/free-proxy-list",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 147,
+     "status_304": 291,
+     "changed": 147,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "mmpx12/proxy-list",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 72,
+     "status_304": 366,
+     "changed": 72,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "mmpx12/proxy-list",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 74,
+     "status_304": 364,
+     "changed": 74,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "mmpx12/proxy-list",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 437,
+     "changed": 1,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "mmpx12/proxy-list",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 437,
+     "changed": 1,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "monosans/proxy-list",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 73,
+     "status_304": 365,
+     "changed": 73,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "monosans/proxy-list",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 73,
+     "status_304": 365,
+     "changed": 73,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "monosans/proxy-list",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 73,
+     "status_304": 365,
+     "changed": 73,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "officialputuid/KangProxy",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 29,
+     "status_304": 409,
+     "changed": 29,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "officialputuid/KangProxy",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 29,
+     "status_304": 409,
+     "changed": 29,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "officialputuid/KangProxy",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 29,
+     "status_304": 409,
+     "changed": 29,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "officialputuid/KangProxy",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 29,
+     "status_304": 409,
+     "changed": 29,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "proxifly/free-proxy-list",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 424,
+     "changed": 14,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "proxifly/free-proxy-list",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 424,
+     "changed": 14,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "proxifly/free-proxy-list",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 424,
+     "changed": 14,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "proxifly/free-proxy-list",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 424,
+     "changed": 14,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "roosterkid/openproxylist",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 73,
+     "status_304": 365,
+     "changed": 73,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "roosterkid/openproxylist",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 73,
+     "status_304": 365,
+     "changed": 73,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "roosterkid/openproxylist",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 57,
+     "status_304": 381,
+     "changed": 57,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "sunny9577/proxy-scraper",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 25,
+     "status_304": 413,
+     "changed": 25,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "sunny9577/proxy-scraper",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 1,
+     "status_200": 386,
+     "status_304": 51,
+     "changed": 7,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 1,
+      "den": 438,
+      "pct": 0.2
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "sunny9577/proxy-scraper",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 268,
+     "status_304": 170,
+     "changed": 19,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "vakhov/fresh-proxy-list",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 437,
+     "changed": 1,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "vakhov/fresh-proxy-list",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 437,
+     "changed": 1,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "vakhov/fresh-proxy-list",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 437,
+     "changed": 1,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "vakhov/fresh-proxy-list",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 1,
+     "status_304": 437,
+     "changed": 1,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "xyzs996/free-proxy-health-list",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 132,
+     "status_304": 306,
+     "changed": 132,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "xyzs996/free-proxy-health-list",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 132,
+     "status_304": 306,
+     "changed": 132,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "xyzs996/free-proxy-health-list",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 132,
+     "status_304": 306,
+     "changed": 132,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "xyzs996/free-proxy-health-list",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 132,
+     "status_304": 306,
+     "changed": 132,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:07Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "zloi-user/hideip.me",
+     "label": "connect",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 438,
+     "status_304": 0,
+     "changed": 438,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "zloi-user/hideip.me",
+     "label": "http",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 438,
+     "status_304": 0,
+     "changed": 438,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "zloi-user/hideip.me",
+     "label": "https",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 438,
+     "status_304": 0,
+     "changed": 438,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "zloi-user/hideip.me",
+     "label": "socks4",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 438,
+     "status_304": 0,
+     "changed": 438,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    },
+    {
+     "src": "zloi-user/hideip.me",
+     "label": "socks5",
+     "aggregator": false,
+     "fetches": 438,
+     "failed": 0,
+     "status_200": 438,
+     "status_304": 0,
+     "changed": 438,
+     "base_snapshots": 1,
+     "expected_fetches": 438,
+     "实际/期望": 1.0,
+     "失败率": {
+      "num": 0,
+      "den": 438,
+      "pct": 0.0
+     },
+     "first_utc": "2026-11-06T08:06Z",
+     "last_utc": "2026-11-09T08:57Z"
+    }
+   ],
+   "by_src": {
+    "ErcinDedeoglu/proxies": {
+     "aggregator": true,
+     "files": 4,
+     "fetches": 52,
+     "failed": 0,
+     "changed": 4
+    },
+    "SevenworksDev/proxy-list": {
+     "aggregator": true,
+     "files": 4,
+     "fetches": 52,
+     "failed": 0,
+     "changed": 44
+    },
+    "TheSpeedX/PROXY-List": {
+     "aggregator": false,
+     "files": 3,
+     "fetches": 1314,
+     "failed": 0,
+     "changed": 33
+    },
+    "Vann-Dev/proxy-list": {
+     "aggregator": false,
+     "files": 4,
+     "fetches": 1752,
+     "failed": 0,
+     "changed": 48
+    },
+    "Zaeem20/FREE_PROXIES_LIST": {
+     "aggregator": false,
+     "files": 4,
+     "fetches": 1752,
+     "failed": 0,
+     "changed": 56
+    },
+    "dpangestuw/Free-Proxy": {
+     "aggregator": true,
+     "files": 3,
+     "fetches": 39,
+     "failed": 0,
+     "changed": 39
+    },
+    "gfpcom/free-proxy-list (wiki)": {
+     "aggregator": true,
+     "files": 4,
+     "fetches": 52,
+     "failed": 0,
+     "changed": 44
+    },
+    "hookzof/socks5_list": {
+     "aggregator": false,
+     "files": 1,
+     "fetches": 438,
+     "failed": 0,
+     "changed": 14
+    },
+    "iplocate/free-proxy-list": {
+     "aggregator": false,
+     "files": 4,
+     "fetches": 1752,
+     "failed": 0,
+     "changed": 588
+    },
+    "mmpx12/proxy-list": {
+     "aggregator": false,
+     "files": 4,
+     "fetches": 1752,
+     "failed": 0,
+     "changed": 148
+    },
+    "monosans/proxy-list": {
+     "aggregator": false,
+     "files": 3,
+     "fetches": 1314,
+     "failed": 0,
+     "changed": 219
+    },
+    "officialputuid/KangProxy": {
+     "aggregator": false,
+     "files": 4,
+     "fetches": 1752,
+     "failed": 0,
+     "changed": 116
+    },
+    "proxifly/free-proxy-list": {
+     "aggregator": false,
+     "files": 4,
+     "fetches": 1752,
+     "failed": 0,
+     "changed": 56
+    },
+    "roosterkid/openproxylist": {
+     "aggregator": false,
+     "files": 3,
+     "fetches": 1314,
+     "failed": 0,
+     "changed": 203
+    },
+    "sunny9577/proxy-scraper": {
+     "aggregator": false,
+     "files": 3,
+     "fetches": 1314,
+     "failed": 1,
+     "changed": 51
+    },
+    "vakhov/fresh-proxy-list": {
+     "aggregator": false,
+     "files": 4,
+     "fetches": 1752,
+     "failed": 0,
+     "changed": 4
+    },
+    "xyzs996/free-proxy-health-list": {
+     "aggregator": false,
+     "files": 4,
+     "fetches": 1752,
+     "failed": 0,
+     "changed": 528
+    },
+    "zloi-user/hideip.me": {
+     "aggregator": false,
+     "files": 5,
+     "fetches": 2190,
+     "failed": 0,
+     "changed": 2190
+    }
+   },
+   "files_count": 65,
+   "regular_files": 50,
+   "aggregator_files": 15,
+   "fetch_gaps": [],
+   "fetch_gaps_count": 0,
+   "fetch_gaps_unexplained": 0,
+   "non_200_304_status_counts": {
+    "501": 1
+   },
+   "with_err": 0
+  },
+  "aggregator_samples": {
+   "ErcinDedeoglu/proxies": {
+    "records": 1,
+    "sample_total": 5000
+   },
+   "SevenworksDev/proxy-list": {
+    "records": 1,
+    "sample_total": 5000
+   },
+   "dpangestuw/Free-Proxy": {
+    "records": 1,
+    "sample_total": 398
+   },
+   "gfpcom/free-proxy-list (wiki)": {
+    "records": 1,
+    "sample_total": 5000
+   }
+  },
+  "aggregator_samples_note": "每个聚合器应恰好 1 条（抽样只做一次，重启后不重抽）；多于 1 条说明状态被清空后重抽，样本不可比",
+  "subscriptions": {
+   "expected_fetches": 146,
+   "expected_rule": "每 30 分钟一次（节点配置不在记录里，按 cfg.Default）",
+   "subs": [
+    {
+     "src": "MatinGhanbari/v2ray-configs",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 13,
+     "status_304": 127,
+     "changed": 13,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "Pawdroid/Free-servers",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 73,
+     "status_304": 67,
+     "changed": 73,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "aiboboxx/v2rayfree",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 2,
+     "status_304": 138,
+     "changed": 2,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "barry-far/V2ray-config",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 14,
+     "status_304": 126,
+     "changed": 14,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "chengaopan/AutoMergePublicNodes",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 129,
+     "changed": 11,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "mahdibland/V2RayAggregator",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 7,
+     "status_304": 133,
+     "changed": 7,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "mfuu/v2ray",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 10,
+     "status_304": 130,
+     "changed": 10,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "mheidari98/.proxy",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 13,
+     "status_304": 127,
+     "changed": 13,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "peasoft/NoMoreWalls",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 11,
+     "status_304": 129,
+     "changed": 11,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "roosterkid/openproxylist (V2RAY)",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 73,
+     "status_304": 67,
+     "changed": 73,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    },
+    {
+     "src": "snakem982/proxypool",
+     "fetches": 140,
+     "failed": 0,
+     "status_200": 13,
+     "status_304": 127,
+     "changed": 13,
+     "base_snapshots": 1,
+     "实际/期望": 0.959,
+     "失败率": {
+      "num": 0,
+      "den": 140,
+      "pct": 0.0
+     }
+    }
+   ]
+  }
+ },
+ "excluded": {
+  "by_segment": [
+   {
+    "segment": 1,
+    "last_stat_utc": "2026-11-09T08:59Z",
+    "pool": {
+     "aggregator_sample": 13311,
+     "dead": 45831,
+     "dropped": 26448,
+     "listed": 45569,
+     "new": 3623,
+     "open": 20962,
+     "total": 75064,
+     "working": 4648
+    },
+    "skipped": {
+     "not_public": 5,
+     "skip_port": 3362
+    },
+    "skipped_total": 3367
+   }
+  ],
+  "skipped_reasons_seen": [
+   "not_public",
+   "skip_port"
+  ],
+  "first_segment_skipped_total": 3367,
+  "max_skipped_total_any_segment": 3367,
+  "note": "stat.pool 里 skipped_<原因> 的值：判为不探测的上榜条目数（judge 自己的地址、私网地址、知名端口、退出名单、解析不了）。这是每个进程内的累计计数（sched.go Pool.Skipped 不存进状态文件），重启后归零且首次快照会把全部条目再过一遍，所以按运行段给每段最后一条 stat 的值，不跨段相加。PROTOCOL“频率与限速”"
+ },
+ "crosscheck": {
+  "source": "argument",
+  "generated": "2026-11-09T08:59:58.416Z",
+  "first_record": "2026-11-06T08:06:54.830Z",
+  "last_record": "2026-11-09T08:59:49.205Z",
+  "findings_summary_go_caliber": {
+   "探测器认为成功，但 judge 没收到请求": {
+    "attempts": 0,
+    "candidates": 0
+   },
+   "仪器异常：TLS 内的请求到达 judge 时与发出时不同": {
+    "attempts": 0,
+    "candidates": 0
+   },
+   "仪器异常：节点探测的流量从本机直接出去了": {
+    "attempts": 0,
+    "candidates": 0
+   },
+   "响应头里回显的地址与 judge 日志不一致": {
+    "attempts": 0,
+    "candidates": 0
+   },
+   "同一请求被 judge 收到多次（重放）": {
+    "attempts": 111,
+    "candidates": 29
+   }
+  },
+  "findings_module_caliber": {
+   "探测器认为成功，但 judge 没收到请求": {
+    "attempts": 0,
+    "candidates": 0,
+    "note": null
+   },
+   "仪器异常：TLS 内的请求到达 judge 时与发出时不同": {
+    "attempts": 0,
+    "candidates": null,
+    "note": "TLS 内不同 = 请求一致 + 指纹两条不变量的违反数之和（同一尝试可能两条都违反，只作量级参考）"
+   },
+   "仪器异常：节点探测的流量从本机直接出去了": {
+    "attempts": 0,
+    "candidates": 0,
+    "note": null
+   },
+   "响应头里回显的地址与 judge 日志不一致": {
+    "attempts": 0,
+    "candidates": 0,
+    "note": null
+   },
+   "同一请求被 judge 收到多次（重放）": {
+    "attempts": 111,
+    "candidates": 29,
+    "note": null
+   }
+  },
+  "comparisons": {
+   "records.agg_sample": {
+    "summary": 4,
+    "computed": 4,
+    "match": true
+   },
+   "records.att": {
+    "summary": 5069198,
+    "computed": 5069198,
+    "match": true
+   },
+   "records.nerr": {
+    "summary": 275266,
+    "computed": 275266,
+    "match": true
+   },
+   "records.node": {
+    "summary": 31561,
+    "computed": 31561,
+    "match": true
+   },
+   "records.npre": {
+    "summary": 948842,
+    "computed": 948842,
+    "match": true
+   },
+   "records.nround": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "records.nsnap": {
+    "summary": 1540,
+    "computed": 1540,
+    "match": true
+   },
+   "records.snap": {
+    "summary": 22095,
+    "computed": 22095,
+    "match": true
+   },
+   "records.start": {
+    "summary": 1,
+    "computed": 1,
+    "match": true
+   },
+   "records.stat": {
+    "summary": 875,
+    "computed": 875,
+    "match": true
+   },
+   "records.stop": {
+    "summary": 1,
+    "computed": 1,
+    "match": true
+   },
+   "records.version": {
+    "summary": 1,
+    "computed": 1,
+    "match": true
+   },
+   "records.visit": {
+    "summary": 2278229,
+    "computed": 2278229,
+    "match": true
+   },
+   "judge.req": {
+    "summary": 1104121,
+    "computed": 1116154,
+    "match": false
+   },
+   "judge.tls_fail": {
+    "summary": 34769,
+    "computed": 35142,
+    "match": false
+   },
+   "judge.noise_dropped": {
+    "summary": 6,
+    "computed": 6,
+    "match": true
+   },
+   "judge.noise(+dropped n)": {
+    "summary": 39922,
+    "computed": 40487,
+    "match": false
+   },
+   "control.control:loopback judge_http": {
+    "summary": {
+     "ok": 4373,
+     "total": 4373
+    },
+    "computed": {
+     "ok": 4373,
+     "total": 4373
+    },
+    "match": true
+   },
+   "control.control:loopback judge_tls": {
+    "summary": {
+     "ok": 4373,
+     "total": 4373
+    },
+    "computed": {
+     "ok": 4373,
+     "total": 4373
+    },
+    "match": true
+   },
+   "control.control:observer obs:aws": {
+    "summary": {
+     "ok": 875,
+     "total": 875
+    },
+    "computed": {
+     "ok": 875,
+     "total": 875
+    },
+    "match": true
+   },
+   "control.control:observer obs:cloudflare": {
+    "summary": {
+     "ok": 875,
+     "total": 875
+    },
+    "computed": {
+     "ok": 875,
+     "total": 875
+    },
+    "match": true
+   },
+   "control.control:public judge_http": {
+    "summary": {
+     "ok": 4373,
+     "total": 4373
+    },
+    "computed": {
+     "ok": 4373,
+     "total": 4373
+    },
+    "match": true
+   },
+   "control.control:public judge_tls": {
+    "summary": {
+     "ok": 4373,
+     "total": 4373
+    },
+    "computed": {
+     "ok": 4373,
+     "total": 4373
+    },
+    "match": true
+   },
+   "rate.attempts_per_sec_avg": {
+    "summary": "19.3",
+    "computed": "19.3",
+    "match": true
+   },
+   "rate.attempts_per_sec_peak_minute": {
+    "summary": "40.2",
+    "computed": "40.2",
+    "match": true
+   },
+   "rate.configured_conn_per_sec": {
+    "summary": 40,
+    "computed": 40,
+    "match": true
+   },
+   "snapshots.ErcinDedeoglu/proxies.fetches": {
+    "summary": 52,
+    "computed": 52,
+    "match": true
+   },
+   "snapshots.ErcinDedeoglu/proxies.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.ErcinDedeoglu/proxies.changed": {
+    "summary": 4,
+    "computed": 4,
+    "match": true
+   },
+   "snapshots.SevenworksDev/proxy-list.fetches": {
+    "summary": 52,
+    "computed": 52,
+    "match": true
+   },
+   "snapshots.SevenworksDev/proxy-list.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.SevenworksDev/proxy-list.changed": {
+    "summary": 44,
+    "computed": 44,
+    "match": true
+   },
+   "snapshots.TheSpeedX/PROXY-List.fetches": {
+    "summary": 1314,
+    "computed": 1314,
+    "match": true
+   },
+   "snapshots.TheSpeedX/PROXY-List.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.TheSpeedX/PROXY-List.changed": {
+    "summary": 33,
+    "computed": 33,
+    "match": true
+   },
+   "snapshots.Vann-Dev/proxy-list.fetches": {
+    "summary": 1752,
+    "computed": 1752,
+    "match": true
+   },
+   "snapshots.Vann-Dev/proxy-list.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.Vann-Dev/proxy-list.changed": {
+    "summary": 48,
+    "computed": 48,
+    "match": true
+   },
+   "snapshots.Zaeem20/FREE_PROXIES_LIST.fetches": {
+    "summary": 1752,
+    "computed": 1752,
+    "match": true
+   },
+   "snapshots.Zaeem20/FREE_PROXIES_LIST.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.Zaeem20/FREE_PROXIES_LIST.changed": {
+    "summary": 56,
+    "computed": 56,
+    "match": true
+   },
+   "snapshots.dpangestuw/Free-Proxy.fetches": {
+    "summary": 39,
+    "computed": 39,
+    "match": true
+   },
+   "snapshots.dpangestuw/Free-Proxy.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.dpangestuw/Free-Proxy.changed": {
+    "summary": 39,
+    "computed": 39,
+    "match": true
+   },
+   "snapshots.gfpcom/free-proxy-list (wiki).fetches": {
+    "summary": 52,
+    "computed": 52,
+    "match": true
+   },
+   "snapshots.gfpcom/free-proxy-list (wiki).failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.gfpcom/free-proxy-list (wiki).changed": {
+    "summary": 44,
+    "computed": 44,
+    "match": true
+   },
+   "snapshots.hookzof/socks5_list.fetches": {
+    "summary": 438,
+    "computed": 438,
+    "match": true
+   },
+   "snapshots.hookzof/socks5_list.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.hookzof/socks5_list.changed": {
+    "summary": 14,
+    "computed": 14,
+    "match": true
+   },
+   "snapshots.iplocate/free-proxy-list.fetches": {
+    "summary": 1752,
+    "computed": 1752,
+    "match": true
+   },
+   "snapshots.iplocate/free-proxy-list.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.iplocate/free-proxy-list.changed": {
+    "summary": 588,
+    "computed": 588,
+    "match": true
+   },
+   "snapshots.mmpx12/proxy-list.fetches": {
+    "summary": 1752,
+    "computed": 1752,
+    "match": true
+   },
+   "snapshots.mmpx12/proxy-list.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.mmpx12/proxy-list.changed": {
+    "summary": 148,
+    "computed": 148,
+    "match": true
+   },
+   "snapshots.monosans/proxy-list.fetches": {
+    "summary": 1314,
+    "computed": 1314,
+    "match": true
+   },
+   "snapshots.monosans/proxy-list.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.monosans/proxy-list.changed": {
+    "summary": 219,
+    "computed": 219,
+    "match": true
+   },
+   "snapshots.officialputuid/KangProxy.fetches": {
+    "summary": 1752,
+    "computed": 1752,
+    "match": true
+   },
+   "snapshots.officialputuid/KangProxy.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.officialputuid/KangProxy.changed": {
+    "summary": 116,
+    "computed": 116,
+    "match": true
+   },
+   "snapshots.proxifly/free-proxy-list.fetches": {
+    "summary": 1752,
+    "computed": 1752,
+    "match": true
+   },
+   "snapshots.proxifly/free-proxy-list.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.proxifly/free-proxy-list.changed": {
+    "summary": 56,
+    "computed": 56,
+    "match": true
+   },
+   "snapshots.roosterkid/openproxylist.fetches": {
+    "summary": 1314,
+    "computed": 1314,
+    "match": true
+   },
+   "snapshots.roosterkid/openproxylist.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.roosterkid/openproxylist.changed": {
+    "summary": 203,
+    "computed": 203,
+    "match": true
+   },
+   "snapshots.sunny9577/proxy-scraper.fetches": {
+    "summary": 1314,
+    "computed": 1314,
+    "match": true
+   },
+   "snapshots.sunny9577/proxy-scraper.failed": {
+    "summary": 1,
+    "computed": 1,
+    "match": true
+   },
+   "snapshots.sunny9577/proxy-scraper.changed": {
+    "summary": 51,
+    "computed": 51,
+    "match": true
+   },
+   "snapshots.vakhov/fresh-proxy-list.fetches": {
+    "summary": 1752,
+    "computed": 1752,
+    "match": true
+   },
+   "snapshots.vakhov/fresh-proxy-list.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.vakhov/fresh-proxy-list.changed": {
+    "summary": 4,
+    "computed": 4,
+    "match": true
+   },
+   "snapshots.xyzs996/free-proxy-health-list.fetches": {
+    "summary": 1752,
+    "computed": 1752,
+    "match": true
+   },
+   "snapshots.xyzs996/free-proxy-health-list.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.xyzs996/free-proxy-health-list.changed": {
+    "summary": 528,
+    "computed": 528,
+    "match": true
+   },
+   "snapshots.zloi-user/hideip.me.fetches": {
+    "summary": 2190,
+    "computed": 2190,
+    "match": true
+   },
+   "snapshots.zloi-user/hideip.me.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "snapshots.zloi-user/hideip.me.changed": {
+    "summary": 2190,
+    "computed": 2190,
+    "match": true
+   },
+   "nodes.subscriptions.barry-far/V2ray-config.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.barry-far/V2ray-config.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.barry-far/V2ray-config.changed": {
+    "summary": 14,
+    "computed": 14,
+    "match": true
+   },
+   "nodes.subscriptions.MatinGhanbari/v2ray-configs.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.MatinGhanbari/v2ray-configs.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.MatinGhanbari/v2ray-configs.changed": {
+    "summary": 13,
+    "computed": 13,
+    "match": true
+   },
+   "nodes.subscriptions.mahdibland/V2RayAggregator.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.mahdibland/V2RayAggregator.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.mahdibland/V2RayAggregator.changed": {
+    "summary": 7,
+    "computed": 7,
+    "match": true
+   },
+   "nodes.subscriptions.mheidari98/.proxy.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.mheidari98/.proxy.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.mheidari98/.proxy.changed": {
+    "summary": 13,
+    "computed": 13,
+    "match": true
+   },
+   "nodes.subscriptions.peasoft/NoMoreWalls.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.peasoft/NoMoreWalls.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.peasoft/NoMoreWalls.changed": {
+    "summary": 11,
+    "computed": 11,
+    "match": true
+   },
+   "nodes.subscriptions.chengaopan/AutoMergePublicNodes.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.chengaopan/AutoMergePublicNodes.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.chengaopan/AutoMergePublicNodes.changed": {
+    "summary": 11,
+    "computed": 11,
+    "match": true
+   },
+   "nodes.subscriptions.mfuu/v2ray.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.mfuu/v2ray.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.mfuu/v2ray.changed": {
+    "summary": 10,
+    "computed": 10,
+    "match": true
+   },
+   "nodes.subscriptions.aiboboxx/v2rayfree.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.aiboboxx/v2rayfree.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.aiboboxx/v2rayfree.changed": {
+    "summary": 2,
+    "computed": 2,
+    "match": true
+   },
+   "nodes.subscriptions.Pawdroid/Free-servers.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.Pawdroid/Free-servers.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.Pawdroid/Free-servers.changed": {
+    "summary": 73,
+    "computed": 73,
+    "match": true
+   },
+   "nodes.subscriptions.snakem982/proxypool.fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.snakem982/proxypool.failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.snakem982/proxypool.changed": {
+    "summary": 13,
+    "computed": 13,
+    "match": true
+   },
+   "nodes.subscriptions.roosterkid/openproxylist (V2RAY).fetches": {
+    "summary": 140,
+    "computed": 140,
+    "match": true
+   },
+   "nodes.subscriptions.roosterkid/openproxylist (V2RAY).failed": {
+    "summary": 0,
+    "computed": 0,
+    "match": true
+   },
+   "nodes.subscriptions.roosterkid/openproxylist (V2RAY).changed": {
+    "summary": 73,
+    "computed": 73,
+    "match": true
+   },
+   "nodes.precheck.dns_nxdomain": {
+    "summary": 777,
+    "computed": 777,
+    "match": true
+   },
+   "nodes.precheck.dns_other": {
+    "summary": 14,
+    "computed": 14,
+    "match": true
+   },
+   "nodes.precheck.dns_timeout": {
+    "summary": 12,
+    "computed": 12,
+    "match": true
+   },
+   "nodes.precheck.ok": {
+    "summary": 19388,
+    "computed": 19388,
+    "match": true
+   },
+   "nodes.precheck.skip_ipv6": {
+    "summary": 27,
+    "computed": 27,
+    "match": true
+   },
+   "nodes.precheck.skip_not_public": {
+    "summary": 23,
+    "computed": 23,
+    "match": true
+   },
+   "nodes.precheck.tcp_refused": {
+    "summary": 1738,
+    "computed": 1738,
+    "match": true
+   },
+   "nodes.precheck.tcp_timeout": {
+    "summary": 5318,
+    "computed": 5318,
+    "match": true
+   },
+   "nodes.precheck.tcp_unreach": {
+    "summary": 504,
+    "computed": 504,
+    "match": true
+   },
+   "pool.aggregator_sample": {
+    "summary": 13311,
+    "computed": 13311,
+    "match": true
+   },
+   "pool.dead": {
+    "summary": 45831,
+    "computed": 45831,
+    "match": true
+   },
+   "pool.dropped": {
+    "summary": 26448,
+    "computed": 26448,
+    "match": true
+   },
+   "pool.listed": {
+    "summary": 45569,
+    "computed": 45569,
+    "match": true
+   },
+   "pool.new": {
+    "summary": 3623,
+    "computed": 3623,
+    "match": true
+   },
+   "pool.open": {
+    "summary": 20962,
+    "computed": 20962,
+    "match": true
+   },
+   "pool.skipped_not_public": {
+    "summary": 5,
+    "computed": 5,
+    "match": true
+   },
+   "pool.skipped_skip_port": {
+    "summary": 3362,
+    "computed": 3362,
+    "match": true
+   },
+   "pool.total": {
+    "summary": 75064,
+    "computed": 75064,
+    "match": true
+   },
+   "pool.working": {
+    "summary": 4648,
+    "computed": 4648,
+    "match": true
+   },
+   "findings.同一请求被 judge 收到多次（重放）.attempts": {
+    "summary": 107,
+    "computed": 111,
+    "match": false
+   },
+   "findings.同一请求被 judge 收到多次（重放）.candidates": {
+    "summary": 27,
+    "computed": 29,
+    "match": false
+   }
+  },
+  "mismatches": [
+   "findings.同一请求被 judge 收到多次（重放）.attempts",
+   "findings.同一请求被 judge 收到多次（重放）.candidates",
+   "judge.noise(+dropped n)",
+   "judge.req",
+   "judge.tls_fail"
+  ],
+  "mismatch_count": 5,
+  "judge_rotation": {
+   "summary_generated_hour_utc": "2026-11-09T08:00Z",
+   "late_judge_files": 2,
+   "late_judge_file_hours": [
+    "20261109-08",
+    "20261109-09"
+   ],
+   "late_req_before_generated": 12033,
+   "late_records": {
+    "judge.req": 12033,
+    "judge.tls_fail": 373,
+    "judge.noise(+dropped n)": 565,
+    "findings.同一请求被 judge 收到多次（重放）.attempts": 4
+   },
+   "explained": {
+    "judge.req": {
+     "late": 12033,
+     "explained": true
+    },
+    "judge.tls_fail": {
+     "late": 373,
+     "explained": true
+    },
+    "judge.noise(+dropped n)": {
+     "late": 565,
+     "explained": true
+    },
+    "findings.同一请求被 judge 收到多次（重放）.attempts": {
+     "late": 4,
+     "explained": true
+    },
+    "findings.同一请求被 judge 收到多次（重放）.candidates": {
+     "summary_visible_recount": 27,
+     "explained": true
+    }
+   },
+   "all_judge_mismatches_explained": true
+  },
+  "note": "records.att 等可能差 1：文件末尾没写完的一行 Go 直接丢弃、ingest 能解析就入库（SCHEMA“坑”8）。judge.* 与“重放”可能少算：summary.json 生成时 judge 当前小时的文件还在写，读到一半时整点轮转（改名压缩），rec.Each 遇到消失的文件直接跳过（rec.go eachFile 的 os.ErrNotExist），之后新开的文件也没读到；judge_rotation 逐项核对“summary + 生成时所在小时及以后的 judge 文件里的记录 = 本模块”是否成立。findings 的 candidates 在 summary.go 里对节点用 'node <id>' 计数，这里用 cand（节点 id），互不冲突。judge_horizon=2026-11-09T09:05Z"
+ },
+ "preflight": {
+  "source": "data_dir",
+  "预检时间": "2026-11-06T08:05:07Z",
+  "仪器自检": {
+   "状态": "通过",
+   "核对": 199,
+   "不符": 0
+  },
+  "sing-box 版本": "1.14.4",
+  "结论": {
+   "失败": 0,
+   "注意": 0
+  }
+ },
+ "verdict": {
+  "any_invariant_violation": false,
+  "node_egress_not_self_determinable": true,
+  "node_egress_not_self_status": "可判定（本机地址含 judge 日志里公网对照的实测对端地址）",
+  "tls_ok_but_http_failed_content_level": 0,
+  "tls_ok_but_http_failed_transport_level": 3012,
+  "version_unique": true,
+  "config_unique": true,
+  "segments_without_stop": 0,
+  "interruptions_without_stop": 0,
+  "loopback_fail_minutes_total": 0,
+  "loopback_fail_minutes_to_next_ok_total": 0,
+  "unexplained_stat_gaps": 0,
+  "unexplained_idle_gaps": 0,
+  "unexplained_missing_hours": {
+   "probe": 0,
+   "judge": 0,
+   "snap": 0
+  },
+  "rate_minutes_over_limit": 205,
+  "evidence_missing_attempts": 11209,
+  "crosscheck_mismatches": 5,
+  "preflight_selftest_mismatches": 0,
+  "preflight_failures": 0,
+  "note": "每项的分子分母和口径见对应小节与 definitions"
+ }
+}

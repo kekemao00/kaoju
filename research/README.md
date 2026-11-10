@@ -17,6 +17,7 @@
 | `competitors/classify_issues.py` | jhao104/proxy_pool 290 条未关闭 issue 的归类（人工，依据标题） |
 | `competitors/notes.md` | 竞品拆解的证据清单：项目、提交号、文件路径、结论 |
 | `fieldtest/` | 第一阶段 1B 的实测工具：judge 端点、列表快照采集器、分阶段探测器。部署见 `fieldtest/README.md`，测量口径见 `fieldtest/PROTOCOL.md` |
+| `phase1b/` | 第一阶段 1B 实测数据的分析：入库（SQLite）、九个指标模块、事后分析、报告表格（`run_all.sh` 一键运行）。结论见 `../docs/research/phase1b-report.md`，说明见 `phase1b/README.md` |
 
 ## 复现
 
