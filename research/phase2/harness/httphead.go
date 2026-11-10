@@ -16,7 +16,10 @@ import (
 // maxHeadBytes 是请求头（请求行、各个头、结尾的空行）的上限。
 const maxHeadBytes = 64 << 10
 
-var errHeadTooLarge = errors.New("请求头超过 64 KiB")
+var (
+	errHeadTooLarge  = errors.New("请求头超过 64 KiB")
+	errTooManyBlanks = errors.New("请求行之前的空行太多")
+)
 
 // reqHead 是解析后的请求头。Headers 保留原顺序、原大小写；值去掉了首尾的空格和制表符，
 // 其余原样。一个字节都不差的原文在 Raw 里。
@@ -82,7 +85,7 @@ func readHead(br *bufio.Reader, max int) ([]byte, error) {
 				raw = raw[:0]
 				skipped++
 				if skipped > 8 {
-					return raw, errors.New("请求行之前的空行太多")
+					return raw, errTooManyBlanks
 				}
 				continue
 			}
@@ -519,7 +522,8 @@ func (p *Profile) judgeAuth(a *authInfo) {
 	if !a.Present || a.Result != "" {
 		return
 	}
-	if p.credsOK(a.User, a.Pass) {
+	decoded := append(append(append([]byte{}, a.User...), ':'), a.Pass...)
+	if p.basicOK(decoded) {
 		a.Result = "ok"
 	} else {
 		a.Result = "bad"

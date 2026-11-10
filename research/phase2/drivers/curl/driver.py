@@ -268,15 +268,18 @@ def step_result(st, part, files, proc_note):
         lines.append("这次传输没有结束（curl 没有打印 -w 的输出）")
     if proc_note:
         lines.append(proc_note)
+    # “Note: …”只在 -v 下打印（比如 --rate 的等待提示），不算默认能看到的
+    plain = [ln for ln in part["plain"] if not ln.startswith("Note: ")]
+    notes_v = [ln for ln in part["plain"] if ln.startswith("Note: ")]
     lines.append("标准错误:")
-    lines += part["plain"] if part["plain"] else ["（空）"]
+    lines += plain if plain else ["（空）"]
     lines.append("正文前 %d 字节:" % BODY_HEAD)
     if body is None:
         lines.append("（没有正文文件）")
     else:
         lines.append(body[:BODY_HEAD].decode("utf-8", "replace"))
     extra = ["-v 的输出（已去掉 --trace-ids 的前缀）:"]
-    extra += part["verbose"] if part["verbose"] else ["（空）"]
+    extra += (notes_v + part["verbose"]) if (notes_v or part["verbose"]) else ["（空）"]
     extra.append("-D 存下的响应头:")
     extra.append(hdr.decode("utf-8", "replace") if hdr else "（空）")
     res = {
@@ -343,7 +346,8 @@ def run_case(case, variant):
     result["notes"].append(
         "切分方法：curl 的 -w 在每次传输结束时往标准错误写一行标记（步骤号加 %{json}）；"
         "-v 的每一行由 --trace-ids 标上 [传输号-连接号]，按传输号归给各步（并发时也成立）；"
-        "不带前缀的行（curl: (N) …、Warning: …）紧挨在所属传输的标记之前，归给那一步的 default_text。"
+        "不带前缀的行（curl: (N) …、Warning: …）紧挨在所属传输的标记之前，归给那一步的 default_text；"
+        "其中以 Note: 开头的行只在 -v 下才打印（实测过），归入 extra_text。"
         "[N-x] 这种还没有连接号的行（查找可复用连接的过程）也按传输号归属。"
     )
     result["notes"].append(

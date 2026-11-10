@@ -9,8 +9,39 @@ import (
 	"time"
 )
 
-// helloWait 是等一条 TLS 记录到齐的最长时间。
-const helloWait = 2 * time.Second
+// helloWait 是等一条 TLS 记录到齐的最长时间；methodWait 是等明文请求的方法名到齐的最长时间。
+const (
+	helloWait  = 2 * time.Second
+	methodWait = 500 * time.Millisecond
+)
+
+// firstBytesWait 判断隧道的首批字节够不够归类：不够时返回还要等多久（从第一次读到算起），够了返回 0。
+// 归类不应取决于 TCP 怎么分段，所以两种情况要接着读：
+// 首字节是 0x16 而第一条 TLS 记录没到齐；到手的全是大写字母、不满 16 个、还没见到空格（可能是没到齐的方法名）。
+func firstBytesWait(b []byte) time.Duration {
+	if len(b) == 0 {
+		return 0
+	}
+	if b[0] == 0x16 {
+		need := 5
+		if len(b) >= 5 {
+			need = 5 + int(b[3])<<8 + int(b[4])
+		}
+		if len(b) < need {
+			return helloWait
+		}
+		return 0
+	}
+	if len(b) >= 16 {
+		return 0
+	}
+	for _, c := range b {
+		if c < 'A' || c > 'Z' {
+			return 0
+		}
+	}
+	return methodWait
+}
 
 // startTunnel 在 CONNECT 回了 200（或 SOCKS5 回了成功）之后调用：记 tunnel_open，
 // 把隧道里客户端发来的首批字节记下来（tunnel_first_bytes），然后把连接交给内置源站。
@@ -64,20 +95,18 @@ func (s *Server) startTunnel(c *cconn, via string, reqSeq int, host string, port
 			kv{"n_buffered", len(first)}, kv{"hex", hexHead(first, 16)}, kv{"kind", kind}, kv{"tls", tlsField})
 	})
 
-	// 看起来是 TLS 记录的话，多读几次直到第一条记录到齐（最多等 2 秒），这样才能解析 ClientHello。
-	// 多读到的字节同样原样交给源站；第一次读到多少照实记在 n_first_read 里。
-	if first[0] == 0x16 {
-		deadline := time.Now().Add(helloWait)
+	// 首批字节还不够归类时多读几次：TLS 记录等到第一条到齐（最多 2 秒，这样才能解析 ClientHello），
+	// 明文的方法名等到出现空格（最多 500 毫秒）。多读到的字节同样原样交给源站；
+	// 第一次读到多少照实记在 n_first_read 里。
+	if firstBytesWait(first) > 0 {
+		started := time.Now()
 		tmp := make([]byte, 16<<10)
 		for {
-			need := 5
-			if len(first) >= 5 {
-				need = 5 + int(first[3])<<8 + int(first[4])
-			}
-			if len(first) >= need {
+			wait := firstBytesWait(first)
+			if wait == 0 {
 				break
 			}
-			if c.SetReadDeadline(deadline) != nil {
+			if c.SetReadDeadline(started.Add(wait)) != nil {
 				break
 			}
 			n, err := c.Read(tmp)

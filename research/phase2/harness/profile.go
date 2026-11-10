@@ -343,13 +343,32 @@ func validHeaderValue(s string) bool {
 }
 
 // credsOK 按字节判定用户名和密码。accept_any_user 为真时只比密码（与 accept[0][1] 比）。
-// HTTP 的 Basic 和 SOCKS5 的用户名密码认证共用这一个判定。
+// SOCKS5 的用户名密码认证用它：那里用户名和密码各有长度字节，分界是确定的。
+// HTTP 的 Basic 分不清用户名里的冒号，用下面的 basicOK。
 func (p *Profile) credsOK(user, pass []byte) bool {
 	if p.Auth.AcceptAnyUser {
 		return len(p.Auth.Accept) > 0 && string(pass) == p.Auth.Accept[0][1]
 	}
 	for _, a := range p.Auth.Accept {
 		if string(user) == a[0] && string(pass) == a[1] {
+			return true
+		}
+	}
+	return false
+}
+
+// basicOK 判定 Basic 凭据。decoded 是 base64 解开以后的全部字节（user-pass）。
+// Basic 的线上格式只有“用户名:密码”这一串，用户名里带冒号时接收方分不出界线在哪
+// （RFC 7617 第 2 节不许用户名带冒号，但用例 D11 要测的正是客户端这样发时到达的字节）。
+// 所以这里不拆，直接比整串：与某一项的“用户名:密码”逐字节相同就接受；
+// accept_any_user 为真时，以“:密码”（密码取 accept[0][1]）结尾就接受。
+// 用户名不带冒号时，这与“按第一个冒号拆开再分别比”的结果相同。
+func (p *Profile) basicOK(decoded []byte) bool {
+	if p.Auth.AcceptAnyUser {
+		return len(p.Auth.Accept) > 0 && bytes.HasSuffix(decoded, []byte(":"+p.Auth.Accept[0][1]))
+	}
+	for _, a := range p.Auth.Accept {
+		if string(decoded) == a[0]+":"+a[1] {
 			return true
 		}
 	}

@@ -8,5 +8,10 @@
     "cmd": ["python3", "drivers/curl/driver.py", "--variant", "curl-anyauth"],
     "env": {},
     "desc": "同 curl，每次传输另加 --proxy-anyauth"
+  },
+  "rawref": {
+    "cmd": ["python3", "drivers/rawref/driver.py"],
+    "env": {},
+    "desc": "参照客户端（仪器自检用）：裸套接字，策略写死，见 drivers/rawref/README.md；答案在 selfcheck_expected.json"
   }
 }

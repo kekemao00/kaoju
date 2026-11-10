@@ -304,7 +304,15 @@ func (s *Server) originHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp := s.originRespond(q)
 	s.emitOriginRequest(q, "respond", resp.status, nil)
-	s.sleep(resp.delay)
+	if !s.sleep(resp.delay) {
+		// 仪器在延迟期间开始退出：不再回应。等 Shutdown 把这条连接关完（conn_end 记 shutdown）再放手，
+		// 否则 net/http 会抢先关连接，conn_end 就成了 origin_close。
+		select {
+		case <-oc.c.done:
+		case <-time.After(5 * time.Second):
+		}
+		panic(http.ErrAbortHandler)
+	}
 
 	if resp.ws {
 		hj, ok := w.(http.Hijacker)

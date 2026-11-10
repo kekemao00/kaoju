@@ -12,7 +12,14 @@
 - 第一行是 `start`，最后一行是 `end`。没有 `end` 的文件说明仪器不是正常退出的，这次运行不能用。
 - 每个事件都有 `t` 和 `ev`，字段的先后固定（`t`、`ev`、`conn` 在最前）。下面的表按字段出现的顺序列出。
 - 表里列出的字段**总是出现**；不适用时值是 `null`，不会省略。唯一的例外是 `late`（见下）。
-- 字符串不做 HTML 转义。不是合法 UTF-8 的字节不会出现在字符串字段里：相应的字段是 `null`，原样的字节看同名的 `_hex` 字段。
+- 字符串不做 HTML 转义。JSON 的字符串表示不了非法的 UTF-8，线上的字节不是合法 UTF-8 时分两种情况：
+  - 有同名 `_hex` 字段的（`http_request.auth` 的 `user`、`pass`，`socks5_auth` 的 `user`、`pass`）以及 `socks5_request.host`：
+    字符串字段是 `null`，原样的字节看 `_hex`（`socks5_request` 看 `raw_hex`）。
+  - 其余的字符串字段（`http_request` 的 `method`、`target`、`version`、`k`、`headers`、`auth.scheme`、`auth.raw`，
+    `tunnel_open.target_host`，`tunnel_first_bytes.tls` 的 `sni`、`alpn`，`origin_request` 的各字符串字段）：
+    每个非法字节换成一个 U+FFFD，不同的字节因此变成同一个字符。这些字段只供阅读和查找；
+    **比较字节一律用 `head_b64`、`_hex`、`raw_hex`**（`head_b64` 是线上字节的原样片段）。
+    被测客户端把非 ASCII 字节直接写进请求目标或头里时才会碰到；用例里的 UTF-8 用户名都在 base64 之内，不受影响。
 
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
@@ -119,7 +126,7 @@
 | `body_len` | 整数 | 正文的字节数；chunked 的是解开以后的长度 |
 | `body_sha256` | 字符串 | 正文的 SHA-256（chunked 的是解开以后的）；没有正文时是空串的哈希 |
 | `auth` | 对象 | 对 `Proxy-Authorization` 的解析和判定，见下 |
-| `error` | 字符串或 `null` | 请求有问题时的说明，以下列之一开头：`incomplete_head`（头没发完连接就断了）、`head_too_large`（超过 64 KiB，回 431）、`bad_head`（回 400）、`unsupported_version`（回 505）、`bad_framing`（回 400）、`bad_body`（chunked 格式不对，回 400）、`incomplete_body`（正文没发完连接就断了） |
+| `error` | 字符串或 `null` | 请求有问题时的说明，以下列之一开头：`incomplete_head`（头没发完连接就断了）、`head_too_large`（超过 64 KiB，回 431）、`bad_head`（回 400；请求行之前的空行超过 8 个也算，这时请求行的三段都是空串、`head_b64` 是空串）、`unsupported_version`（只接受 HTTP/1.0 和 1.1，其余回 505）、`bad_framing`（回 400）、`bad_body`（chunked 格式不对，回 400）、`incomplete_body`（正文没发完连接就断了）、`connect_framing_ignored`（见下；**只是记一笔，请求照常处理**） |
 
 `auth` 对象（有多个 `Proxy-Authorization` 头时只看第一个）：
 
@@ -134,6 +141,24 @@
 | `result` | 字符串 | `none`（没带）、`ok`（Basic，凭据与 `auth.accept` 相符）、`bad`（不是 Basic，或凭据不符）、`malformed`（Basic 但 base64 解不开，或解开以后没有冒号） |
 
 `result` 只是把凭据与配置比较，与 `auth.mode` 无关：代理不要求认证时照样记下判定，只是不据此拒绝。
+
+用户名里带冒号时（用例 D11）：Basic 在线上只有“用户名:密码”这一串，接收方分不出界线。`user`、`pass` 仍按第一个冒号拆
+（`sess:ab12` 加密码 `kaoju-pass-1` 记成 `user=sess`、`pass=ab12:kaoju-pass-1`），但 **`result` 按整串字节判**：
+解开以后的整串与 `auth.accept` 某一项的“用户名:密码”逐字节相同是 `ok`；`auth.accept_any_user` 为真时，
+整串以“:密码”（密码取 `accept[0][1]`）结尾是 `ok`。用户名不带冒号时这与分开比的结果相同。
+要看到达的字节是否原样，把 `user_hex`、`3a`、`pass_hex` 接起来比。SOCKS5 的用户名和密码各有长度字节，没有这个问题，分开比。
+
+PROTOCOL.md 的字段表没有写到的几条处理次序和取法：
+
+- 正文：绝对形式的请求先把正文读完（`Content-Length` 或 chunked），再做认证等判定，所以回 407 时正文已经读完，
+  同一条连接上接着重试不会错位。请求带 `Expect: 100-continue`、`forward.send_100_continue` 为真时，
+  100 在认证之前就回：没带凭据的 POST 会先收到 100、发完正文、再收到 407。
+  “正文发了几遍”（R43）量到的因此有一部分是仪器这个做法的结果。
+- CONNECT 没有正文（RFC 9110 第 9.3.6 节）：请求头之后的字节都是隧道数据，`body_len` 恒为 0。CONNECT 带了
+  `Transfer-Encoding` 或不为 0 的 `Content-Length` 时不去读“正文”，在 `error` 里记 `connect_framing_ignored`，其余照常。
+- 判定次序：认证 → `connect.fail` / `forward.fail` → `connect.drop` / `conn.drop` → 端口映射。
+  认证没过的请求不消耗 `drop` 的 `times`。
+- 同时带 `Content-Length` 和 `Transfer-Encoding` 的请求按 chunked 读正文，回应之后关连接（RFC 9112 第 6.1 节）。
 
 ```json
 {"t":2.405,"ev":"http_request","conn":1,"seq":2,"t_head":2.364,"form":"absolute","method":"GET","target":"http://a.kaoju.test/echo?k=B01.s1","version":"HTTP/1.1","k":"B01.s1","headers":[["Host","a.kaoju.test"],["Proxy-Authorization","Basic a2FvanUtdXNlcjprYW9qdS1wYXNzLTE="]],"head_b64":"R0VUIGh0dHA6Ly9hLmthb2p1LnRlc3QvZWNobz9rPUIwMS5zMSBIVFRQLzEuMQ0KSG9zdDogYS5rYW9qdS50ZXN0DQpQcm94eS1BdXRob3JpemF0aW9uOiBCYXNpYyBhMkZ2YW5VdGRYTmxjanByWVc5cWRTMXdZWE56TFRFPQ0KDQo=","body_len":0,"body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","auth":{"present":true,"scheme":"Basic","raw":"Basic a2FvanUtdXNlcjprYW9qdS1wYXNzLTE=","user":"kaoju-user","user_hex":"6b616f6a752d75736572","pass":"kaoju-pass-1","pass_hex":"6b616f6a752d706173732d31","lenient":false,"result":"ok"},"error":null}
@@ -159,14 +184,27 @@ CONNECT 的例子：
 | `body_len` | 整数 | 写出的正文字节数（HEAD 的响应是 0） |
 | `by` | 字符串 | `proxy`：代理自己生成的；`origin`：内置源站的处理函数生成、由代理回写的（绝对形式的请求转发成功） |
 | `cause` | 字符串 | 为什么回这个响应，见下 |
-| `close` | 布尔 | 写完以后代理是否关连接。关的话响应里带 `Connection: close`（响应本身已有 `Connection` 头的除外，比如 101），随后按 `fin` 关 |
+| `close` | 布尔 | 写完以后代理是否关连接。关的话响应里带 `Connection: close`（响应本身已有 `Connection` 头的除外，比如 101），随后按 `fin` 关。什么时候为真见下 |
 | `error` | 字符串或 `null` | 写的时候出的错 |
+
+`close` 为真有三个来源：
+
+1. 配置要求：`auth.on407=close`、`connect.fail` / `forward.fail` 的 `close=true`。
+2. 请求一侧要求（RFC 9112 第 9.6 节）：请求带 `Connection: close`；或者是 HTTP/1.0 而没带 `Connection: keep-alive`
+   （也没带 `Proxy-Connection: keep-alive`）；或者同时带了 `Content-Length` 和 `Transfer-Encoding`。
+   **这一条压过配置**：`auth.on407=keepalive`、`fail` 的 `close=false` 遇到这样的请求，仪器照样关。
+3. 仪器自己的错误响应（400、431、505 一类）和绝对形式的 WebSocket 握手。
+
+`Proxy-Connection: close` 不算第 2 条：它不是标准头，仪器只记录、不照办，连接的去留仍按配置。
+所以“407 之后重试走哪条连接”（R33）、“CONNECT 失败而代理没关连接”（R88）这类行，取值之前要看那个 407 或失败响应的
+`close`：是 `true` 而配置没要求关，说明是客户端自己在请求里带了 `Connection: close`（在同一个 `seq` 的 `http_request.headers`
+里能看到），之后的新连接不是客户端在“代理留着连接”的前提下做的选择，格子应当加标注。
 
 `cause` 的取值：`forward`（转发成功）、`connect_ok`（CONNECT 的 200）、`continue`（100）、
 `auth_required`（没带凭据，407）、`auth_rejected`（凭据不对，407 或 403）、
 `connect_fail`、`forward_fail`（配置的 `connect.fail`、`forward.fail`）、
 `unmapped_port`（目标端口没有对应的内置源站，502）、`https_absolute`（绝对形式的 `https://`，502）、
-`websocket`（绝对形式的 WebSocket 握手，101）、`websocket_rejected`（握手不对）、
+`websocket`（绝对形式、路径是 `/ws` 的 WebSocket 握手，101）、`websocket_rejected`（`/ws` 上的握手不对）、
 `bad_request`、`bad_version`、`head_too_large`、`bad_connect_target`、`bad_target`、`bad_scheme`、
 `not_proxy_request`（不是绝对形式也不是 CONNECT，400）。
 
@@ -207,10 +245,18 @@ CONNECT 回了 200、或 SOCKS5 回了成功应答之后写。
 | `conn`、`tunnel` | 整数 | |
 | `n_first_read` | 整数 | 隧道里第一次读到的字节数。`early_bytes` 大于 0 时等于 `early_bytes` |
 | `early_bytes` | 整数 | 客户端没等 200（或 SOCKS5 应答）就发来的隧道字节数：它们是和握手一起读进来的。通常是 0 |
-| `n_buffered` | 整数 | 写这个事件时手头的字节数。首包是 TLS 记录而第一次没读全时，仪器接着读到整条记录到齐（最多等 2 秒），所以它可能大于 `n_first_read`。这些字节随后原样交给源站 |
+| `n_buffered` | 整数 | 写这个事件时手头的字节数。第一次读到的不够归类时仪器接着读（见下），所以它可能大于 `n_first_read`。这些字节随后原样交给源站 |
 | `hex` | 字符串 | 前 16 个字节 |
 | `kind` | 字符串 | `tls_client_hello`（TLS 握手记录，里面是 ClientHello）、`http`（1 到 15 个大写字母后跟一个空格）、`other` |
 | `tls` | 对象或 `null` | `kind` 是 `tls_client_hello` 时的解析结果，否则 `null` |
+
+`kind` 不取决于 TCP 怎么分段。第一次读到的字节不够归类时，仪器接着读到够为止再写这个事件：
+
+- 首字节是 0x16：等第一条 TLS 记录到齐，从第一次读到算起最多 2 秒。
+- 到手的全是大写字母、不满 16 个、还没见到空格（可能是没到齐的方法名）：等到出现别的字节或满 16 个，最多 500 毫秒。
+  到时间还是只有几个大写字母的归 `other`。
+
+`n_first_read` 照实记第一次读到多少，`hex`、`kind`、`tls` 按 `n_buffered` 个字节算。等待期间这些字节还没有交给源站。
 
 `tls` 对象：
 
@@ -380,6 +426,18 @@ HTTPS 源站的 `origin_conn` 在 TLS 握手有了结果以后才写。
 
 要看客户端在代理端口上发的头的原样，用 `http_request`；隧道里 TLS 之内的原始字节仪器不记。
 
+几处要留意的：
+
+- **盲区**：隧道里和直连上的请求由 Go 的 `net/http` 解析，被它自己拒掉的请求（比如 HTTP/1.1 不带 `Host`、请求行不合法、
+  头太大）到不了仪器的处理函数，`net/http` 直接回 400 一类的响应，**没有 `origin_request`**。事件里只看得到
+  `origin_conn` 和字节数。所以“某个 `k` 没有 `origin_request`”不等于“请求没到源站”：一条隧道有 `origin_conn`、
+  `tunnel_close` 两个方向的字节数都大于 0、却没有任何 `origin_request` 时，应当标成“源站没能解析”，不要当成“没到”。
+  明文隧道可以再看 `tunnel_first_bytes.kind` 是不是 `http`。正常的客户端不会发这种请求。
+- 绝对形式的 WebSocket 握手（路径 `/ws`、带 `Upgrade: websocket`）由代理直接回 101，不写 `origin_request`；
+  其余路径带不带 `Upgrade` 都照常转交并写 `origin_request`（`Upgrade` 是逐跳头，不在 `headers` 里）。
+- `/echo?delay=` 的延迟发生在 `origin_request` 写出之后、回应之前。仪器在延迟期间退出时不再回应：
+  这个请求有 `action=respond` 的 `origin_request`，却没有对应的响应字节（`forward` 没有 `http_response`）。
+
 隧道里的例子：
 
 ```json
@@ -414,6 +472,17 @@ HTTPS 源站的 `origin_conn` 在 TLS 握手有了结果以后才写。
 
 `auth.on407=close`、`connect.fail`、`forward.fail` 的 `close`、`socks.rep`、SOCKS5 认证失败之后的关闭不写 `action`：
 它们体现在 `http_response.close`、`socks5_reply`、`socks5_auth` 和 `conn_end.reason` 里。
+
+两种空闲关闭的计时口径不一样：
+
+- `conn.idle_close_ms` 从一个响应写完开始计，到下一个请求的第一个字节为止。仪器处理请求期间（含 `delay`）不计；
+  还没有发过请求的新连接、请求头发到一半的连接也不计。
+- `tunnel.idle_close_ms` 只看最外层 TCP 连接上有没有字节往来，两个方向都静默这么久就关。
+  **源站处理请求的时间也算静默**：空闲上限比 `/echo?delay=` 短时，隧道会在请求处理中被切断。
+  不要把 `tunnel.idle_close_ms` 和比它长的 `delay` 配在同一个用例里（现有用例没有这样配的）。
+
+`action` 写出与连接真正关闭之间有几十微秒。对端恰好在这段时间里先发了 FIN 的话，`conn_end` 记的是 `by=client`、
+`reason=client_eof`，与前面的 `action` 对不上；这时以 `action` 为准判断“仪器按配置做了什么”，FIN 的先后以抓包为准。
 
 ```json
 {"t":10.706,"ev":"action","conn":1,"what":"origin_drop","how":"fin","k":"F05.s2","tunnel":1,"oconn":1}
@@ -481,6 +550,12 @@ HTTPS 源站的 `origin_conn` 在 TLS 握手有了结果以后才写。
 {"t":1.9,"ev":"conn_end","conn":1,"listener":"proxy","by":"client","close":"fin","reason":"client_eof","bytes_in":175,"bytes_out":497,"bytes_drained":0,"sha256_in":"904051bc337f3bab7992c6b1732cd0f6ac44cca15ffc4dc5d413a4795a1ec4d5","sha256_out":"467b39540415ce718f09d3ca83ac8d748a0fcb703919c9c7a798b48492210431","dur_ms":1.404}
 ```
 
+仪器退出时的三处边角（`run.py` 在驱动结束以后才发信号，正常碰不到）：
+
+- 还在 `delay` 里的请求不再得到回应，连接按 `shutdown` 关。
+- 监听端口关闭时还在内核接受队列里、仪器没来得及接受的连接没有 `accept` 和 `conn_end`，抓包里会多出一条连接。
+- 仪器只在 127.0.0.1（IPv4）上监听。客户端绕过代理直连 `localhost` 而只试 `::1` 时，连接被拒，事件里什么都没有。
+
 ## 其他
 
 - `log_error`：事件编码失败时写的替身（字段 `of` 是原事件名，`error` 是原因）。不应出现；出现了这次运行不能用。
@@ -491,3 +566,11 @@ HTTPS 源站的 `origin_conn` 在 TLS 握手有了结果以后才写。
 ## 变更记录
 
 - 第 1 版（2026-11-10）：初版。
+- 第 1 版的修订（2026-11-10，审查之后；字段名、字段先后都没有变，版本号不变）：
+  - 改正了“非法 UTF-8 的字段是 `null`”这句话：只有带 `_hex` 的字段和 `socks5_request.host` 是 `null`，其余是 U+FFFD。
+  - `http_request.error` 多了一个取值 `connect_framing_ignored`（请求照常处理）；空行过多的连接现在会写一个 `bad_head` 的 `http_request` 并回 400。
+  - `http_request.auth.result` 对 Basic 按整串字节判（用户名带冒号的 D11 现在是 `ok`）。
+  - `Proxy-Connection: close` 不再让仪器关连接；写明了 `http_response.close` 为真的三个来源。
+  - `tunnel_first_bytes`：明文方法名没到齐时也等（最多 500 毫秒）再归类。
+  - 绝对形式的 WebSocket 握手只在 `/ws` 上由代理回 101。
+  - 写明了 `origin_request` 的盲区、两种空闲关闭的计时口径、仪器退出时的边角。

@@ -318,16 +318,22 @@ func (s *Server) takeDrop(spec *DropSpec, used *int, k string, reused bool) bool
 	return true
 }
 
-// sleep 睡一段时间；仪器退出时提前醒来。
-func (s *Server) sleep(d time.Duration) {
-	if d <= 0 {
-		return
+// sleep 睡一段时间；仪器退出时提前醒来并返回 false（调用方这时不应再回应）。
+func (s *Server) sleep(d time.Duration) bool {
+	if d > 0 {
+		t := time.NewTimer(d)
+		defer t.Stop()
+		select {
+		case <-t.C:
+		case <-s.done:
+			return false
+		}
 	}
-	t := time.NewTimer(d)
-	defer t.Stop()
 	select {
-	case <-t.C:
 	case <-s.done:
+		return false
+	default:
+		return true
 	}
 }
 

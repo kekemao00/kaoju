@@ -17,6 +17,8 @@ cd research/phase2/harness
 go build -trimpath -o obsproxy .      # Go 1.24 或更新
 ```
 
+构建出来的 `obsproxy` 不进仓库（本目录的 `.gitignore` 挡着）。
+
 ## 运行
 
 ```sh
@@ -61,6 +63,18 @@ go test -run '^$' -fuzz '^FuzzClientHello$' -fuzztime 10s
 每种事件的字段与 `EVENTS.md` 一致）；每条测试连接上 `conn_end` 的字节数和 SHA-256 与测试自己发收的字节完全相同。
 
 `OBSPROXY_TEST_DUMP=目录 go test ./...` 会把每个测试的事件文件留在那个目录里，`EVENTS.md` 里的例子就取自那里。
+
+## 与 PROTOCOL.md 的文字相比多出来的取法
+
+PROTOCOL.md 已定稿，下面这些它没有写到的地方按这里的读法实现，细节都在 `EVENTS.md` 的相应小节：
+
+- Basic 凭据按解开以后的整串字节判定，用户名带冒号（用例 D11）也能通过（`http_request` 一节）。
+- 请求带 `Connection: close`（或不带 keep-alive 的 HTTP/1.0）时仪器照关，压过 `auth.on407=keepalive` 和 `fail` 的
+  `close=false`；`Proxy-Connection: close` 不算（`http_response` 一节）。
+- 判定次序是 认证 → fail → drop → 端口映射；100 在认证之前回；CONNECT 不读正文（`http_request` 一节）。
+- 隧道首包的归类不取决于 TCP 分段（`tunnel_first_bytes` 一节）。
+- 两种空闲关闭的计时口径不同，`tunnel.idle_close_ms` 把源站处理请求的时间也算静默（`action` 一节）。
+- 被 `net/http` 自己拒掉的请求没有 `origin_request`（`origin_request` 一节）。
 
 ## 文件
 

@@ -227,7 +227,9 @@ func TestAuthAcceptAnyUser(t *testing.T) {
 	long := strings.Repeat("u", 1024)
 	wantEq(t, "1024 字节的用户名", send("D.s3", []byte(long+":kaoju-pass-1")), 200)
 	wantEq(t, "密码是 accept[1] 的（不认）", send("D.s4", []byte("other:kaoju-pass-2")), 407)
-	wantEq(t, "用户名里有冒号（密码因此对不上）", send("D.s5", []byte("sess:ab12:kaoju-pass-1")), 407)
+	// Basic 分不出用户名里的冒号：按整串比，以“:密码”结尾就接受（用例 D11）。
+	wantEq(t, "用户名里有冒号", send("D.s5", []byte("sess:ab12:kaoju-pass-1")), 200)
+	wantEq(t, "用户名里有冒号、密码不对", send("D.s6", []byte("sess:ab12:kaoju-pass-2")), 407)
 	c.finish()
 	evs := e.stop()
 	reqs := evs.of("http_request")
@@ -244,7 +246,9 @@ func TestAuthAcceptAnyUser(t *testing.T) {
 	wantEq(t, "1024 字节的用户名：auth.user", reqs[2].obj("auth").str("user"), long)
 	wantEq(t, "密码不对：auth.result", reqs[3].obj("auth").str("result"), "bad")
 	wantEq(t, "用户名里有冒号：auth.user", reqs[4].obj("auth").str("user"), "sess")
-	wantEq(t, "用户名里有冒号：auth.result", reqs[4].obj("auth").str("result"), "bad")
+	wantEq(t, "用户名里有冒号：auth.pass", reqs[4].obj("auth").str("pass"), "ab12:kaoju-pass-1")
+	wantEq(t, "用户名里有冒号：auth.result", reqs[4].obj("auth").str("result"), "ok")
+	wantEq(t, "用户名里有冒号、密码不对：auth.result", reqs[5].obj("auth").str("result"), "bad")
 }
 
 // 要求认证而没带凭据的 POST：先把正文读完再回 407，所以同一条连接上接着重试不会错位。

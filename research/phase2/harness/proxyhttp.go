@@ -145,6 +145,16 @@ func (s *Server) serveHTTP(c *cconn, br *bufio.Reader) {
 		raw, err := readHead(br, maxHeadBytes)
 		rq := &proxyReq{seq: seq + 1, tHead: s.log.now(), form: "other", bodySHA: emptySHA256, auth: authInfo{Result: "none"}}
 		if err != nil {
+			if err == errTooManyBlanks {
+				// 请求行之前的空行超过 8 个：记一个没有请求行的 http_request，回 400 后关。
+				rq.errText = "bad_head: " + err.Error()
+				s.emitRequest(c, rq)
+				h, b := textBody("obsproxy: bad request\n")
+				s.send(c, rq, respSpec{status: 400, reason: "Bad Request", headers: h, body: b,
+					by: "proxy", cause: "bad_request", close: true})
+				c.shutdown("proxy", "fin", "response_close")
+				return
+			}
 			if len(raw) == 0 && err != errHeadTooLarge {
 				// 两个请求之间连接结束了（多数是对端正常关闭）。
 				c.shutdown("proxy", "fin", "io_error")
@@ -176,7 +186,12 @@ func (s *Server) serveHTTP(c *cconn, br *bufio.Reader) {
 		}
 		rq.auth = parseProxyAuth(head.all("Proxy-Authorization"))
 		s.prof.judgeAuth(&rq.auth)
-		rq.wantClose = head.hasToken("Connection", "close") || head.hasToken("Proxy-Connection", "close") ||
+		// 请求一侧要求关闭时照关（RFC 9112 第 9.6 节）：Connection: close，或不带 keep-alive 的 HTTP/1.0。
+		// 这一条压过 auth.on407=keepalive 和 fail 的 close=false。
+		// Proxy-Connection 不是标准头：带 close 不算要求关闭（否则“407 之后连接留着”的配置对
+		// 默认带 Proxy-Connection: close 的客户端永远不成立）；带 keep-alive 则照老客户端的习惯，
+		// 当作 HTTP/1.0 下要求保持连接。
+		rq.wantClose = head.hasToken("Connection", "close") ||
 			(head.Version == "HTTP/1.0" &&
 				!head.hasToken("Connection", "keep-alive") && !head.hasToken("Proxy-Connection", "keep-alive"))
 
@@ -196,9 +211,21 @@ func (s *Server) serveHTTP(c *cconn, br *bufio.Reader) {
 			return
 		}
 		fr, ferr := bodyFraming(head)
+		if rq.form == "connect" {
+			// CONNECT 请求没有正文（RFC 9110 第 9.3.6 节）：请求头之后的字节都是隧道里的数据，不按
+			// Content-Length、Transfer-Encoding 去读。带了这两个头（Content-Length: 0 除外）记一笔，请求照常处理。
+			if ferr != nil || fr.kind == "chunked" || fr.length > 0 {
+				rq.errText = "connect_framing_ignored"
+			}
+			fr, ferr = framing{kind: "none"}, nil
+		}
 		if ferr != nil {
 			bad(400, "Bad Request", "bad_request", "bad_framing: "+ferr.Error())
 			return
+		}
+		if len(head.all("Transfer-Encoding")) > 0 && len(head.all("Content-Length")) > 0 {
+			// RFC 9112 第 6.1 节：两个都带的请求按 Transfer-Encoding 处理，回应之后必须关连接。
+			rq.wantClose = true
 		}
 
 		// Expect: 100-continue：按配置先回 100，再读正文。不管后面认证过不过都先回，
@@ -422,8 +449,13 @@ func (s *Server) handleAbsolute(c *cconn, rq *proxyReq) bool {
 		return s.sendSimple(c, rq, 502, "Bad Gateway", "unmapped_port", "obsproxy: destination port is not served\n")
 	}
 
-	// 带 Upgrade: websocket 的：由代理直接完成握手，发一个关闭帧，然后关连接。
-	if rq.head.hasToken("Upgrade", "websocket") {
+	path := u.Path
+	if path == "" {
+		path = "/"
+	}
+	// /ws 上带 Upgrade: websocket 的：由代理直接完成握手，发一个关闭帧，然后关连接。
+	// 其余路径带不带 Upgrade 都照常交给源站的处理函数（Upgrade 是逐跳头，不转交），与隧道里的结果一致。
+	if path == "/ws" && rq.head.hasToken("Upgrade", "websocket") {
 		accept, status, why := wsCheck(rq.head.Method, rq.head.Version, rq.head)
 		if status != 101 {
 			return s.sendSimple(c, rq, status, http.StatusText(status), "websocket_rejected", "obsproxy: bad websocket handshake: "+why+"\n")
@@ -439,10 +471,6 @@ func (s *Server) handleAbsolute(c *cconn, rq *proxyReq) bool {
 		return false
 	}
 
-	path := u.Path
-	if path == "" {
-		path = "/"
-	}
 	q := &originReq{
 		via: "forward", c: c, reqSeq: rq.seq,
 		method: rq.head.Method, path: path, rawQuery: u.RawQuery, proto: rq.head.Version, host: u.Host,
@@ -450,9 +478,12 @@ func (s *Server) handleAbsolute(c *cconn, rq *proxyReq) bool {
 	}
 	resp := s.originRespond(q)
 	s.emitOriginRequest(q, "respond", resp.status, nil)
-	s.sleep(resp.delay)
+	if !s.sleep(resp.delay) {
+		// 仪器在延迟期间开始退出：不再回应，连接由 Shutdown 关。
+		return false
+	}
 	if resp.ws {
-		// 走不到：带 Upgrade 的请求上面已经处理了，不带的在 originRespond 里得到 400。
+		// 走不到：/ws 上带 Upgrade 的请求上面已经处理了，不带的在 originRespond 里得到 400。
 		resp = plainResp(400, "obsproxy origin: bad websocket handshake\n")
 	}
 	hdrs := [][2]string{{"Date", time.Now().UTC().Format(http.TimeFormat)}}
