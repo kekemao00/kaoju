@@ -1,0 +1,24 @@
+{
+ "cmd": [
+  "sh",
+  "drivers/go/run.sh"
+ ],
+ "desc": "Go 标准库 net/http：http.DefaultTransport 的克隆，只改 Proxy（凭据写在代理 URL 的 userinfo 里），信任测试 CA 用环境变量 SSL_CERT_FILE，HTTP/2 保持默认；run.sh 缺二进制时用 go build 现场构建",
+ "versions": {
+  "GODEBUG": "",
+  "build_settings": {
+   "-buildmode": "exe",
+   "-compiler": "gc",
+   "-trimpath": "true",
+   "CGO_ENABLED": "1",
+   "GOAMD64": "v1",
+   "GOARCH": "amd64",
+   "GOOS": "linux"
+  },
+  "dependencies": "只用标准库",
+  "go": "go1.24.7",
+  "go_mod_go": "1.24",
+  "goarch": "amd64",
+  "goos": "linux"
+ }
+}
