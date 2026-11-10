@@ -11,6 +11,7 @@
 import argparse
 import concurrent.futures
 import datetime
+import fcntl
 import fnmatch
 import gzip
 import io
@@ -61,6 +62,34 @@ def warn(msg):
 
 
 # ---------- 进程管理 ----------
+
+
+class PortWindow:
+    """端口窗口锁（跨线程、跨进程）。
+
+    obsproxy 的端口由内核随机分配。一次运行停掉 obsproxy 之后、停掉抓包之前，它的端口已经放出去了，
+    这时另一次运行的 obsproxy 要是恰好分到同一个端口，前一次的抓包就会录进后一次的流量，
+    抓包核对会报出本不存在的不一致。所以“启动 obsproxy 直到它报出端口”和“停 obsproxy 直到停抓包”
+    这两段用同一把文件锁互斥：抓包收尾期间，谁都不分配新端口。
+    """
+
+    PATH = os.path.join(tempfile.gettempdir(), "kaoju-phase2-ports.lock")
+
+    def __init__(self):
+        self.fd = None
+
+    def __enter__(self):
+        self.fd = os.open(self.PATH, os.O_RDWR | os.O_CREAT, 0o666)
+        fcntl.flock(self.fd, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        try:
+            fcntl.flock(self.fd, fcntl.LOCK_UN)
+        finally:
+            os.close(self.fd)
+            self.fd = None
+        return False
 
 
 def spawn(argv, **kw):
@@ -385,30 +414,31 @@ def one_run(ctx, variant, case, repeat):
         with open(profile_path, "w", encoding="utf-8") as fh:
             json.dump(case.get("profile", {}), fh, ensure_ascii=False)
 
-        # 1. obsproxy
-        with open(obs_err, "wb") as efh:
-            obs = spawn(
-                [
-                    ctx["obsproxy"],
-                    "serve",
-                    "-profile",
-                    profile_path,
-                    "-ca-dir",
-                    ctx["ca_dir"],
-                    "-events",
-                    events_path,
-                    "-max-seconds",
-                    str(int(budget + 60)),
-                ],
-                stdout=subprocess.PIPE,
-                stderr=efh,
-                cwd=run_dir,
-                env=clean_env(home, run_dir),
-            )
-        try:
-            ports = read_ready_line(obs, READY_TIMEOUT_S)
-        except Exception as exc:
-            raise RuntimeError("%s；标准错误：%s" % (exc, tail(obs_err, 300).strip()))
+        # 1. obsproxy（分配端口的这一段拿端口窗口锁，见 PortWindow）
+        with PortWindow():
+            with open(obs_err, "wb") as efh:
+                obs = spawn(
+                    [
+                        ctx["obsproxy"],
+                        "serve",
+                        "-profile",
+                        profile_path,
+                        "-ca-dir",
+                        ctx["ca_dir"],
+                        "-events",
+                        events_path,
+                        "-max-seconds",
+                        str(int(budget + 60)),
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=efh,
+                    cwd=run_dir,
+                    env=clean_env(home, run_dir),
+                )
+            try:
+                ports = read_ready_line(obs, READY_TIMEOUT_S)
+            except Exception as exc:
+                raise RuntimeError("%s；标准错误：%s" % (exc, tail(obs_err, 300).strip()))
         rec["ports"] = {k: ports[k] for k in ("proxy_port", "origin_http_port", "origin_https_port")}
 
         # 2. tcpdump：只抓这三个端口
@@ -464,17 +494,18 @@ def one_run(ctx, variant, case, repeat):
 
         # 5. 收尾：先停仪器，再停抓包
         time.sleep(SETTLE_S)
-        code = stop(obs, signal.SIGTERM, 10)
-        obs = None
-        if code != 0:
-            errors.append("obsproxy 的退出码是 %s：%s" % (code, tail(obs_err, 300).strip()))
-        time.sleep(SETTLE_S)
-        if td is not None:
-            stop(td, signal.SIGINT, 10)
-            rec["tcpdump"] = tcpdump_stats(td_err)
-            td = None
-            if rec["tcpdump"]["captured"] is None:
-                errors.append("读不到 tcpdump 的统计：%s" % tail(td_err, 300).strip())
+        with PortWindow():
+            code = stop(obs, signal.SIGTERM, 10)
+            obs = None
+            if code != 0:
+                errors.append("obsproxy 的退出码是 %s：%s" % (code, tail(obs_err, 300).strip()))
+            time.sleep(SETTLE_S)
+            if td is not None:
+                stop(td, signal.SIGINT, 10)
+                rec["tcpdump"] = tcpdump_stats(td_err)
+                td = None
+                if rec["tcpdump"]["captured"] is None:
+                    errors.append("读不到 tcpdump 的统计：%s" % tail(td_err, 300).strip())
 
         rec["events"] = read_events(events_path, errors)
 

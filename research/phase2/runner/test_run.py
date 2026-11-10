@@ -145,5 +145,50 @@ class PcapCheckImportTest(unittest.TestCase):
         self.assertEqual(run.run_pcap_check("a", "b")["status"], "error")
 
 
+class PortWindowTest(unittest.TestCase):
+    def test_port_window_is_exclusive_across_holders(self):
+        """两个持有者（各自打开文件，等同于两个线程或两个进程）不能同时在窗口里。"""
+        import fcntl
+        import threading
+        import time
+
+        with tempfile.TemporaryDirectory() as tmp:
+            old = run.PortWindow.PATH
+            run.PortWindow.PATH = os.path.join(tmp, "lock")
+            try:
+                with run.PortWindow():
+                    fd = os.open(run.PortWindow.PATH, os.O_RDWR)
+                    try:
+                        with self.assertRaises(BlockingIOError):
+                            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    finally:
+                        os.close(fd)
+                inside, overlap = [0], [0]
+
+                def worker():
+                    for _ in range(20):
+                        with run.PortWindow():
+                            inside[0] += 1
+                            if inside[0] > 1:
+                                overlap[0] += 1
+                            time.sleep(0.001)
+                            inside[0] -= 1
+
+                threads = [threading.Thread(target=worker) for _ in range(4)]
+                for t in threads:
+                    t.start()
+                for t in threads:
+                    t.join()
+                self.assertEqual(overlap[0], 0)
+                # 出了窗口锁就放开
+                fd = os.open(run.PortWindow.PATH, os.O_RDWR)
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                finally:
+                    os.close(fd)
+            finally:
+                run.PortWindow.PATH = old
+
+
 if __name__ == "__main__":
     unittest.main()

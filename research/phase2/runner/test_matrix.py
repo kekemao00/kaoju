@@ -1057,5 +1057,21 @@ class RealDataSmoke(unittest.TestCase):
             self.assertGreater(valued, 0)
 
 
+class LoadObservationsTests(unittest.TestCase):
+    def test_non_observation_json_is_not_a_column(self):
+        """observations 目录里的 versions.json 之类没有 cases 的文件不算一列。"""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "curl.json"), "w", encoding="utf-8") as fh:
+                json.dump({"variant": "curl", "cases": {"A01": {"1": {}}}}, fh)
+            with open(os.path.join(tmp, "versions.json"), "w", encoding="utf-8") as fh:
+                json.dump({"generated": "x", "variants": {"curl": {}}}, fh)
+            with open(os.path.join(tmp, "list.json"), "w", encoding="utf-8") as fh:
+                json.dump([1, 2], fh)
+            got = matrix.load_observations(tmp, None)
+        self.assertEqual(sorted(got), ["curl"])
+
+
 if __name__ == "__main__":
     unittest.main()

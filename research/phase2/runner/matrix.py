@@ -1606,7 +1606,10 @@ def load_observations(obs_dir, raw_dir):
         for name in sorted(os.listdir(obs_dir)):
             if name.endswith(".json"):
                 obs = load_json(os.path.join(obs_dir, name))
-                out[name[: -len(".json")]] = obs.get("cases") or {}
+                # 目录里可能还有 versions.json 之类不是观测的文件：没有 cases 的不算一列
+                if not isinstance(obs, dict) or not isinstance(obs.get("cases"), dict):
+                    continue
+                out[name[: -len(".json")]] = obs["cases"]
     if raw_dir:
         for col, path in derive_mod.raw_columns(raw_dir).items():
             if col not in out:
