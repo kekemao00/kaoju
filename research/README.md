@@ -19,6 +19,7 @@
 | `fieldtest/` | 第一阶段 1B 的实测工具：judge 端点、列表快照采集器、分阶段探测器。部署见 `fieldtest/README.md`，测量口径见 `fieldtest/PROTOCOL.md` |
 | `phase1b/` | 第一阶段 1B 实测数据的分析：入库（SQLite）、九个指标模块、事后分析、报告表格（`run_all.sh` 一键运行）。结论见 `../docs/research/phase1b-report.md`，说明见 `phase1b/README.md` |
 | `phase2/` | 第 2 阶段：规范条款（RFC 9110、9112、1928、1929 等 372 条，引文逐字核对）与客户端行为矩阵（curl、requests、Go、Node 五种写法、Chromium、Firefox 经代理时的真实行为，抓包核对）。结论见 `../docs/research/phase2-report.md`，说明见 `phase2/README.md`，口径见 `phase2/PROTOCOL.md` |
+| `design/` | 第 3 阶段设计文档（`../docs/design/`）的核对工具：引用的矩阵格子、条款号、1B 数据、编号，以及配置例子与 Schema。说明见 `design/README.md` |
 
 ## 复现
 

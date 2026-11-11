@@ -1,0 +1,49 @@
+# 设计文档的核对：引用的矩阵格子、条款号、1B 数据、编号、链接、表格列数；配置例子符合 Schema。
+# 不连接任何代理；向外只有装两个 Python 包。第三方 action 按提交哈希固定。
+name: design
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/design/**"
+      - "research/design/**"
+      - "research/phase1b/out/**"
+      - "research/phase2/out/matrix.json"
+      - "research/phase2/spec/clauses/**"
+      - "research/phase2/tools/report_tables.py"
+      - ".github/workflows/design.yml"
+  pull_request:
+    paths:
+      - "docs/design/**"
+      - "research/design/**"
+      - "research/phase1b/out/**"
+      - "research/phase2/out/matrix.json"
+      - "research/phase2/spec/clauses/**"
+      - "research/phase2/tools/report_tables.py"
+      - ".github/workflows/design.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: design-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: 引用、编号、链接、表格
+        run: |
+          python3 research/design/check_design.py --selftest
+          python3 research/design/check_design.py
+      - name: 配置例子符合 Schema
+        run: |
+          python3 -m pip install --disable-pip-version-check jsonschema==4.26.0 PyYAML==6.0.3
+          python3 research/design/check_config.py

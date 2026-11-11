@@ -1,0 +1,566 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kekemao00/kaoju/docs/design/config.schema.json",
+  "title": "kaoju 配置（草案，第 3 阶段）",
+  "description": "字段的含义和默认值的依据见 docs/design/06-config.md。口令和带凭据的地址只能经环境变量或文件给出。",
+  "$defs": {
+    "duration": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*(s|m|h)$"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.]{1,32}$"
+    },
+    "value": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.]{1,64}$"
+    },
+    "address": {
+      "type": "string",
+      "pattern": "^(\\[[0-9A-Fa-f:]+\\]|[0-9A-Za-z.-]+):[0-9]{1,5}$"
+    },
+    "ports": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 65535
+      },
+      "uniqueItems": true
+    },
+    "tier": {
+      "enum": [
+        "verified",
+        "trusted",
+        "auto"
+      ]
+    },
+    "onfail": {
+      "enum": [
+        "error",
+        "rebind"
+      ]
+    },
+    "proto": {
+      "enum": [
+        "socks5",
+        "http",
+        "socks4",
+        "ss",
+        "vmess",
+        "vless",
+        "trojan"
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "listen",
+    "accounts"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "listen": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "$ref": "#/$defs/address"
+          },
+          "session": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "account": {
+                "$ref": "#/$defs/name"
+              },
+              "session": {
+                "$ref": "#/$defs/value"
+              },
+              "ttl": {
+                "$ref": "#/$defs/duration"
+              },
+              "life": {
+                "$ref": "#/$defs/duration"
+              },
+              "every": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "tier": {
+                "$ref": "#/$defs/tier"
+              },
+              "onfail": {
+                "$ref": "#/$defs/onfail"
+              },
+              "proto": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/proto"
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "account",
+              "session"
+            ],
+            "description": "端口即会话：这个端口上的连接都属于这一个会话"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    "admin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "$ref": "#/$defs/address"
+        },
+        "token_env": {
+          "type": "string"
+        },
+        "token_file": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "address"
+      ]
+    },
+    "accounts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/name"
+          },
+          "password_env": {
+            "type": "string"
+          },
+          "password_file": {
+            "type": "string"
+          },
+          "max_connections": {
+            "type": "integer",
+            "minimum": 6,
+            "default": 256
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "password_env"
+            ]
+          },
+          {
+            "required": [
+              "password_file"
+            ]
+          }
+        ]
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tier": {
+          "$ref": "#/$defs/tier",
+          "default": "auto"
+        },
+        "onfail": {
+          "$ref": "#/$defs/onfail",
+          "default": "error"
+        },
+        "ttl": {
+          "$ref": "#/$defs/duration",
+          "default": "5m"
+        },
+        "life": {
+          "$ref": "#/$defs/duration",
+          "default": "10m"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "connect_ports": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "verified": {
+              "$ref": "#/$defs/ports",
+              "default": [
+                443
+              ]
+            },
+            "trusted": {
+              "$ref": "#/$defs/ports",
+              "default": [
+                80,
+                443
+              ]
+            },
+            "direct": {
+              "$ref": "#/$defs/ports",
+              "default": [
+                80,
+                443
+              ]
+            }
+          }
+        },
+        "direct": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "domain_suffix": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "cidr": {
+                "type": "string"
+              }
+            },
+            "minProperties": 1,
+            "maxProperties": 1
+          }
+        },
+        "deny_targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "在内置的禁止范围之外再加的 CIDR；内置的范围不能去掉"
+        }
+      }
+    },
+    "trusted": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/name"
+          },
+          "url_env": {
+            "type": "string"
+          },
+          "url_file": {
+            "type": "string"
+          },
+          "max_connections": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "url_env"
+            ]
+          },
+          {
+            "required": [
+              "url_file"
+            ]
+          }
+        ]
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "builtin": {
+          "type": "boolean",
+          "default": true
+        },
+        "aggregators": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "sample": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5000,
+              "default": 5000
+            }
+          }
+        },
+        "disable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lists": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^https://"
+              },
+              "interval": {
+                "$ref": "#/$defs/duration"
+              },
+              "license": {
+                "type": "string"
+              },
+              "terms": {
+                "type": "string"
+              },
+              "protocol_hint": {
+                "enum": [
+                  "socks5",
+                  "http",
+                  "https",
+                  "connect",
+                  "socks4"
+                ]
+              },
+              "aggregator": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "required": [
+              "id",
+              "url"
+            ]
+          }
+        },
+        "subscriptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^https://"
+              },
+              "interval": {
+                "$ref": "#/$defs/duration"
+              },
+              "license": {
+                "type": "string"
+              },
+              "terms": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "url"
+            ]
+          }
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rate": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 40,
+          "default": 20
+        },
+        "per_prefix24": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "default": 4
+        },
+        "ports_per_ip": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8
+        },
+        "pool_target": {
+          "oneOf": [
+            {
+              "const": "auto"
+            },
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000
+            }
+          ],
+          "default": "auto"
+        },
+        "verify_ttl": {
+          "$ref": "#/$defs/duration",
+          "default": "10m"
+        }
+      }
+    },
+    "observers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "public": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "rate": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 2,
+              "default": 2
+            }
+          }
+        },
+        "judge": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            "pin_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "url",
+            "pin_sha256"
+          ]
+        }
+      }
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strategy": {
+          "enum": [
+            "round_robin",
+            "p2c",
+            "thompson"
+          ],
+          "default": "round_robin"
+        },
+        "upstream_max_connections": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 3
+        },
+        "attempt_timeout": {
+          "$ref": "#/$defs/duration",
+          "default": "5s"
+        },
+        "connect_budget": {
+          "$ref": "#/$defs/duration",
+          "default": "15s"
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "observe_interval": {
+          "$ref": "#/$defs/duration",
+          "default": "60s"
+        },
+        "max_egress_age": {
+          "$ref": "#/$defs/duration",
+          "default": "120s"
+        },
+        "stable_observations": {
+          "type": "integer",
+          "minimum": 2,
+          "default": 3
+        },
+        "sticky_min_age": {
+          "$ref": "#/$defs/duration",
+          "default": "2h"
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "default": "./kaoju.db"
+        }
+      }
+    },
+    "log": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "default": "info"
+        }
+      }
+    }
+  }
+}
