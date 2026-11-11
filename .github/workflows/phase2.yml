@@ -119,6 +119,7 @@ jobs:
         run: |
           python3 runner/derive.py --raw "$RUNNER_TEMP/p2-out/raw" --out "$RUNNER_TEMP/p2-out/observations"
           python3 runner/matrix.py --observations "$RUNNER_TEMP/p2-out/observations" --out "$RUNNER_TEMP/p2-out"
+          python3 runner/collect.py --out "$RUNNER_TEMP/p2-out"
 
       # 自检不通过或抓包核对有 mismatch 才失败；与仓库里的矩阵不一致的格子只打印。
       - name: 仪器自检、抓包核对的结论、与仓库里的矩阵逐格比较

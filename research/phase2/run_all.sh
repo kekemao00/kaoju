@@ -108,6 +108,8 @@ python3 runner/derive.py --raw "$out/raw" --out "$out/observations"
 
 step "6/7 矩阵（runner/matrix.py）"
 python3 runner/matrix.py --observations "$out/observations" --out "$out"
+# 抓包核对的小结（pcap_check.json）；<out>/versions.d 存在时，versions.json 由它合并而成
+python3 runner/collect.py --out "$out"
 
 step "7/7 仪器自检（runner/selfcheck.py）"
 if [ -n "$variants" ] && [[ ",$variants," != *",rawref,"* ]]; then

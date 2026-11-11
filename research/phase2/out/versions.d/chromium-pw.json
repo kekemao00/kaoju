@@ -6,6 +6,20 @@
   "chromium"
  ],
  "desc": "Playwright 驱动的 Chromium（launch 的默认值，实际启动的是 chrome-headless-shell）：代理用 launch({proxy: {server, username, password}})，两个用户时每个用户一个 newContext({proxy})；GET 是 page.goto，POST、并发、WebSocket 从同源的 /page 页面里发；信任测试 CA 靠 HOME 下的 NSS 数据库；run.sh 负责让 Node 找到 playwright（本目录的 node_modules，否则全局安装）和浏览器",
+ "env": {
+  "arch": "x86_64",
+  "kernel": "6.18.44-fc-v338",
+  "nssdb": true,
+  "obsproxy": "obsproxy 1.0.0（事件格式第 1 版）",
+  "os": "Ubuntu 24.04.5 LTS",
+  "python": "3.13.18",
+  "run_at_utc": "2026-11-10T23:35:08Z",
+  "tcpdump": [
+   "tcpdump version 4.99.4",
+   "libpcap version 1.10.4 (with TPACKET_V3)",
+   "OpenSSL 3.0.13 30 Jan 2024"
+  ]
+ },
  "versions": {
   "browser": "chromium",
   "browser_version": "153.0.8010.12",

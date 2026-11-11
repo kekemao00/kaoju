@@ -1,0 +1,181 @@
+{
+ "columns": {
+  "chromium-pw": {
+   "conns_compared": 360,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 7761,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 270,
+   "skipped": 0,
+   "status": {
+    "ok": 270
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "curl": {
+   "conns_compared": 375,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 7506,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 264,
+   "skipped": 6,
+   "status": {
+    "ok": 261,
+    "prefix": 3
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "curl-anyauth": {
+   "conns_compared": 384,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 8709,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 264,
+   "skipped": 6,
+   "status": {
+    "ok": 261,
+    "prefix": 3
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "go": {
+   "conns_compared": 378,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 7677,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 264,
+   "skipped": 6,
+   "status": {
+    "ok": 264
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "node-agents": {
+   "conns_compared": 444,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 8640,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 264,
+   "skipped": 6,
+   "status": {
+    "ok": 264
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "node-axios": {
+   "conns_compared": 408,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 7956,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 264,
+   "skipped": 6,
+   "status": {
+    "ok": 264
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "node-fetch-env": {
+   "conns_compared": 318,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 6093,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 270,
+   "skipped": 0,
+   "status": {
+    "ok": 270
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "node-http-env": {
+   "conns_compared": 279,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 5166,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 264,
+   "skipped": 6,
+   "status": {
+    "ok": 264
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "node-undici": {
+   "conns_compared": 387,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 7548,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 264,
+   "skipped": 6,
+   "status": {
+    "ok": 264
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "rawref": {
+   "conns_compared": 366,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 7518,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 270,
+   "skipped": 0,
+   "status": {
+    "ok": 264,
+    "prefix": 6
+   },
+   "tcpdump_dropped_runs": 0
+  },
+  "requests": {
+   "conns_compared": 366,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 7365,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 264,
+   "skipped": 6,
+   "status": {
+    "ok": 264
+   },
+   "tcpdump_dropped_runs": 0
+  }
+ },
+ "note": "由 runner/collect.py 从 raw/ 数出来；ok 是逐字节相同，prefix 是抓包多出仪器关连接之后的字节（见 PROTOCOL.md）",
+ "total": {
+  "runs": 2922,
+  "skipped": 48,
+  "status": {
+   "ok": 2910,
+   "prefix": 12
+  }
+ }
+}

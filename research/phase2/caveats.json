@@ -1,0 +1,217 @@
+{
+ "note": "读数须知：实测之后补的说明，写明某些格子的取值依赖什么前提、或者那一行要问的事其实没有测到。只加说明，不改取值；由 runner/matrix.py 挂到 out/matrix.md 的脚注和 out/matrix.json 的 caveats 字段。依据见 docs/research/phase2-report.md。",
+ "caveats": [
+  {
+   "rows": [
+    "R86"
+   ],
+   "columns": [
+    "curl",
+    "curl-anyauth"
+   ],
+   "text": "“状态码”来自驱动加的 -w '%{http_code}'。不加 -w 时 curl 对明文 403 的退出码是 0、标准错误为空，调用方只拿到正文（drivers/curl/NOTES.md“口径上的疑问”第 1 条；不加 -w 的对照没有进正式数据）。"
+  },
+  {
+   "rows": [
+    "R42",
+    "R124"
+   ],
+   "columns": [
+    "go"
+   ],
+   "text": "前提是驱动的写法：同一个 http.Transport，Proxy 函数按请求返回不同用户的代理 URL（drivers/go/NOTES.md 第 3 节写法 a）。每个用户一个 Transport 的写法没有测。"
+  },
+  {
+   "rows": [
+    "R92",
+    "R93",
+    "R94",
+    "R95",
+    "R98",
+    "R99"
+   ],
+   "columns": [
+    "node-undici"
+   ],
+   "text": "“未触发”不是“不重发”：第二个请求落在了新开的连接上（见 R11、R122），仪器“只在复用的连接上断开”的条件没有满足，这一行要问的事对这一列没有测到。"
+  },
+  {
+   "rows": [
+    "R94",
+    "R95",
+    "R99",
+    "R101"
+   ],
+   "columns": [
+    "node-fetch-env"
+   ],
+   "text": "“未触发”不是“不重发”：第二个请求落在了新开的隧道里（见 R10），仪器的条件没有满足，这一行要问的事对这一列没有测到。"
+  },
+  {
+   "rows": [
+    "R19",
+    "R20",
+    "R43",
+    "R86",
+    "R87",
+    "R90",
+    "R92",
+    "R93",
+    "R96",
+    "R98"
+   ],
+   "columns": [
+    "node-fetch-env"
+   ],
+   "text": "这一列的明文请求也走 CONNECT 到 80 端口（R01），仪器里只对绝对形式请求生效的配置（转发时回 403、附加响应头、断开连接、空闲关闭）不会触发，这一行要问的事对这一列没有测到。"
+  },
+  {
+   "rows": [
+    "R02"
+   ],
+   "columns": [
+    "node-fetch-env"
+   ],
+   "text": "请求在 CONNECT 隧道里，头是源站一侧记下的，经过 Go net/http 的规整（名字的大小写不是线上的原样）。"
+  },
+  {
+   "rows": [
+    "R92",
+    "R93",
+    "R94",
+    "R95",
+    "R98",
+    "R99",
+    "R101"
+   ],
+   "columns": [
+    "node-agents"
+   ],
+   "text": "这一列每个请求都新开连接（R10、R11 是 3），没有复用的连接可断，所以是“未触发”。"
+  },
+  {
+   "rows": [
+    "R94",
+    "R95",
+    "R99",
+    "R101"
+   ],
+   "columns": [
+    "node-axios"
+   ],
+   "text": "这一列 HTTPS 每个请求都新开隧道（R10 是 3），没有复用的隧道可断，所以是“未触发”。"
+  },
+  {
+   "rows": [
+    "R39",
+    "R40"
+   ],
+   "columns": [
+    "node-http-env",
+    "node-agents"
+   ],
+   "text": "http、https 模块不会自己跟随重定向，这里跟随的是驱动写的循环（drivers/node/common.mjs 的 followLoop），测到的不是客户端自己的行为。"
+  },
+  {
+   "rows": [
+    "R89"
+   ],
+   "columns": [
+    "chromium-pw"
+   ],
+   "text": "失败的是 page.goto：它被上一步失败后的错误页导航打断（Navigation … is interrupted by another navigation to chrome-error://chromewebdata/）。事件里第二个源的 CONNECT 得到了 200，源站也收到了请求。这一格说明不了代理有没有被标坏。"
+  },
+  {
+   "rows": [
+    "R81",
+    "R85"
+   ],
+   "columns": [
+    "node-agents"
+   ],
+   "text": "用的手段是 https-proxy-agent 的 proxyConnect 事件：9.1.0 的 README 和类型声明里都没有写它，只在 dist/index.js 里有。按“文档写明的手段”从严算，这一格应是“没有这样的手段”。"
+  },
+  {
+   "rows": [
+    "R81",
+    "R85"
+   ],
+   "columns": [
+    "node-fetch-env"
+   ],
+   "text": "用的手段是 diagnostics_channel 的 undici:request:headers 频道，写在 undici 的文档里；Node 自己的文档有没有写没有核对。"
+  },
+  {
+   "rows": [
+    "R81",
+    "R85"
+   ],
+   "columns": [
+    "chromium-pw"
+   ],
+   "text": "用的手段是 NetLog（启动参数 --log-net-log），写在 Chromium 的文档里，不是 Playwright 的；它也是这一列唯一一处不是 Playwright 默认值的启动参数。"
+  },
+  {
+   "rows": [
+    "R60",
+    "R61",
+    "R62",
+    "R63",
+    "R64",
+    "R65",
+    "R66",
+    "R67",
+    "R68",
+    "R69",
+    "R70"
+   ],
+   "columns": [
+    "node-undici"
+   ],
+   "text": "ProxyAgent 的凭据用 token 选项传（undici 文档的写法），Basic 后面的 base64 是调用方自己拼的，“原样”说明不了 undici 怎么处理用户名的字节。"
+  },
+  {
+   "rows": [
+    "R15",
+    "R16",
+    "R43",
+    "R44"
+   ],
+   "columns": [
+    "chromium-pw"
+   ],
+   "text": "浏览器的 POST 和并发要先导航到同源的 /page 再从页面里发（PROTOCOL.md 的驱动一节）。这次预导航先收下 407 并留下一条空闲连接，这一格的数里含它的影响。"
+  },
+  {
+   "rows": [
+    "R113"
+   ],
+   "columns": [
+    "*"
+   ],
+   "text": "取值取决于本机 localhost 解析出来的第一个地址，换一台机器可能不同。"
+  },
+  {
+   "rows": [
+    "R119",
+    "R120"
+   ],
+   "columns": [
+    "curl",
+    "curl-anyauth"
+   ],
+   "text": "关键词表是实测前定的，没有收 curl 的说法：curl 在用户名密码被拒时报的是 User was rejected by the SOCKS5 server，说的是认证，但不含表里的词，R120 因此记成“只说失败”。原文在 default_text 里。"
+  },
+  {
+   "rows": [
+    "R114"
+   ],
+   "columns": [
+    "curl",
+    "curl-anyauth",
+    "requests"
+   ],
+   "text": "“其他”指的是行表没有列出的一种情况：先连上代理、协商完认证方法，然后才在本机解析目标域名，解析失败就报错，没有发出 SOCKS5 请求。"
+  }
+ ]
+}

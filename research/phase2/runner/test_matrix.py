@@ -1073,5 +1073,40 @@ class LoadObservationsTests(unittest.TestCase):
         self.assertEqual(sorted(got), ["curl"])
 
 
+class CaveatTests(unittest.TestCase):
+    def matrix(self):
+        return {"columns": ["curl", "go"], "rows": [
+            {"id": "R01", "section": "s", "title": "t", "cells": {
+                "curl": {"value": "a", "stable": True, "per_repeat": {"1": "a"}, "footnotes": ["f"], "cases": {}},
+                "go": None}}],
+            "pcap_gate": "on", "columns_missing": []}
+
+    def write(self, tmp, doc):
+        path = os.path.join(tmp, "caveats.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh, ensure_ascii=False)
+        return path
+
+    def test_caveat_is_attached_and_rendered_without_changing_value(self):
+        m = self.matrix()
+        with tempfile.TemporaryDirectory() as tmp:
+            n = matrix.apply_caveats(m, self.write(tmp, {"caveats": [{"rows": ["R01"], "columns": ["*"], "text": "前提 X"}]}))
+        self.assertEqual(n, 1)  # go 那格没有数据，不挂
+        cell = m["rows"][0]["cells"]["curl"]
+        self.assertEqual((cell["value"], cell["stable"], cell["footnotes"], cell["caveats"]), ("a", True, ["f"], ["前提 X"]))
+        md = matrix.render_md(m, 1)
+        self.assertIn("| a [1] |", md)
+        self.assertIn("- [1] R01，`curl`：f；读数须知：前提 X", md)
+
+    def test_unknown_row_or_column_is_an_error(self):
+        for item in ({"rows": ["R99"], "columns": ["curl"], "text": "x"},
+                     {"rows": ["R01"], "columns": ["nope"], "text": "x"},
+                     {"rows": ["R01"], "columns": ["curl"], "text": " "},
+                     {"rows": [], "columns": ["curl"], "text": "x"}):
+            with tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaises(ValueError):
+                    matrix.apply_caveats(self.matrix(), self.write(tmp, {"caveats": [item]}))
+
+
 if __name__ == "__main__":
     unittest.main()

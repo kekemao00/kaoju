@@ -4,6 +4,20 @@
   "drivers/rawref/driver.py"
  ],
  "desc": "参照客户端（仪器自检用）：裸套接字，策略写死，见 drivers/rawref/README.md；答案在 selfcheck_expected.json",
+ "env": {
+  "arch": "x86_64",
+  "kernel": "6.18.44-fc-v338",
+  "nssdb": true,
+  "obsproxy": "obsproxy 1.0.0（事件格式第 1 版）",
+  "os": "Ubuntu 24.04.5 LTS",
+  "python": "3.13.18",
+  "run_at_utc": "2026-11-10T23:35:22Z",
+  "tcpdump": [
+   "tcpdump version 4.99.4",
+   "libpcap version 1.10.4 (with TPACKET_V3)",
+   "OpenSSL 3.0.13 30 Jan 2024"
+  ]
+ },
  "versions": {
   "rawref": "1"
  }

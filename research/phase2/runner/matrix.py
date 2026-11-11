@@ -1686,8 +1686,11 @@ def render_md(matrix, expected_repeats):
             for col in cols:
                 cell = rd["cells"].get(col)
                 t = md_escape(cell_text(cell))
-                if cell and cell["footnotes"]:
-                    notes.append((rd["id"], col, cell["footnotes"]))
+                fns = list(cell["footnotes"]) if cell else []
+                if cell:
+                    fns += ["读数须知：%s" % c for c in cell.get("caveats") or []]
+                if fns:
+                    notes.append((rd["id"], col, fns))
                     t += " [%d]" % len(notes)
                 texts.append(t)
             lines.append("| %s %s | %s |" % (rd["id"], md_escape(rd["title"]), " | ".join(texts)))
@@ -1697,6 +1700,39 @@ def render_md(matrix, expected_repeats):
                 lines.append("- [%d] %s，`%s`：%s" % (i, rid, col, md_escape("；".join(fns))))
     lines.append("")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# 读数须知
+
+
+def apply_caveats(matrix, path):
+    """把手写的读数须知挂到格子上（cell["caveats"]）。只加说明，不改取值、稳定性和脚注。
+
+    文件格式：{"caveats": [{"rows": ["R42"], "columns": ["go"], "text": "…"}]}；columns 写 ["*"] 是所有列。
+    行号或列名不存在就报错，免得写错了没人发现。返回挂上去的格子数。
+    """
+    doc = load_json(path)
+    by_id = {rd["id"]: rd for rd in matrix["rows"]}
+    count = 0
+    for i, item in enumerate(doc.get("caveats") or []):
+        text = item.get("text")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("读数须知第 %d 条没有 text" % (i + 1))
+        cols = item.get("columns") or []
+        if cols == ["*"]:
+            cols = list(matrix["columns"])
+        bad = [c for c in cols if c not in matrix["columns"]] + [r for r in item.get("rows") or [] if r not in by_id]
+        if bad or not cols or not item.get("rows"):
+            raise ValueError("读数须知第 %d 条的行或列不对：%s" % (i + 1, "、".join(bad) or "空"))
+        for rid in item["rows"]:
+            for col in cols:
+                cell = by_id[rid]["cells"].get(col)
+                if cell is None:
+                    continue
+                cell.setdefault("caveats", []).append(text.strip())
+                count += 1
+    return count
 
 
 # ---------------------------------------------------------------------------
@@ -1843,6 +1879,7 @@ def main(argv=None):
     ap.add_argument("--protocol", default=os.path.join(base, "PROTOCOL.md"))
     ap.add_argument("--expectations", default=os.path.join(base, "expectations"))
     ap.add_argument("--selfcheck-expected", default=None, help="rawref 的手写答案；默认在 phase2/ 和 drivers/rawref/ 下找 selfcheck_expected.json")
+    ap.add_argument("--caveats", default=None, help="手写的读数须知；默认是 phase2/caveats.json（有就用）")
     ap.add_argument("--allow-unchecked", action="store_true", help="只供开发时冒烟：没通过抓包核对的运行也取值（输出里会标明，不能当正式结果）")
     args = ap.parse_args(argv)
 
@@ -1865,6 +1902,13 @@ def main(argv=None):
     matrix = build_matrix(rows_def, case_defs, observations, columns, args.allow_unchecked)
     if extra:
         matrix["columns_not_in_protocol"] = extra
+    caveats_path = args.caveats or os.path.join(base, "caveats.json")
+    if args.caveats or os.path.exists(caveats_path):
+        try:
+            apply_caveats(matrix, caveats_path)
+        except (OSError, ValueError) as exc:
+            print("matrix: %s" % exc, file=sys.stderr)
+            return 2
     os.makedirs(args.out, exist_ok=True)
     derive_mod.dump_json(matrix, os.path.join(args.out, "matrix.json"))
     write_text(os.path.join(args.out, "matrix.md"), render_md(matrix, int(cases_doc.get("repeats") or 3)))

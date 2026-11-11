@@ -4,6 +4,20 @@
   "drivers/go/run.sh"
  ],
  "desc": "Go 标准库 net/http：http.DefaultTransport 的克隆，只改 Proxy（凭据写在代理 URL 的 userinfo 里），信任测试 CA 用环境变量 SSL_CERT_FILE，HTTP/2 保持默认；run.sh 缺二进制时用 go build 现场构建",
+ "env": {
+  "arch": "x86_64",
+  "kernel": "6.18.44-fc-v338",
+  "nssdb": true,
+  "obsproxy": "obsproxy 1.0.0（事件格式第 1 版）",
+  "os": "Ubuntu 24.04.5 LTS",
+  "python": "3.13.18",
+  "run_at_utc": "2026-11-10T19:44:38Z",
+  "tcpdump": [
+   "tcpdump version 4.99.4",
+   "libpcap version 1.10.4 (with TPACKET_V3)",
+   "OpenSSL 3.0.13 30 Jan 2024"
+  ]
+ },
  "versions": {
   "GODEBUG": "",
   "build_settings": {
