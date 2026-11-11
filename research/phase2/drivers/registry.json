@@ -23,5 +23,40 @@
     "cmd": ["sh", "drivers/go/run.sh"],
     "env": {"SSL_CERT_FILE": "{ca_file}"},
     "desc": "Go 标准库 net/http：http.DefaultTransport 的克隆，只改 Proxy（凭据写在代理 URL 的 userinfo 里），信任测试 CA 用环境变量 SSL_CERT_FILE，HTTP/2 保持默认；run.sh 缺二进制时用 go build 现场构建"
+  },
+  "chromium-pw": {
+    "cmd": ["sh", "drivers/browser/run.sh", "--browser", "chromium"],
+    "env": {},
+    "desc": "Playwright 驱动的 Chromium（launch 的默认值，实际启动的是 chrome-headless-shell）：代理用 launch({proxy: {server, username, password}})，两个用户时每个用户一个 newContext({proxy})；GET 是 page.goto，POST、并发、WebSocket 从同源的 /page 页面里发；信任测试 CA 靠 HOME 下的 NSS 数据库；run.sh 负责让 Node 找到 playwright（本目录的 node_modules，否则全局安装）和浏览器"
+  },
+  "firefox-pw": {
+    "cmd": ["sh", "drivers/browser/run.sh", "--browser", "firefox"],
+    "env": {},
+    "desc": "Playwright 驱动的 Firefox（Playwright 的补丁构建）：写法同 chromium-pw，但用 launchPersistentContext 加一个现建的 profile（certutil 把测试 CA 加进 cert9.db）；本机没有这个浏览器，只在 CI 上跑"
+  },
+  "node-fetch-env": {
+    "cmd": ["node", "drivers/node/driver.mjs", "--variant", "node-fetch-env"],
+    "env": {},
+    "desc": "Node 内置的 fetch（和内置的 WebSocket）：代理靠环境变量 NODE_USE_ENV_PROXY=1、HTTP_PROXY、HTTPS_PROXY，凭据写在代理 URL 里；驱动外层读用例、设好变量再启动内层 node 进程；信任测试 CA 用 NODE_EXTRA_CA_CERTS；依赖钉在 drivers/node/package-lock.json，npm ci 装在 drivers/node/node_modules"
+  },
+  "node-http-env": {
+    "cmd": ["node", "drivers/node/driver.mjs", "--variant", "node-http-env"],
+    "env": {},
+    "desc": "Node 内置的 http、https 模块（全局 Agent）：代理和信任 CA 的做法同 node-fetch-env；另设 NODE_DEBUG=https 只为记录 extra_text；依赖钉在 drivers/node/package-lock.json，npm ci 装在 drivers/node/node_modules"
+  },
+  "node-undici": {
+    "cmd": ["node", "drivers/node/driver.mjs", "--variant", "node-undici"],
+    "env": {},
+    "desc": "npm 的 undici：每个用户一个 ProxyAgent（HTTP 代理凭据用 token，SOCKS5 凭据写在 URL 里），作 undici 自己的 fetch 的 dispatcher；信任测试 CA 用 NODE_EXTRA_CA_CERTS；依赖钉在 drivers/node/package-lock.json，npm ci 装在 drivers/node/node_modules"
+  },
+  "node-agents": {
+    "cmd": ["node", "drivers/node/driver.mjs", "--variant", "node-agents"],
+    "env": {},
+    "desc": "Node 内置的 http、https 模块加 http-proxy-agent、https-proxy-agent、socks-proxy-agent：每个用户一组 Agent，构造只传代理 URL；信任测试 CA 用 NODE_EXTRA_CA_CERTS；依赖钉在 drivers/node/package-lock.json，npm ci 装在 drivers/node/node_modules"
+  },
+  "node-axios": {
+    "cmd": ["node", "drivers/node/driver.mjs", "--variant", "node-axios"],
+    "env": {},
+    "desc": "axios 自带的 proxy 选项（请求配置里的 protocol、host、port、auth），其余配置保持默认；信任测试 CA 用 NODE_EXTRA_CA_CERTS；依赖钉在 drivers/node/package-lock.json，npm ci 装在 drivers/node/node_modules"
   }
 }

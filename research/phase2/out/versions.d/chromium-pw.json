@@ -1,0 +1,19 @@
+{
+ "cmd": [
+  "sh",
+  "drivers/browser/run.sh",
+  "--browser",
+  "chromium"
+ ],
+ "desc": "Playwright 驱动的 Chromium（launch 的默认值，实际启动的是 chrome-headless-shell）：代理用 launch({proxy: {server, username, password}})，两个用户时每个用户一个 newContext({proxy})；GET 是 page.goto，POST、并发、WebSocket 从同源的 /page 页面里发；信任测试 CA 靠 HOME 下的 NSS 数据库；run.sh 负责让 Node 找到 playwright（本目录的 node_modules，否则全局安装）和浏览器",
+ "versions": {
+  "browser": "chromium",
+  "browser_version": "153.0.8010.12",
+  "certutil": "present",
+  "executables": [
+   "chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell.real"
+  ],
+  "node": "v22.23.4",
+  "playwright": "1.63.0"
+ }
+}

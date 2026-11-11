@@ -1,0 +1,13 @@
+{
+  "name": "kaoju-phase2-browser-driver",
+  "version": "1.0.0",
+  "private": true,
+  "description": "第 2 阶段 chromium-pw、firefox-pw 两列的驱动；Playwright 的版本钉死在这里和 package-lock.json 里（CI 上 npm ci 用；本机用全局安装的同一版本）",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

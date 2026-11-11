@@ -88,7 +88,8 @@ export function postprocess(result, perStepStderr) {
     const lines = perStepStderr[s.id];
     const keep = [];
     let on = false;
-    for (const line of lines) {
+    for (const raw of lines) {
+      const line = raw.replace(/\r$/, ''); // 代理的响应行以 CRLF 结尾，调试输出原样带着 \r
       const m = /^HTTPS \d+: (.*)$/.exec(line);
       if (m) {
         on = m[1].startsWith('onProxyData ');

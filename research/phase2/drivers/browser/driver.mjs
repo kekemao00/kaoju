@@ -289,6 +289,7 @@ class Runner {
     this.failures = []; // requestfailed 事件
     this.windows = []; // {id, t0, shared}：每一步的开始时刻
     this.netlogPath = null;
+    this.profileDir = null; // Firefox：现建的 profile 目录，关闭浏览器以后删掉
     this.closedAt = null;
   }
 
@@ -338,6 +339,7 @@ class Runner {
     } else {
       const profile = path.join(kase.work_dir, 'firefox-profile');
       fs.mkdirSync(profile, { recursive: true });
+      this.profileDir = profile;
       const db = 'sql:' + profile;
       execFileSync('certutil', ['-d', db, '-N', '--empty-password'], { stdio: 'pipe' });
       execFileSync('certutil', ['-d', db, '-A', '-n', 'kaoju-phase2-test-ca', '-t', 'C,,', '-i', kase.ca_file], {
@@ -413,6 +415,14 @@ class Runner {
       this.note('关闭浏览器时出错：' + errText(e));
     }
     this.closedAt = Date.now();
+    if (this.profileDir) {
+      // profile 只是驱动的临时文件（几十兆），留着会把保留工作目录的运行（--keep-pcap）撑满磁盘
+      try {
+        fs.rmSync(this.profileDir, { recursive: true, force: true });
+      } catch (e) {
+        this.note('删除 Firefox 的 profile 目录时出错：' + errText(e));
+      }
+    }
   }
 
   slot(st) {

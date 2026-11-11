@@ -1,0 +1,174 @@
+# 第 2 阶段（规范与客户端行为矩阵）在第二个环境里的重跑：仪器的测试、规范引文的核对、全部列各 3 遍、
+# 与仓库里提交的矩阵逐格比较。口径见 research/phase2/PROTOCOL.md 的“两个环境”一节。
+# 第三方 action 按提交哈希固定。所有连接都在 127.0.0.1 上；向外只有装依赖和取 RFC 文本。
+name: phase2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "research/phase2/**"
+      - ".github/workflows/phase2.yml"
+  pull_request:
+    paths:
+      - "research/phase2/**"
+      - ".github/workflows/phase2.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase2-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.24.7"
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.13"
+
+defaults:
+  run:
+    working-directory: research/phase2
+
+jobs:
+  matrix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 系统工具（tcpdump、certutil）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tcpdump libnss3-tools
+          tcpdump --version
+          command -v certutil
+
+      # 各驱动的依赖，版本都钉在仓库里的清单上。
+      - name: requests 驱动的 venv
+        run: |
+          python3 -m venv drivers/requests/.venv
+          drivers/requests/.venv/bin/python -m pip install --disable-pip-version-check -r drivers/requests/requirements.txt
+
+      - name: node 驱动的依赖
+        run: |
+          (cd drivers/node && npm ci)
+          (cd drivers/browser && npm ci)
+
+      # 浏览器装进 drivers/browser/node_modules 里（PLAYWRIGHT_BROWSERS_PATH=0），
+      # 这样 run.py 的干净环境（HOME 是每次运行专用的目录）里 run.sh 也找得到。
+      - name: Playwright 的浏览器
+        working-directory: research/phase2/drivers/browser
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: "0"
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: obsproxy：gofmt、go vet、go test -race
+        working-directory: research/phase2/harness
+        run: |
+          test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+          go vet ./...
+          go test -race -count=1 ./...
+
+      - name: 取 RFC 文本并核对引文
+        run: |
+          ./spec/fetch_rfcs.sh --from rfc-editor "$RUNNER_TEMP/rfc"
+          echo "KAOJU_RFC_DIR=$RUNNER_TEMP/rfc" >> "$GITHUB_ENV"
+          KAOJU_RFC_DIR="$RUNNER_TEMP/rfc" python3 spec/check_quotes.py
+
+      - name: 运行器、规范工具和驱动的单元测试
+        run: |
+          python3 -m unittest discover -s runner -p 'test_*.py'
+          python3 -m unittest discover -s spec -p 'test_*.py'
+          for d in drivers/*/; do
+            if compgen -G "${d}test_*.py" >/dev/null; then
+              python3 -m unittest discover -s "$d" -p 'test_*.py'
+            fi
+          done
+
+      - name: 用例表、行表与生成器的输出一致；预期文件合格
+        run: |
+          python3 tools/gen_cases.py "$RUNNER_TEMP/cases.gen.json"
+          cmp "$RUNNER_TEMP/cases.gen.json" cases.json
+          python3 tools/gen_rows.py "$RUNNER_TEMP/rows.gen.json" cases.json
+          cmp "$RUNNER_TEMP/rows.gen.json" rows.json
+          python3 runner/check_expectations.py
+
+      # 全部列各 3 遍。步骤与 run_all.sh 的第 4 到 7 步相同（它的第 1 到 3 步上面已经做过），
+      # 没有直接调用 run_all.sh 是因为它不转发 --keep-pcap 和 --work，而抓包文件要作为构件保存。
+      - name: 取数（全部列，各 3 遍）
+        run: |
+          (cd harness && go build -trimpath -o "$RUNNER_TEMP/obsproxy" .)
+          "$RUNNER_TEMP/obsproxy" version
+          python3 runner/run.py --obsproxy "$RUNNER_TEMP/obsproxy" --repeats 3 \
+            --out "$RUNNER_TEMP/p2-out" --work "$RUNNER_TEMP/p2-work" --keep-pcap --tcpdump 'sudo tcpdump'
+
+      - name: 提取事实、生成矩阵
+        run: |
+          python3 runner/derive.py --raw "$RUNNER_TEMP/p2-out/raw" --out "$RUNNER_TEMP/p2-out/observations"
+          python3 runner/matrix.py --observations "$RUNNER_TEMP/p2-out/observations" --out "$RUNNER_TEMP/p2-out"
+
+      # 自检不通过或抓包核对有 mismatch 才失败；与仓库里的矩阵不一致的格子只打印。
+      - name: 仪器自检、抓包核对的结论、与仓库里的矩阵逐格比较
+        run: |
+          python3 runner/compare_env.py --ci-out "$RUNNER_TEMP/p2-out" --repo-out out \
+            --json "$RUNNER_TEMP/p2-out/compare_env.json"
+
+      # firefox-pw 只能在这里跑。把它的原始记录和版本信息打进日志，供取回后提交
+      # （提交时注明来自哪次运行、哪个提交）。内容是一个 tar：raw/firefox-pw.jsonl.gz 和 versions.d/firefox-pw.json。
+      - name: firefox-pw 的原始记录（base64）
+        if: ${{ !cancelled() }}
+        run: |
+          out="$RUNNER_TEMP/p2-out"
+          raw="$out/raw/firefox-pw.jsonl.gz"
+          if ! [ -f "$raw" ]; then
+            echo "没有 $raw：firefox-pw 没有跑出来" >&2
+            exit 1
+          fi
+          pack="$RUNNER_TEMP/firefox-pack"
+          mkdir -p "$pack/raw" "$pack/versions.d"
+          cp "$raw" "$pack/raw/firefox-pw.jsonl.gz"
+          python3 - "$out/versions.json" "$pack/versions.d/firefox-pw.json" <<'PY'
+          import json, sys
+          doc = json.load(open(sys.argv[1], encoding="utf-8"))
+          with open(sys.argv[2], "w", encoding="utf-8") as fh:
+              json.dump(doc["variants"]["firefox-pw"], fh, ensure_ascii=False, indent=1, sort_keys=True)
+              fh.write("\n")
+          print("环境：" + json.dumps(doc.get("env"), ensure_ascii=False, sort_keys=True))
+          PY
+          tar -C "$pack" --sort=name --owner=0 --group=0 --numeric-owner --mtime='UTC 2026-01-01' \
+            -cf "$RUNNER_TEMP/firefox-pw.tar" raw/firefox-pw.jsonl.gz versions.d/firefox-pw.json
+          echo "运行：${GITHUB_RUN_ID}（第 ${GITHUB_RUN_ATTEMPT} 次），提交：${GITHUB_SHA}"
+          echo "SHA-256（raw/firefox-pw.jsonl.gz）：$(sha256sum "$pack/raw/firefox-pw.jsonl.gz" | cut -d' ' -f1)"
+          echo "SHA-256（versions.d/firefox-pw.json）：$(sha256sum "$pack/versions.d/firefox-pw.json" | cut -d' ' -f1)"
+          echo "SHA-256（下面这个 tar，base64 解码以后）：$(sha256sum "$RUNNER_TEMP/firefox-pw.tar" | cut -d' ' -f1)"
+          echo "-----BEGIN KAOJU FIREFOX RAW-----"
+          base64 -w 76 "$RUNNER_TEMP/firefox-pw.tar"
+          echo "-----END KAOJU FIREFOX RAW-----"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: phase2-out
+          path: ${{ runner.temp }}/p2-out
+          if-no-files-found: warn
+
+      # 抓包文件不进仓库（PROTOCOL“抓包核对”一节），在这里保存。只收 pcap，不收每次运行的 home 目录和浏览器 profile。
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: phase2-pcap
+          path: ${{ runner.temp }}/p2-work/runs/**/*.pcap
+          if-no-files-found: warn

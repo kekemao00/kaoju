@@ -1,0 +1,16 @@
+{
+ "cmd": [
+  "node",
+  "drivers/node/driver.mjs",
+  "--variant",
+  "node-http-env"
+ ],
+ "desc": "Node 内置的 http、https 模块（全局 Agent）：代理和信任 CA 的做法同 node-fetch-env；另设 NODE_DEBUG=https 只为记录 extra_text；依赖钉在 drivers/node/package-lock.json，npm ci 装在 drivers/node/node_modules",
+ "versions": {
+  "llhttp": "9.4.3",
+  "node": "22.23.4",
+  "node 内置的 undici": "6.29.1",
+  "openssl": "3.5.9",
+  "v8": "12.4.254.21-node.57"
+ }
+}
