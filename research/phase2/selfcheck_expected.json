@@ -1,0 +1,421 @@
+{
+ "variant": "rawref",
+ "rows": {
+  "R01": {
+   "value": "绝对形式",
+   "why": "经 HTTP 代理的明文请求，rawref 在到代理的连接上发绝对形式的 GET；仪器记成 form=absolute 的 http_request。"
+  },
+  "R02": {
+   "value": "Proxy-Connection: keep-alive",
+   "why": "A01 没配凭据，头固定为 Host、User-Agent、Accept、Proxy-Connection: keep-alive；行里列举的名字只有 Proxy-Connection 命中。"
+  },
+  "R03": {
+   "value": "a.kaoju.test:443 HTTP/1.1",
+   "why": "CONNECT 的目标总是“主机:端口”，URL 没写端口时是 443，版本写死 HTTP/1.1。"
+  },
+  "R04": {
+   "value": "Host, User-Agent, Proxy-Connection",
+   "why": "CONNECT 的头写死为这三个、这个顺序；A02 没配凭据，没有 Proxy-Authorization。"
+  },
+  "R05": {
+   "value": "同目标",
+   "why": "CONNECT 的 Host 与请求目标用的是同一个字符串 a.kaoju.test:443。"
+  },
+  "R06": {
+   "value": "TLS ClientHello",
+   "why": "CONNECT 成功后 rawref 立刻用 ssl 模块握手，隧道里的首包是 ClientHello。"
+  },
+  "R07": {
+   "value": "不超过 1460 字节",
+   "why": "rawref 把密钥交换组固定为只有 prime256v1，ALPN 只有 http/1.1，ClientHello 只带一个 P-256 的密钥份额，几百字节。假设：OpenSSL 至多把它填充到 512 字节的握手消息（记录 517 字节）；不固定组时 OpenSSL 3.5 会带后量子份额而超过 1460，所以才固定。"
+  },
+  "R08": {
+   "value": "http/1.1",
+   "why": "set_alpn_protocols 只给了 http/1.1。"
+  },
+  "R09": {
+   "value": "HTTP/1.1",
+   "why": "rawref 只提供 http/1.1，隧道里发的也是 HTTP/1.1 的请求，源站支持 h2 也协商不出 h2。"
+  },
+  "R10": {
+   "value": "1",
+   "why": "HTTPS 的池键是（凭据、协议、主机、端口），A03 三次同键，每键最多 1 条连接，顺序复用同一条隧道。"
+  },
+  "R11": {
+   "value": "1",
+   "why": "明文的池键只有凭据，A04 三次都没配凭据，复用同一条到代理的连接；仪器的响应带 Content-Length、不带 Connection: close，连接留着。"
+  },
+  "R12": {
+   "value": "2",
+   "why": "A05 两个源是两个池键，各开一条隧道，交替访问时各自复用。"
+  },
+  "R13": {
+   "value": "1",
+   "why": "明文的池键只有凭据，两个源共用同一条到代理的连接。"
+  },
+  "R14": {
+   "value": "6",
+   "why": "parallel 里每个请求各开一条新隧道、用完即关，与源站是否支持 h2 无关。"
+  },
+  "R15": {
+   "value": "6",
+   "why": "同 R14：parallel 里每个请求各开一条新隧道。"
+  },
+  "R16": {
+   "value": "6",
+   "why": "parallel 里每个明文请求各开一条到代理的新连接。"
+  },
+  "R17": {
+   "value": "经代理",
+   "why": "rawref 对 localhost 不绕过代理，发的是绝对形式的 GET http://localhost:端口/…；仪器把明文源站的实际端口映射到内置明文源站。"
+  },
+  "R18": {
+   "value": "经代理",
+   "why": "rawref 对 localhost 不绕过代理，CONNECT localhost:端口 后在隧道里请求；仪器把 HTTPS 源站的实际端口映射到内置 HTTPS 源站，证书含 localhost。"
+  },
+  "R19": {
+   "value": "Content-Length",
+   "why": "rawref 的 POST 一律用 Content-Length，从不用 chunked。"
+  },
+  "R20": {
+   "value": "不发",
+   "why": "rawref 从不发 Expect。"
+  },
+  "R21": {
+   "value": "绝对形式的 GET 加 Upgrade",
+   "why": "ws:// 经 HTTP 代理时 rawref 不走 CONNECT，发绝对形式的 GET（目标 ws://a.kaoju.test/ws?k=A15.w1）加 Upgrade: websocket；仪器在代理端口上记成 form=absolute 的 http_request 并直接回 101。"
+  },
+  "R22": {
+   "value": "CONNECT 到 443 端口，隧道里 TLS",
+   "why": "wss:// 走 CONNECT a.kaoju.test:443 加 TLS，再在隧道里发升级请求；ALPN 是 http/1.1，源站在这条连接上完成握手并记 origin_request。"
+  },
+  "R23": {
+   "value": "G / C / 05",
+   "why": "A01 的第一个字节是 GET 的 G，A02 是 CONNECT 的 C，S01 是 SOCKS5 的版本字节 0x05（不可打印，写两位十六进制）。"
+  },
+  "R24": {
+   "value": "完整",
+   "why": "三个 POST 都把正文文件整个读进来、按 Content-Length 一次发出（A12、A14 经代理转交，A13 在隧道里），没有认证、没有重发。"
+  },
+  "R30": {
+   "value": "先带",
+   "why": "配了凭据就在第一个请求上带 Proxy-Authorization。"
+  },
+  "R31": {
+   "value": "先带",
+   "why": "配了凭据就在第一个 CONNECT 上带 Proxy-Authorization。"
+  },
+  "R32": {
+   "value": "不适用",
+   "why": "凭据正确且先带，代理从不回 407。"
+  },
+  "R33": {
+   "value": "不适用",
+   "why": "凭据正确且先带，CONNECT 从不收到 407。"
+  },
+  "R34": {
+   "value": "不适用",
+   "why": "B03 里凭据先带且正确，没有收到过 407，on407=close 不起作用。假设：规则里“没有收到过 407 是不适用”优先于“ok 且 200 是成功”（这一步实际是 200）。"
+  },
+  "R35": {
+   "value": "不适用",
+   "why": "同 R34：B04 的 CONNECT 先带正确的凭据，没有收到过 407。同样的假设。"
+  },
+  "R36": {
+   "value": "3/0",
+   "why": "B05 三个请求在同一条连接上，每个都带凭据；没有 407，也没有重试。"
+  },
+  "R37": {
+   "value": "先带",
+   "why": "访问 b.kaoju.test 是新的池键，新开的 CONNECT 同样先带凭据。"
+  },
+  "R38": {
+   "value": "1",
+   "why": "B07 三次同一个（凭据、目标），复用同一条隧道。"
+  },
+  "R39": {
+   "value": "没有",
+   "why": "rawref 只在 CONNECT 和绝对形式的请求上带 Proxy-Authorization，隧道里的请求头写死为 Host、User-Agent、Accept，从不带。"
+  },
+  "R40": {
+   "value": "都成功",
+   "why": "follow 为真时跟随 302：跳转后的请求按新 URL 的协议走（B08、B09 新开 CONNECT，B10 改发绝对形式），都带这一步的凭据，源站回 200。"
+  },
+  "R41": {
+   "value": "各用各的凭据",
+   "why": "明文的池键是凭据：两个用户各有一条到代理的连接，每个请求带的是这一步的凭据。"
+  },
+  "R42": {
+   "value": "各开各的隧道",
+   "why": "HTTPS 的池键含凭据：s1、s3 用用户 0 的隧道，s2 另开用户 1 的隧道。"
+  },
+  "R43": {
+   "value": "1",
+   "why": "凭据先带，POST 只发一次，没有 407 也没有重发。"
+  },
+  "R44": {
+   "value": "0",
+   "why": "B14 的 6 个 CONNECT 都先带正确的凭据，没有 407。"
+  },
+  "R45": {
+   "value": "拿到 407 响应",
+   "why": "C01 没配凭据就不带；明文收到 407 不重试，把 407 当作结果（ok 为真，status 407）。"
+  },
+  "R46": {
+   "value": "报错，提到 407",
+   "why": "C02 的 CONNECT 收到 407 不重试，报错文字是 rawref: CONNECT failed: 407 Proxy Authentication Required（ok 为假）。"
+  },
+  "R47": {
+   "value": "1",
+   "why": "C03 带着错的密码发一次，收到 407 不重试。"
+  },
+  "R48": {
+   "value": "1",
+   "why": "C04 带着错的密码发一次 CONNECT，收到 407 不重试。"
+  },
+  "R49": {
+   "value": "报错，提到 407",
+   "why": "CONNECT 失败的报错文字里有状态码 407。"
+  },
+  "R50": {
+   "value": "报错，提到 403",
+   "why": "C05 的 CONNECT 收到 403，报错文字是 rawref: CONNECT failed: 403 加原因短语。"
+  },
+  "R51": {
+   "value": "拿到 403 响应",
+   "why": "C08 是明文：403 响应当作结果（ok 为真，status 403）。"
+  },
+  "R52": {
+   "value": "带",
+   "why": "配了凭据就先带，代理要不要认证不影响；仪器对它的判定不是 none。"
+  },
+  "R53": {
+   "value": "带",
+   "why": "同 R52，CONNECT 上先带。"
+  },
+  "R60": {
+   "value": "原样",
+   "why": "D01：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。"
+  },
+  "R61": {
+   "value": "原样",
+   "why": "D02：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。"
+  },
+  "R62": {
+   "value": "原样",
+   "why": "D03：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。"
+  },
+  "R63": {
+   "value": "原样",
+   "why": "D04：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。质询带不带 charset 都一样，因为 rawref 先带、不看质询，一律按 UTF-8 编码。"
+  },
+  "R64": {
+   "value": "原样",
+   "why": "D05：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。质询带不带 charset 都一样，因为 rawref 先带、不看质询，一律按 UTF-8 编码。"
+  },
+  "R65": {
+   "value": "原样",
+   "why": "D06：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。"
+  },
+  "R66": {
+   "value": "原样",
+   "why": "D07：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。Basic 没有长度上限，rawref 不截断。"
+  },
+  "R67": {
+   "value": "原样",
+   "why": "D08：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。Basic 没有长度上限，rawref 不截断；CONNECT 请求头约 1.5 KiB，远小于仪器 64 KiB 的上限。"
+  },
+  "R68": {
+   "value": "原样",
+   "why": "D09：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。"
+  },
+  "R69": {
+   "value": "原样",
+   "why": "D10：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。密码为空时就是“用户名:”。"
+  },
+  "R70": {
+   "value": "原样",
+   "why": "D11：凭据是 base64(用户名的 UTF-8 + \":\" + 密码的 UTF-8)，不做任何转义，在唯一的 CONNECT 上先带。用户名里的冒号原样拼接。"
+  },
+  "R80": {
+   "value": "状态码、原因短语",
+   "why": "CONNECT 失败时 default_text 只有 rawref: CONNECT failed: 502 KaojuReasonMarker，含状态码和原因短语，不含响应头和正文。"
+  },
+  "R81": {
+   "value": "状态码、原因短语、响应头、正文",
+   "why": "extra_text 是 rawref 记录的 CONNECT 响应：完整的响应头（两个头记号）和正文的前 4 KiB（正文记号）。"
+  },
+  "R82": {
+   "value": "状态码、原因短语",
+   "why": "同 R80，状态码换成 403。"
+  },
+  "R83": {
+   "value": "1",
+   "why": "CONNECT 收到 503 就报错，不重试，不理会 Retry-After。"
+  },
+  "R84": {
+   "value": "看不到",
+   "why": "CONNECT 成功时 default_text 只有隧道里源站的响应（状态行、头、/echo 的正文）；200 里附加的头不在其中，/echo 回显的是 rawref 发的 Host、User-Agent、Accept，也不含记号。"
+  },
+  "R85": {
+   "value": "看得到",
+   "why": "extra_text 记了 CONNECT 的 200 的完整响应头，含两个记号。"
+  },
+  "R86": {
+   "value": "状态码、原因短语、响应头、正文",
+   "why": "明文的 403 当作响应：default_text 有状态行（403 KaojuReasonMarker）、全部响应头和正文。"
+  },
+  "R87": {
+   "value": "看得到",
+   "why": "default_text 含全部响应头，代理附加的两个头在其中。"
+  },
+  "R88": {
+   "value": "新连接",
+   "why": "失败的 CONNECT 所在的连接读完响应就关（不管代理留没留），下一个 CONNECT 总是新连接。"
+  },
+  "R89": {
+   "value": "成功",
+   "why": "connect.fail 只对 fail.kaoju.test 生效；s2 新开 CONNECT a.kaoju.test:443，正常拿到 200。"
+  },
+  "R90": {
+   "value": "失败",
+   "why": "rawref 发请求前不探测连接：3 秒后在已被代理关掉的池内连接上发 s2，读到 EOF 或复位，不重发，报 rawref: connection closed。"
+  },
+  "R91": {
+   "value": "失败",
+   "why": "同 R90：在已被关掉的隧道上发 s2，读到 EOF 或复位，不重发。"
+  },
+  "R92": {
+   "value": "1 次，失败",
+   "why": "F03：s2 复用池里的连接（隧道），丢弃被触发；请求到达代理一次，rawref 读到 EOF 或复位后不重发，报 rawref: connection closed。假设：取值写成“n 次，成功/失败”，用全角逗号。"
+  },
+  "R93": {
+   "value": "1 次，失败",
+   "why": "F04：s2 复用池里的连接（隧道），丢弃被触发；请求到达代理一次，rawref 读到 EOF 或复位后不重发，报 rawref: connection closed。假设：取值写成“n 次，成功/失败”，用全角逗号。"
+  },
+  "R94": {
+   "value": "1 次，失败",
+   "why": "F05：s2 复用池里的连接（隧道），丢弃被触发；请求到达源站一次，rawref 读到 EOF 或复位后不重发，报 rawref: connection closed。假设：取值写成“n 次，成功/失败”，用全角逗号。"
+  },
+  "R95": {
+   "value": "1 次，失败",
+   "why": "F06：s2 复用池里的连接（隧道），丢弃被触发；请求到达源站一次，rawref 读到 EOF 或复位后不重发，报 rawref: connection closed。假设：取值写成“n 次，成功/失败”，用全角逗号。"
+  },
+  "R96": {
+   "value": "1 次，失败",
+   "why": "F07：新连接上的第一个请求；请求到达代理一次，rawref 读到 EOF 或复位后不重发，报 rawref: connection closed。假设：取值写成“n 次，成功/失败”，用全角逗号。"
+  },
+  "R97": {
+   "value": "1 次，失败",
+   "why": "F08：新连接上的第一个请求；请求到达源站一次，rawref 读到 EOF 或复位后不重发，报 rawref: connection closed。假设：取值写成“n 次，成功/失败”，用全角逗号。"
+  },
+  "R98": {
+   "value": "1 次，失败",
+   "why": "F09：s2 复用池里的连接（隧道），丢弃被触发；请求到达代理一次，rawref 读到 EOF 或复位后不重发，报 rawref: connection closed。假设：取值写成“n 次，成功/失败”，用全角逗号。"
+  },
+  "R99": {
+   "value": "1 次，失败",
+   "why": "F10：s2 复用池里的连接（隧道），丢弃被触发；请求到达源站一次，rawref 读到 EOF 或复位后不重发，报 rawref: connection closed。假设：取值写成“n 次，成功/失败”，用全角逗号。"
+  },
+  "R100": {
+   "value": "1 次，失败",
+   "why": "CONNECT 发出后读到 EOF，报 rawref: connection closed，不重发，只有一个 CONNECT。取值格式的假设同 R92。"
+  },
+  "R101": {
+   "value": "1 次，失败",
+   "why": "F12：rawref 只说 HTTP/1.1，源站支持 h2 也一样；s2 是同一条源站连接上的第二个请求，丢弃被触发，到达源站一次，不重发。取值格式的假设同 R92。"
+  },
+  "R110": {
+   "value": "00",
+   "why": "没配凭据时方法协商发 05 01 00。"
+  },
+  "R111": {
+   "value": "00,02",
+   "why": "配了凭据时方法协商发 05 02 00 02。"
+  },
+  "R112": {
+   "value": "域名",
+   "why": "socks5h 发 ATYP 3。"
+  },
+  "R113": {
+   "value": "IPv4",
+   "why": "socks5 下 rawref 自己用 getaddrinfo 解析 localhost，结果里有 IPv4 就用第一个 IPv4（127.0.0.1），发 ATYP 1。假设：本机的 localhost 能解析出 127.0.0.1。"
+  },
+  "R114": {
+   "value": "没连代理就报错",
+   "why": "socks5 下 a.kaoju.test 解析失败，rawref 不连代理，报 rawref: resolve failed。假设：本机解析不了 .test。"
+  },
+  "R115": {
+   "value": "TLS ClientHello",
+   "why": "SOCKS5 建好后目标是 https，立刻做 TLS。"
+  },
+  "R116": {
+   "value": "明文 HTTP",
+   "why": "SOCKS5 建好后目标是 http，直接发原始形式的 GET /echo?…，首字节是大写的方法名加空格。"
+  },
+  "R117": {
+   "value": "成功",
+   "why": "S05：提供 [00, 02]，服务端选 02，凭据正确，状态 0，随后请求拿到 200。"
+  },
+  "R118": {
+   "value": "成功",
+   "why": "S06：提供 [00, 02]，服务端选 00，rawref 不发凭据直接往下走，拿到 200。"
+  },
+  "R119": {
+   "value": "提到认证或方法",
+   "why": "报错文字是 rawref: socks no acceptable method，含 method。"
+  },
+  "R120": {
+   "value": "提到认证或方法",
+   "why": "报错文字是 rawref: socks auth failed status=1，含 auth。"
+  },
+  "R121": {
+   "value": "能区分",
+   "why": "三个报错是 rawref: socks reply 2、4、5，只差一位数字（不足 3 位，不会被去掉），两两不同。"
+  },
+  "R122": {
+   "value": "1",
+   "why": "S12 三次同一个（凭据、目标），复用同一条 SOCKS5 连接。"
+  },
+  "R123": {
+   "value": "6",
+   "why": "parallel 里每个请求各开一条新的 SOCKS5 连接。"
+  },
+  "R124": {
+   "value": "各开各的连接",
+   "why": "SOCKS5 的池键含凭据：s1、s3 用用户 0 的连接，s2 另开用户 1 的连接。"
+  },
+  "R125": {
+   "value": "原样",
+   "why": "S15：服务端选 02 后发 01 ULEN 用户名 PLEN 密码，都是原样的 UTF-8 字节。"
+  },
+  "R126": {
+   "value": "原样",
+   "why": "S16：服务端选 02 后发 01 ULEN 用户名 PLEN 密码，都是原样的 UTF-8 字节。"
+  },
+  "R127": {
+   "value": "原样",
+   "why": "S17：服务端选 02 后发 01 ULEN 用户名 PLEN 密码，都是原样的 UTF-8 字节。"
+  },
+  "R128": {
+   "value": "原样",
+   "why": "S18：服务端选 02 后发 01 ULEN 用户名 PLEN 密码，都是原样的 UTF-8 字节。255 字节正好是 ULEN 的上限。"
+  },
+  "R129": {
+   "value": "客户端报错",
+   "why": "S19：用户名 256 字节超过 255，rawref 不连代理，报 rawref: socks credential too long；没有 socks5_auth，这一步失败。"
+  },
+  "R130": {
+   "value": "原样",
+   "why": "S20：服务端选 02 后发 01 ULEN 用户名 PLEN 密码，都是原样的 UTF-8 字节。"
+  },
+  "R131": {
+   "value": "原样",
+   "why": "S21：服务端选 02 后发 01 ULEN 用户名 PLEN 密码，都是原样的 UTF-8 字节。密码为空时 PLEN 是 0，照发。"
+  },
+  "R132": {
+   "value": "原样",
+   "why": "S22：服务端选 02 后发 01 ULEN 用户名 PLEN 密码，都是原样的 UTF-8 字节。SOCKS5 的用户名和密码各有长度字节，冒号不特殊。"
+  }
+ }
+}

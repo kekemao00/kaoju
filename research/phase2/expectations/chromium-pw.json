@@ -1,0 +1,549 @@
+{
+ "variant": "chromium-pw",
+ "written": "2026-11-10",
+ "method": "只凭文档和源码，未做任何实测",
+ "client_version": "Playwright 1.63.0（playwright-core 的 lib/coreBundle.js）；Chromium 153.0.8010.12（Playwright 的浏览器修订号 1243，默认 headless 启动的是 chrome-headless-shell）",
+ "sources": [
+  "pw: = /opt/node-tools/node_modules/playwright-core/lib/coreBundle.js（1.63.0，打包后的单文件，行号是这个文件的；对应的原始文件是 packages/playwright-core/src/server/chromium/{chromium,chromiumSwitches,crBrowser,crNetworkManager,crPage}.ts 和 src/server/browserContext.ts）",
+  "/opt/node-tools/node_modules/playwright-core/browsers.json（chromium 与 chromium-headless-shell 的修订号 1243、版本 153.0.8010.12）",
+  "/opt/node-tools/node_modules/playwright-core/types/types.d.ts（launch 与 newContext 的 proxy 选项说明）",
+  "https://raw.githubusercontent.com/microsoft/playwright/v1.63.0/ 下的 docs/src/network.md（HTTP Proxy 一节）、docs/src/release-notes-js.md（1.49、1.57）、tests/library/proxy.spec.ts、tests/library/browsercontext-proxy.spec.ts",
+  "cr: = https://raw.githubusercontent.com/chromium/chromium/153.0.8010.12/ 下的文件，行号是这个标签的",
+  "cr:net/docs/proxy.md、net/docs/net-log.md、docs/linux/cert_management.md",
+  "cr:net/http/{http_network_transaction,http_proxy_client_socket,proxy_client_socket,http_proxy_connect_job,http_auth_controller,http_auth_cache,http_auth_handler_basic,http_stream_parser,http_basic_state,http_util,http_stream_factory_job,http_stream_factory_job_controller,http_network_session,proxy_fallback,http_response_headers,http_log_util}.cc",
+  "cr:net/socket/{socks5_client_socket,socks_connect_job,client_socket_pool,client_socket_pool_manager,transport_client_socket_pool,ssl_client_socket_impl}.cc",
+  "cr:net/proxy_resolution/{proxy_host_matching_rules,proxy_config,proxy_list}.cc（任务里写的 proxy_bypass_rules.cc 在这个标签下已不存在，回环规则在 proxy_host_matching_rules.cc）、net/base/{proxy_string_util,host_mapping_rules,features}.cc",
+  "cr:net/ssl/ssl_config_service.cc、net/spdy/{spdy_session,spdy_http_stream}.cc、net/url_request/url_request_http_job.cc",
+  "cr:services/network/url_loader.cc、content/browser/storage_partition_impl.cc、content/public/browser/content_browser_client.cc、content/browser/devtools/devtools_url_loader_interceptor.cc、content/browser/devtools/protocol/{fetch_handler,target_handler}.cc、content/browser/loader/navigation_url_loader_impl.cc、content/browser/renderer_host/http_error_navigation_throttle.cc、content/browser/network_service_instance_impl.cc",
+  "cr:headless/lib/browser/{command_line_handler,headless_content_browser_client,headless_request_context_manager}.cc",
+  "research/phase2/harness/server.go、proxyhttp.go（只为确认仪器对 localhost 端口和 407、403 正文的处理）"
+ ],
+ "assumptions": [
+  "驱动用 chromium.launch() 的默认值：headless，实际启动 chrome-headless-shell；不指定 channel，不加会改变网络行为的参数",
+  "一个用例用一个浏览器、一个上下文、一个页面；两个用户的用例用两个各带 proxy 选项的上下文",
+  "驱动对失败的步骤只把异常的类型和消息写进 default_text，不把错误页的文字或 NetLog 混进去",
+  "R81、R85 按驱动采用 --log-net-log 作为额外手段填写"
+ ],
+ "rows": {
+  "R01": {
+   "expect": "绝对形式",
+   "basis": "cr:net/http/http_util.cc:98-106 GenerateRequestLine：is_for_get_to_http_proxy 时请求目标是完整 URL（SpecForRequest）；cr:net/http/http_stream_factory_job.cc:412-415 代理是 http、目标不是 https 也不是 WebSocket 时不建隧道。net/docs/proxy.md“HTTP proxy scheme”。Playwright 默认关掉 HttpsUpgrades（pw:34829），http:// 导航不会被改成 https。",
+   "confidence": "high"
+  },
+  "R02": {
+   "expect": "Proxy-Connection: keep-alive",
+   "basis": "cr:net/http/http_network_transaction.cc:1381-1392 BuildRequestHeaders：先 Host，经 HTTP 代理且不建隧道时加 Proxy-Connection: keep-alive（否则才是 Connection: keep-alive）；A01 没配凭据，:1422-1424 不加 Proxy-Authorization。其余头（User-Agent、Accept、Upgrade-Insecure-Requests、Accept-Encoding、Accept-Language）不在这一行的名单里（Upgrade-Insecure-Requests 不是 Upgrade）。",
+   "confidence": "high"
+  },
+  "R03": {
+   "expect": "a.kaoju.test:443 HTTP/1.1",
+   "basis": "cr:net/http/proxy_client_socket.cc:35-37 BuildTunnelRequest：请求行是 “CONNECT host:port HTTP/1.1”，host:port 来自 HostPortPair::ToString。",
+   "confidence": "high"
+  },
+  "R04": {
+   "expect": "Host, Proxy-Connection, User-Agent",
+   "basis": "cr:net/http/proxy_client_socket.cc:38-44 依次 SetHeader Host、Proxy-Connection: keep-alive、User-Agent（非空时），再并入认证头和 ProxyDelegate 的头；A02 没配凭据也没有 ProxyDelegate。User-Agent 取自网络上下文的设置（cr:net/http/http_proxy_connect_job.cc:915-920），浏览器总会设。Playwright 测试 tests/library/proxy.spec.ts:339-340 也提到 CONNECT 带的是未仿真的 User-Agent。",
+   "confidence": "high"
+  },
+  "R05": {
+   "expect": "同目标",
+   "basis": "cr:net/http/proxy_client_socket.cc:35-38 请求行和 Host 头用的是同一个 host_and_port 字符串。",
+   "confidence": "high"
+  },
+  "R06": {
+   "expect": "TLS ClientHello",
+   "basis": "cr:net/http/http_proxy_client_socket.cc:500-506 CONNECT 回 200 后套接字交给上层；目标是 https，上层是 SSLConnectJob，第一件事是 TLS 握手。",
+   "confidence": "high"
+  },
+  "R07": {
+   "expect": "超过 1460 字节",
+   "basis": "cr:net/ssl/ssl_config_service.cc:29-34 默认的密钥交换组第一项是 X25519MLKEM768 且 send_key_share=true（没有特性开关），它的公钥份额 1216 字节，加上 X25519 份额、GREASE、ALPN、SNI 等扩展，ClientHello 在 1700 字节以上。Playwright 的 --disable-field-trial-config（pw:34853 一带）不影响这个写死的默认值。",
+   "confidence": "high"
+  },
+  "R08": {
+   "expect": "h2,http/1.1",
+   "basis": "cr:net/http/http_network_session.cc:210-218 next_protos_ 依次是 h2、http/1.1；cr:net/socket/client_socket_pool.cc:253-255 普通请求用 AlpnMode::kHttpAll。",
+   "confidence": "high"
+  },
+  "R09": {
+   "expect": "HTTP/2.0",
+   "basis": "同 R08：提供了 h2，源站支持就选 h2；Chromium 经 CONNECT 隧道照常使用 HTTP/2。",
+   "confidence": "high"
+  },
+  "R10": {
+   "expect": "1",
+   "basis": "三次顶层导航到同一个源：第一次建隧道并协商出 h2 会话，之后的请求复用 SpdySession（cr:net/http/http_stream_factory_job.cc:795-808 一带先找现成的会话）。前提：驱动用 chromium.launch() 的默认值（headless，实际启动的是 chrome-headless-shell，pw:43375）。headless shell 不请求 favicon，也没有导航预连接。",
+   "confidence": "high"
+  },
+  "R11": {
+   "expect": "1",
+   "basis": "明文经代理的连接按目标分组放在代理的连接池里，请求结束后回到空闲池，下一次导航取用（cr:net/socket/client_socket_pool_manager.cc:99-121）。响应带 Content-Length、HTTP/1.1 默认保持连接。前提：驱动用 chromium.launch() 的默认值（headless，实际启动的是 chrome-headless-shell，pw:43375）。",
+   "confidence": "high"
+  },
+  "R12": {
+   "expect": "2",
+   "basis": "两个源各一条隧道、各一个 h2 会话；经代理时不做 HTTP/2 的 IP 合并（cr:net/socket/client_socket_pool.cc:223-225 注释：不对代理或经代理的连接做 H2 IP pooling），所以 a、b 不会合到一条上。",
+   "confidence": "high"
+  },
+  "R13": {
+   "expect": "2",
+   "basis": "cr:net/socket/client_socket_pool_manager.cc:54-58 每个分组（目标 scheme+host+port，:99-101 GroupId 用的是请求的目标而不是代理）最多 6 条，:62-66 每条代理链最多 128 条。a.kaoju.test:80 和 b.kaoju.test:80 是两个分组，各开一条到代理的连接，交替访问时各自复用。没有把握的地方：没有找到“空闲连接跨分组复用”的代码，按没有处理。",
+   "confidence": "medium"
+  },
+  "R14": {
+   "expect": "1",
+   "basis": "PROTOCOL“驱动”一节：并发从同源 /page 页面里用 fetch 发起，驱动先导航到 /page，这次导航留下 1 条空闲连接，会被 6 个 fetch 中的一个复用。/page 的导航已经建立 h2 会话，6 个 fetch 是同一个会话上的 6 条流，不再建隧道。",
+   "confidence": "high"
+  },
+  "R15": {
+   "expect": "6",
+   "basis": "cr:net/socket/client_socket_pool_manager.cc:54-58 每个分组（目标 scheme+host+port，:99-101 GroupId 用的是请求的目标而不是代理）最多 6 条，:62-66 每条代理链最多 128 条。PROTOCOL“驱动”一节：并发从同源 /page 页面里用 fetch 发起，驱动先导航到 /page，这次导航留下 1 条空闲连接，会被 6 个 fetch 中的一个复用。所以是 1 条复用加 5 条新建，共 6 次 tunnel_open。fetch() 的优先级不属于 ResourceScheduler 会延后的那一类（未逐行核对 resource_scheduler.cc）。",
+   "confidence": "medium"
+  },
+  "R16": {
+   "expect": "6",
+   "basis": "cr:net/socket/client_socket_pool_manager.cc:54-58 每个分组（目标 scheme+host+port，:99-101 GroupId 用的是请求的目标而不是代理）最多 6 条，:62-66 每条代理链最多 128 条。PROTOCOL“驱动”一节：并发从同源 /page 页面里用 fetch 发起，驱动先导航到 /page，这次导航留下 1 条空闲连接，会被 6 个 fetch 中的一个复用。1 条复用加 5 条新建，代理端口上共 6 次 accept。",
+   "confidence": "medium"
+  },
+  "R17": {
+   "expect": "经代理",
+   "basis": "Chromium 自己默认绕过回环地址（net/docs/proxy.md“Implicit bypass rules”），但 Playwright 默认把它关掉：pw:38302-38308 shouldProxyLoopback 在 bypass 里没有回环名字时返回真，pw:43359-43362 启动参数加 --proxy-bypass-list=<-loopback>，pw:38382-38385 每个上下文的代理也加；cr:net/proxy_resolution/proxy_host_matching_rules.cc:25、:99 <-loopback> 减去隐式规则；headless shell 也解析这个开关（cr:headless/lib/browser/command_line_handler.cc:82-85）。Playwright 测试 tests/library/proxy.spec.ts:74-121 “should proxy local network requests”断言 localhost 的请求到了代理。obsproxy 把源站端口也映射到内置源站（harness/server.go:290-296）。",
+   "confidence": "high"
+  },
+  "R18": {
+   "expect": "经代理",
+   "basis": "同 R17；https 目标是 CONNECT localhost:<端口>，隧道里 TLS，证书含 localhost 这个名字。",
+   "confidence": "high"
+  },
+  "R19": {
+   "expect": "Content-Length",
+   "basis": "cr:net/http/http_network_transaction.cc:1395-1403：上传流不是 chunked 时写 Content-Length。fetch 的 body 是 ArrayBuffer 或 Uint8Array 时长度已知（只有 ReadableStream 才是流式上传）。前提：驱动用内存里的字节作 body。",
+   "confidence": "high"
+  },
+  "R20": {
+   "expect": "不发",
+   "basis": "在 net/http/http_network_transaction.cc、http_stream_parser.cc 里检索 Expect 和 100-continue 没有命中：Chromium 不发这个头。",
+   "confidence": "high"
+  },
+  "R21": {
+   "expect": "CONNECT 到 80 端口，隧道里明文升级",
+   "basis": "cr:net/socket/client_socket_pool.cc:240-242 “Force a CONNECT tunnel for websockets”；cr:net/http/http_stream_factory_job.cc:412-415 is_websocket_ 时不走“不建隧道”的路径。net/docs/proxy.md“Mapping WebSockets URLs to a proxy”。Playwright 测试 tests/library/proxy.spec.ts:404 “should use http proxy for websocket requests”。",
+   "confidence": "high"
+  },
+  "R22": {
+   "expect": "CONNECT 到 443 端口，隧道里 TLS",
+   "basis": "同 R21，wss 的目标端口是 443，隧道里先做 TLS（WebSocket 只提供 http/1.1 这一个 ALPN，cr:net/socket/client_socket_pool.cc:244-255）。",
+   "confidence": "high"
+  },
+  "R23": {
+   "expect": "G / C / 05",
+   "basis": "明文是 “GET http://…”（R01），HTTPS 是 “CONNECT …”（R03），SOCKS5 的问候是 05 01 00（cr:net/socket/socks5_client_socket.cc:254-255）。",
+   "confidence": "high"
+  },
+  "R24": {
+   "expect": "完整",
+   "basis": "正文由 fetch 一次性给出，按 Content-Length 发送（R19）；没有重发或截断的路径。前提：驱动把正文字节原样送进页面（例如 base64 解码成 Uint8Array）。",
+   "confidence": "high"
+  },
+  "R30": {
+   "expect": "等 407 再带",
+   "basis": "Playwright 不往启动参数或请求头里放凭据（pw:43344-43365 只有 --proxy-server 和 --proxy-bypass-list；Chromium 走的是 authenticateProxyViaCredentials 而不是 authenticateProxyViaHeader，pw:38576）；net/docs/proxy.md“Proxy credentials in manual proxy settings”：Chrome 不使用代理设置里嵌的凭据。cr:net/http/http_auth_controller.cc:113-121、145-180：没有缓存条目时 MaybeGenerateAuthToken 不生成任何头。第一次收到 407 后才由 Playwright 经 CDP 给凭据：pw:51852-51859 authenticateProxyViaCredentials 把代理的 username/password 放进上下文的 httpCredentials（不带 origin，匹配所有 URL），pw:38576 CRBrowserContext 构造时调用；pw:36102-36118 有凭据就对每个页面会话发 Fetch.enable{handleAuthRequests:true}；pw:36167-36181 _onAuthRequired 第一次回 ProvideCredentials，同一个 requestId 第二次回 CancelAuth。Chromium 一侧：cr:content/browser/storage_partition_impl.cc:516-519 认证请求先交给 DevToolsURLLoaderInterceptor，cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 把用户名密码转成 AuthCredentials，cr:services/network/url_loader.cc:1907-1919 有凭据调 URLRequest::SetAuth，没有调 CancelAuth。",
+   "confidence": "high"
+  },
+  "R31": {
+   "expect": "等 407 再带",
+   "basis": "同 R30；CONNECT 的认证头在 cr:net/http/http_proxy_client_socket.cc:366-368 只在 HttpAuthController 已有凭据时才加。",
+   "confidence": "high"
+  },
+  "R32": {
+   "expect": "原连接",
+   "basis": "cr:net/http/http_network_transaction.cc:572-638 PrepareForAuthRestart：响应能复用连接（CanReuseConnection，cr:net/http/http_stream_parser.cc:1198-1218：找得到响应结尾、保持连接、套接字还连着）时先把 407 的正文读完，再用 RenewStreamForAuth 在同一条连接上重发。obsproxy 默认的 407 带 Content-Length、不带 Connection: close。",
+   "confidence": "high"
+  },
+  "R33": {
+   "expect": "原连接",
+   "basis": "cr:net/http/http_proxy_client_socket.cc:207-241 PrepareForAuthRestart：407 保持连接且找得到结尾时读完正文，在同一个套接字上重发 CONNECT；cr:net/http/http_proxy_connect_job.cc:826-834 DoRestartWithAuth。",
+   "confidence": "high"
+  },
+  "R34": {
+   "expect": "成功",
+   "basis": "cr:net/http/http_network_transaction.cc:605-626：不能复用时关掉旧流，回到 STATE_CREATE_STREAM 在新连接上带着凭据重发。",
+   "confidence": "high"
+  },
+  "R35": {
+   "expect": "成功",
+   "basis": "cr:net/http/http_proxy_client_socket.cc:214-218 不能复用返回 ERR_UNABLE_TO_REUSE_CONNECTION_FOR_PROXY_AUTH；cr:net/http/http_proxy_connect_job.cc:844-870 遇到它就保留 HttpAuthController、重新连接再发 CONNECT。Playwright 测试 tests/library/proxy.spec.ts:165-201 “should reconnect with credentials after CONNECT 407 closes the socket”。",
+   "confidence": "high"
+  },
+  "R36": {
+   "expect": "4/1",
+   "basis": "s1 先不带凭据（407），在原连接上带凭据重发；s2、s3 从缓存预先带上，共 4 个请求、1 个没带。cr:net/http/http_auth_controller.cc:318-361 ResetAuth 在带凭据重试之前就把凭据写进 HttpAuthCache；:145-180 之后每个新请求、每个新 CONNECT 都用 LookupByPath 取出来预先带上。缓存属于 HttpNetworkSession（cr:net/http/http_network_session.h:335），也就是每个浏览器上下文一份。前提：驱动用 chromium.launch() 的默认值（headless，实际启动的是 chrome-headless-shell，pw:43375）。用完整的 Chrome（channel: 'chromium' 或有界面）时会多出 /favicon.ico 的请求，数字会变大。",
+   "confidence": "medium"
+  },
+  "R37": {
+   "expect": "先带",
+   "basis": "cr:net/http/http_auth_controller.cc:318-361 ResetAuth 在带凭据重试之前就把凭据写进 HttpAuthCache；:145-180 之后每个新请求、每个新 CONNECT 都用 LookupByPath 取出来预先带上。缓存属于 HttpNetworkSession（cr:net/http/http_network_session.h:335），也就是每个浏览器上下文一份。代理认证的缓存键是代理的 scheme+host+port，与目标无关，所以对第二个源的 CONNECT 直接带。",
+   "confidence": "high"
+  },
+  "R38": {
+   "expect": "1",
+   "basis": "第一个 CONNECT 收到 407 没有建成隧道，带凭据的重发建成 1 条；之后两次导航复用 h2 会话。",
+   "confidence": "high"
+  },
+  "R39": {
+   "expect": "没有",
+   "basis": "cr:net/http/http_network_transaction.cc:1422-1424、:2372-2378 只有“经 HTTP 代理且不建隧道”的请求才加 Proxy-Authorization；隧道里的请求不加。Playwright 的 Chromium 实现不用额外请求头带代理凭据（pw:38576 用的是 authenticateProxyViaCredentials）。另一个不在这一行口径里的泄露面见 NOTES：凭据不带 origin，源站回 401 时 Playwright 也会把代理凭据答给源站（pw:36169、pw:51457-51460）。",
+   "confidence": "high"
+  },
+  "R40": {
+   "expect": "都成功",
+   "basis": "顶层导航自动跟随重定向（包括 https 跳到 http）；跳转后的请求照常走代理，凭据来自缓存（R37）。Playwright 测试 tests/library/proxy.spec.ts:203 “should work with authenticate followed by redirect”。",
+   "confidence": "high"
+  },
+  "R41": {
+   "expect": "各用各的凭据",
+   "basis": "每个 browser.newContext({proxy}) 是一个独立的 Chromium BrowserContext（pw:38379-38392 Target.createBrowserContext），有自己的网络会话、连接池和认证缓存；凭据取自各自上下文的 proxy 选项（pw:51852-51859）。Playwright 测试 tests/library/browsercontext-proxy.spec.ts:298-326、:423-455 “should isolate proxy credentials between contexts (on navigation)”。",
+   "confidence": "high"
+  },
+  "R42": {
+   "expect": "各开各的隧道",
+   "basis": "同 R41：连接池按上下文分开，隧道不会跨上下文复用。",
+   "confidence": "high"
+  },
+  "R43": {
+   "expect": "1",
+   "basis": "PROTOCOL 规定浏览器的 POST 从 /page 页面里发，先导航到 /page（B13.pre）：407 落在这次导航上，凭据进了缓存；之后的 POST 预先带凭据（R37 的机制），带 k=B13.s1 的请求只有一个，正文发一遍。也就是说这一格对浏览器测不到“带正文的请求遇到 407”。",
+   "confidence": "medium"
+  },
+  "R44": {
+   "expect": "1",
+   "basis": "唯一的 407 落在 /page 的导航上（B14.pre）；6 个 fetch 新开的 5 个 CONNECT 都从缓存预先带凭据（cr:net/http/http_auth_controller.cc:318-361 ResetAuth 在带凭据重试之前就把凭据写进 HttpAuthCache；:145-180 之后每个新请求、每个新 CONNECT 都用 LookupByPath 取出来预先带上。缓存属于 HttpNetworkSession（cr:net/http/http_network_session.h:335），也就是每个浏览器上下文一份。）。",
+   "confidence": "medium"
+  },
+  "R45": {
+   "expect": "拿到 407 响应",
+   "basis": "没配凭据时 Playwright 不启用 Fetch 拦截（pw:36103）。cr:services/network/url_loader.cc:1047-1075 把认证请求交给浏览器进程，cr:content/browser/storage_partition_impl.cc:530-567 调 CreateLoginDelegate，headless shell 没有覆盖它，基类返回空（cr:content/public/browser/content_browser_client.cc:1302-1315），于是取消认证；cr:net/url_request/url_request_http_job.cc:1688-1708 取消后把 407 当普通响应交出去，page.goto 返回状态码 407 的 Response。前提：驱动用 chromium.launch() 的默认值（headless，实际启动的是 chrome-headless-shell，pw:43375）。完整的 Chrome 会弹登录框，page.goto 会一直等到超时。",
+   "confidence": "medium"
+  },
+  "R46": {
+   "expect": "报错，没提 407",
+   "basis": "取消认证的路径同 R45，但隧道还没建成：cr:net/http/http_network_transaction.cc:645-665 读正文时返回 ERR_TUNNEL_CONNECTION_FAILED（注释：用户取消 407 的认证框时走到这里），407 的响应头只留下逐跳头（cr:net/http/proxy_client_socket.cc:62-91 SanitizeProxyAuth）。没有把握的地方：cr:services/network/url_loader.cc 在读失败之前会先把 407 的响应头发给导航（DidRead 里先 SendResponseToClient 再 NotifyCompleted），导航是报 net::ERR_TUNNEL_CONNECTION_FAILED、等 load 事件到超时，还是返回一个 407 的 Response，从源码没能确定；前两种都是这个取值，第三种是“拿到 407 响应”。",
+   "confidence": "low"
+  },
+  "R47": {
+   "expect": "1",
+   "basis": "第一次不带（407）→ Playwright 给凭据 → 带凭据重发（第 1 次）→ 又是 407：cr:net/http/http_auth_handler_basic.cc:99-109 同一个 realm 的再次质询算拒绝，cr:net/http/http_auth_controller.cc:213-228 把缓存条目删掉、重新向上要凭据；pw:36170-36171 同一个 requestId 第二次回 CancelAuth，不再重试。",
+   "confidence": "medium"
+  },
+  "R48": {
+   "expect": "1",
+   "basis": "同 R47，换成 CONNECT：cr:net/http/http_proxy_connect_job.cc:872-877 第二个 407 再走一遍认证回调，Playwright 回 CancelAuth。",
+   "confidence": "medium"
+  },
+  "R49": {
+   "expect": "报错，没提 407",
+   "basis": "带凭据试过一次后 Playwright 取消认证（R48），之后与 R46 相同，没有把握的地方也相同。",
+   "confidence": "low"
+  },
+  "R50": {
+   "expect": "报错，没提 403",
+   "basis": "带凭据的 CONNECT 收到 403。cr:net/http/http_proxy_client_socket.cc:523-530 CONNECT 的响应不是 200 也不是 407 时一律返回 ERR_TUNNEL_CONNECTION_FAILED，响应被丢弃（注释：避免代理冒充目标站）；pw:37696-37702 Page.navigate 返回的 errorText 原样变成异常消息“net::ERR_TUNNEL_CONNECTION_FAILED at <URL>”，后面只有 Playwright 的 Call log。",
+   "confidence": "high"
+  },
+  "R51": {
+   "expect": "拿到 403 响应",
+   "basis": "明文请求带凭据重发后收到代理的 403，是一个普通的 HTTP 响应，page.goto 返回它（obsproxy 的 403 有正文，不会触发“错误状态且正文为空”的处理）。",
+   "confidence": "high"
+  },
+  "R52": {
+   "expect": "不带",
+   "basis": "Playwright 不往启动参数或请求头里放凭据（pw:43344-43365 只有 --proxy-server 和 --proxy-bypass-list；Chromium 走的是 authenticateProxyViaCredentials 而不是 authenticateProxyViaHeader，pw:38576）；net/docs/proxy.md“Proxy credentials in manual proxy settings”：Chrome 不使用代理设置里嵌的凭据。cr:net/http/http_auth_controller.cc:113-121、145-180：没有缓存条目时 MaybeGenerateAuthToken 不生成任何头。",
+   "confidence": "high"
+  },
+  "R53": {
+   "expect": "不带",
+   "basis": "Playwright 不往启动参数或请求头里放凭据（pw:43344-43365 只有 --proxy-server 和 --proxy-bypass-list；Chromium 走的是 authenticateProxyViaCredentials 而不是 authenticateProxyViaHeader，pw:38576）；net/docs/proxy.md“Proxy credentials in manual proxy settings”：Chrome 不使用代理设置里嵌的凭据。cr:net/http/http_auth_controller.cc:113-121、145-180：没有缓存条目时 MaybeGenerateAuthToken 不生成任何头。",
+   "confidence": "high"
+  },
+  "R60": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。",
+   "confidence": "high"
+  },
+  "R61": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。",
+   "confidence": "high"
+  },
+  "R62": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。凭据不经过 URL，所以 @ % + / 和空格都不需要也不会被转义。",
+   "confidence": "high"
+  },
+  "R63": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。注释写明 Chromium 一律用 UTF-8。",
+   "confidence": "high"
+  },
+  "R64": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。charset 参数被忽略，结果与 R63 相同。",
+   "confidence": "high"
+  },
+  "R65": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。各层都没有长度检查。",
+   "confidence": "high"
+  },
+  "R66": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。各层都没有长度检查。",
+   "confidence": "high"
+  },
+  "R67": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。各层都没有长度检查；1024 字节的用户名编码后约 1.4 KB，远小于请求头的上限。",
+   "confidence": "high"
+  },
+  "R68": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。",
+   "confidence": "high"
+  },
+  "R69": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。pw:51857-51858 只要 username 非空就设凭据，password 取 password || \"\"；发出的是 “用户名:”。Playwright 测试 tests/library/browsercontext-proxy.spec.ts:281 “should authenticate with empty password”。",
+   "confidence": "high"
+  },
+  "R70": {
+   "expect": "原样",
+   "basis": "Playwright 把 proxy.username、proxy.password 原样放进 httpCredentials（pw:51852-51859，normalizeProxySettings 不碰这两个字段，pw:51489-51507），经 CDP 的 Fetch.continueWithAuth 以 JSON 字符串送给浏览器（pw:36177-36180）；cr:content/browser/devtools/protocol/fetch_handler.cc:481-484 UTF8ToUTF16；cr:net/http/http_auth_handler_basic.cc:85-97 令牌是 base64(UTF16ToUTF8(用户名) + \":\" + UTF16ToUTF8(密码))，不转义、不截断、不看质询里的 charset。用户名里的冒号不做处理，直接拼接。",
+   "confidence": "high"
+  },
+  "R80": {
+   "expect": "都看不到",
+   "basis": "cr:net/http/http_proxy_client_socket.cc:523-530 CONNECT 的响应不是 200 也不是 407 时一律返回 ERR_TUNNEL_CONNECTION_FAILED，响应被丢弃（注释：避免代理冒充目标站）；pw:37696-37702 Page.navigate 返回的 errorText 原样变成异常消息“net::ERR_TUNNEL_CONNECTION_FAILED at <URL>”，后面只有 Playwright 的 Call log。消息里没有 502、原因短语、响应头或正文。",
+   "confidence": "high"
+  },
+  "R81": {
+   "expect": "状态码、原因短语、响应头",
+   "basis": "Playwright 自己的 API 没有读 CONNECT 响应的手段。预期按驱动采用 Chromium 的 NetLog 填写：launch({args:['--log-net-log=<文件>']})（content 层处理这个开关，cr:content/browser/network_service_instance_impl.cc:701，headless shell 也有效；文档 net/docs/net-log.md）。cr:net/http/http_proxy_client_socket.cc:469-471 每个 CONNECT 响应都记一条 HTTP_TRANSACTION_READ_TUNNEL_RESPONSE_HEADERS，cr:net/http/http_response_headers.cc:1614-1629 内容是状态行加全部响应头（默认捕获级别只抹掉 Cookie 和认证头的值，cr:net/http/http_log_util.cc:48-63），不含正文。驱动若认定 NetLog 不算“文档里写明的手段”而不采用，这一格是“没有这样的手段”。",
+   "confidence": "low"
+  },
+  "R82": {
+   "expect": "都看不到",
+   "basis": "cr:net/http/http_proxy_client_socket.cc:523-530 CONNECT 的响应不是 200 也不是 407 时一律返回 ERR_TUNNEL_CONNECTION_FAILED，响应被丢弃（注释：避免代理冒充目标站）；pw:37696-37702 Page.navigate 返回的 errorText 原样变成异常消息“net::ERR_TUNNEL_CONNECTION_FAILED at <URL>”，后面只有 Playwright 的 Call log。",
+   "confidence": "high"
+  },
+  "R83": {
+   "expect": "1",
+   "basis": "503 同样是 ERR_TUNNEL_CONNECTION_FAILED；cr:net/http/proxy_fallback.cc:103-110 这个错误不触发换代理（只有 IP Protection 的代理才换），列表里也只有一个代理（cr:net/http/http_stream_factory_job_controller.cc:1590-1594）；没有读 Retry-After 的代码。",
+   "confidence": "high"
+  },
+  "R84": {
+   "expect": "看不到",
+   "basis": "CONNECT 的 200 响应头只在 HttpProxyClientSocket 内部使用，不进入任何 Response 对象；Playwright 的 response.allHeaders() 是隧道里源站的响应头。",
+   "confidence": "high"
+  },
+  "R85": {
+   "expect": "看得到",
+   "basis": "Playwright 自己的 API 没有读 CONNECT 响应的手段。预期按驱动采用 Chromium 的 NetLog 填写：launch({args:['--log-net-log=<文件>']})（content 层处理这个开关，cr:content/browser/network_service_instance_impl.cc:701，headless shell 也有效；文档 net/docs/net-log.md）。cr:net/http/http_proxy_client_socket.cc:469-471 每个 CONNECT 响应都记一条 HTTP_TRANSACTION_READ_TUNNEL_RESPONSE_HEADERS，cr:net/http/http_response_headers.cc:1614-1629 内容是状态行加全部响应头（默认捕获级别只抹掉 Cookie 和认证头的值，cr:net/http/http_log_util.cc:48-63），不含正文。驱动若认定 NetLog 不算“文档里写明的手段”而不采用，这一格是“没有这样的手段”。200 的响应头同样会被记下（记录发生在判断状态码之前）。",
+   "confidence": "low"
+  },
+  "R86": {
+   "expect": "状态码、原因短语、响应头、正文",
+   "basis": "明文请求被代理回 403 是一个普通响应：page.goto 返回 Response，status() 是 403，statusText() 来自状态行，allHeaders() 含代理加的头，text() 是正文。前提：驱动把这四样都写进 default_text（PROTOCOL 对成功步骤的要求）。",
+   "confidence": "high"
+  },
+  "R87": {
+   "expect": "看得到",
+   "basis": "代理加在转发响应里的头就是页面收到的响应头，response.allHeaders() 里有。",
+   "confidence": "high"
+  },
+  "R88": {
+   "expect": "新连接",
+   "basis": "CONNECT 失败后那个套接字随 ConnectJob 一起销毁，不回连接池（cr:net/http/http_proxy_connect_job.cc:639-664 只有成功才 SetSocket）；而且 a.kaoju.test:443 是另一个分组。",
+   "confidence": "high"
+  },
+  "R89": {
+   "expect": "成功",
+   "basis": "上一步的失败不影响别的源：ERR_TUNNEL_CONNECTION_FAILED 不会把代理标成坏的（cr:net/http/proxy_fallback.cc:103-110 返回 false，不进入 ProxyList::Fallback）。",
+   "confidence": "high"
+  },
+  "R90": {
+   "expect": "换新连接，成功",
+   "basis": "连接池取空闲套接字前检查它是否还连着且没有待读数据，已收到 FIN 的会被丢弃；即使检查之后才发现，也会按 R92 的规则自动重发。",
+   "confidence": "high"
+  },
+  "R91": {
+   "expect": "换新隧道，成功",
+   "basis": "隧道被关后 h2 会话读到 EOF 就从会话池里移除，下一次导航新建隧道。",
+   "confidence": "high"
+  },
+  "R92": {
+   "expect": "2 次，成功",
+   "basis": "cr:net/http/http_network_transaction.cc:2057-2085 GetRetryReasonForIOError 把 ERR_CONNECTION_RESET、ERR_CONNECTION_CLOSED、ERR_EMPTY_RESPONSE 等列为可重试；:2126 只在 ShouldResendRequest() 为真时重发；:2319-2327 ShouldResendRequest = 连接是复用的 且 还没收到响应头，不看请求方法；:112 上限 kMaxRetryAttemptsOnConnectionErrors = 50。cr:net/http/http_basic_state.cc:86-91 IsConnectionReused 指套接字句柄是 kReusedIdle 或 kUnusedIdle。s2 用的是 s1 留下的空闲连接，被关后读到 EOF 得到 ERR_CONNECTION_CLOSED（cr:net/http/http_stream_parser.cc:853-868），在新连接上重发一次成功。",
+   "confidence": "high"
+  },
+  "R93": {
+   "expect": "2 次，成功",
+   "basis": "cr:net/http/http_network_transaction.cc:2057-2085 GetRetryReasonForIOError 把 ERR_CONNECTION_RESET、ERR_CONNECTION_CLOSED、ERR_EMPTY_RESPONSE 等列为可重试；:2126 只在 ShouldResendRequest() 为真时重发；:2319-2327 ShouldResendRequest = 连接是复用的 且 还没收到响应头，不看请求方法；:112 上限 kMaxRetryAttemptsOnConnectionErrors = 50。cr:net/http/http_basic_state.cc:86-91 IsConnectionReused 指套接字句柄是 kReusedIdle 或 kUnusedIdle。重发不看方法，POST 也重发；fetch 的正文在内存里，可以重新读。POST 所在的连接此前已被 s1 和 /page 的导航用过。",
+   "confidence": "medium"
+  },
+  "R94": {
+   "expect": "2 次，成功",
+   "basis": "cr:net/http/http_network_transaction.cc:2057-2085 GetRetryReasonForIOError 把 ERR_CONNECTION_RESET、ERR_CONNECTION_CLOSED、ERR_EMPTY_RESPONSE 等列为可重试；:2126 只在 ShouldResendRequest() 为真时重发；:2319-2327 ShouldResendRequest = 连接是复用的 且 还没收到响应头，不看请求方法；:112 上限 kMaxRetryAttemptsOnConnectionErrors = 50。cr:net/http/http_basic_state.cc:86-91 IsConnectionReused 指套接字句柄是 kReusedIdle 或 kUnusedIdle。源站只说 HTTP/1.1，隧道被切断后 TLS 读到 EOF，同 R92。",
+   "confidence": "high"
+  },
+  "R95": {
+   "expect": "2 次，成功",
+   "basis": "cr:net/http/http_network_transaction.cc:2057-2085 GetRetryReasonForIOError 把 ERR_CONNECTION_RESET、ERR_CONNECTION_CLOSED、ERR_EMPTY_RESPONSE 等列为可重试；:2126 只在 ShouldResendRequest() 为真时重发；:2319-2327 ShouldResendRequest = 连接是复用的 且 还没收到响应头，不看请求方法；:112 上限 kMaxRetryAttemptsOnConnectionErrors = 50。cr:net/http/http_basic_state.cc:86-91 IsConnectionReused 指套接字句柄是 kReusedIdle 或 kUnusedIdle。同 R93，隧道里的 POST 也重发。",
+   "confidence": "medium"
+  },
+  "R96": {
+   "expect": "1 次，失败",
+   "basis": "cr:net/http/http_network_transaction.cc:2057-2085 GetRetryReasonForIOError 把 ERR_CONNECTION_RESET、ERR_CONNECTION_CLOSED、ERR_EMPTY_RESPONSE 等列为可重试；:2126 只在 ShouldResendRequest() 为真时重发；:2319-2327 ShouldResendRequest = 连接是复用的 且 还没收到响应头，不看请求方法；:112 上限 kMaxRetryAttemptsOnConnectionErrors = 50。新连接不算复用，cr:net/http/http_stream_parser.cc:859-866 返回 ERR_EMPTY_RESPONSE，不重发，page.goto 抛 net::ERR_EMPTY_RESPONSE。前提：驱动用 chromium.launch() 的默认值（headless，实际启动的是 chrome-headless-shell，pw:43375）。完整的 Chrome 的错误页有自动重新加载，可能多出一次请求。",
+   "confidence": "medium"
+  },
+  "R97": {
+   "expect": "1 次，失败",
+   "basis": "同 R96，隧道是新建的、源站只说 HTTP/1.1，不算复用，不重发。",
+   "confidence": "medium"
+  },
+  "R98": {
+   "expect": "2 次，成功",
+   "basis": "cr:net/http/http_network_transaction.cc:2057-2085 GetRetryReasonForIOError 把 ERR_CONNECTION_RESET、ERR_CONNECTION_CLOSED、ERR_EMPTY_RESPONSE 等列为可重试；:2126 只在 ShouldResendRequest() 为真时重发；:2319-2327 ShouldResendRequest = 连接是复用的 且 还没收到响应头，不看请求方法；:112 上限 kMaxRetryAttemptsOnConnectionErrors = 50。cr:net/http/http_basic_state.cc:86-91 IsConnectionReused 指套接字句柄是 kReusedIdle 或 kUnusedIdle。RST 对应 ERR_CONNECTION_RESET，同样在可重试之列。",
+   "confidence": "high"
+  },
+  "R99": {
+   "expect": "2 次，成功",
+   "basis": "cr:net/http/http_network_transaction.cc:2057-2085 GetRetryReasonForIOError 把 ERR_CONNECTION_RESET、ERR_CONNECTION_CLOSED、ERR_EMPTY_RESPONSE 等列为可重试；:2126 只在 ShouldResendRequest() 为真时重发；:2319-2327 ShouldResendRequest = 连接是复用的 且 还没收到响应头，不看请求方法；:112 上限 kMaxRetryAttemptsOnConnectionErrors = 50。cr:net/http/http_basic_state.cc:86-91 IsConnectionReused 指套接字句柄是 kReusedIdle 或 kUnusedIdle。同 R98。",
+   "confidence": "high"
+  },
+  "R100": {
+   "expect": "1 次，失败",
+   "basis": "CONNECT 没有回应就被关：HttpProxyClientSocket 的解析器在新连接上读到 EOF 返回 ERR_EMPTY_RESPONSE，cr:net/http/http_proxy_connect_job.cc:639-664 原样上报（:853-858 的重连只用于带凭据重试的那一步）；cr:net/http/proxy_fallback.cc:68-93 这个错误不在换代理的名单里；cr:net/http/http_network_transaction.cc:1176-1203 建流失败不经过 HandleIOError，所以不重发。",
+   "confidence": "medium"
+  },
+  "R101": {
+   "expect": "2 次，成功",
+   "basis": "cr:net/http/http_network_transaction.cc:2057-2085 GetRetryReasonForIOError 把 ERR_CONNECTION_RESET、ERR_CONNECTION_CLOSED、ERR_EMPTY_RESPONSE 等列为可重试；:2126 只在 ShouldResendRequest() 为真时重发；:2319-2327 ShouldResendRequest = 连接是复用的 且 还没收到响应头，不看请求方法；:112 上限 kMaxRetryAttemptsOnConnectionErrors = 50。h2 会话读到 EOF 后以 ERR_CONNECTION_CLOSED 关闭上面的流；cr:net/spdy/spdy_http_stream.cc:48、:155 和 cr:net/spdy/spdy_session.cc:1502-1513：会话收到过帧就算复用，于是在新隧道上重发。",
+   "confidence": "medium"
+  },
+  "R110": {
+   "expect": "00",
+   "basis": "cr:net/socket/socks5_client_socket.cc:254-255 问候写死为 05 01 00，只提供“无认证”。",
+   "confidence": "high"
+  },
+  "R111": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R112": {
+   "expect": "域名",
+   "basis": "cr:net/socket/socks5_client_socket.cc:337-358 BuildHandshakeWriteBuffer 的地址类型写死为 kEndPointDomain，主机名原样交给代理。",
+   "confidence": "high"
+  },
+  "R113": {
+   "expect": "域名",
+   "basis": "Chromium 的 socks5:// 只有“域名交给代理”一种行为（同 R112，IP 字面量也按域名类型发），驱动只能用这一种写法；localhost 因 Playwright 加的 <-loopback> 而经代理（R17，pw:43359 对 socks 代理同样加）。",
+   "confidence": "high"
+  },
+  "R114": {
+   "expect": "把域名交给了代理",
+   "basis": "同 R112：客户端不解析目标域名。Playwright 还加了 --host-resolver-rules 想禁止本机解析（pw:43352-43354）。",
+   "confidence": "high"
+  },
+  "R115": {
+   "expect": "TLS ClientHello",
+   "basis": "SOCKS5 握手完成后套接字交给 SSLConnectJob，首包是 ClientHello。",
+   "confidence": "high"
+  },
+  "R116": {
+   "expect": "明文 HTTP",
+   "basis": "SOCKS5 代理不是 HTTP 代理，明文请求直接在 SOCKS 连接里按源站形式发出。",
+   "confidence": "high"
+  },
+  "R117": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R118": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R119": {
+   "expect": "只说失败",
+   "basis": "cr:net/socket/socks5_client_socket.cc:326-330 代理选的方法不是 00 就返回 ERR_SOCKS_CONNECTION_FAILED（细节只进 NetLog）；page.goto 的消息是 “net::ERR_SOCKS_CONNECTION_FAILED at <URL>” 加 Call log，不含 auth、method、credential、password。",
+   "confidence": "high"
+  },
+  "R120": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R121": {
+   "expect": "不能区分",
+   "basis": "cr:net/socket/socks5_client_socket.cc:428-432 应答码非 0 一律返回 ERR_SOCKS_CONNECTION_FAILED，应答码只记进 NetLog（SOCKS_SERVER_ERROR）；三种情况的异常消息除了 URL 里的用例号完全相同。",
+   "confidence": "high"
+  },
+  "R122": {
+   "expect": "1",
+   "basis": "同 R10：h2 会话复用，SOCKS5 连接只有 1 条。",
+   "confidence": "high"
+  },
+  "R123": {
+   "expect": "6",
+   "basis": "同 R15：cr:net/socket/client_socket_pool_manager.cc:54-58 每个分组（目标 scheme+host+port，:99-101 GroupId 用的是请求的目标而不是代理）最多 6 条，:62-66 每条代理链最多 128 条。PROTOCOL“驱动”一节：并发从同源 /page 页面里用 fetch 发起，驱动先导航到 /page，这次导航留下 1 条空闲连接，会被 6 个 fetch 中的一个复用。",
+   "confidence": "medium"
+  },
+  "R124": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R125": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R126": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R127": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R128": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R129": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R130": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R131": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  },
+  "R132": {
+   "expect": "不支持",
+   "basis": "pw:51501-51502 normalizeProxySettings：代理是 socks5 且给了 username 或 password 就抛 “Browser does not support socks5 proxy authentication”（launch 在 pw:39710、newContext 在 pw:51453-51454 都经过它）；Playwright 自带测试 tests/library/browsercontext-proxy.spec.ts:249-254 “should throw for socks5 authentication”。Chromium 本身也只会发“无认证”一种方法（cr:net/socket/socks5_client_socket.cc:254-255）。配置写不出来，驱动报 unsupported。",
+   "confidence": "high"
+  }
+ }
+}

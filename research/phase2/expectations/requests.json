@@ -1,0 +1,539 @@
+{
+  "variant": "requests",
+  "written": "2026-11-10",
+  "method": "只凭文档和源码，未做任何实测",
+  "client_version": "requests 2.34.2；urllib3 2.8.0；PySocks 1.7.1；CPython 3.13.18（http.client、ssl）；链接的 OpenSSL 3.5.9",
+  "sources": [
+    "requests 2.34.2 源码（本机 site-packages/requests）：adapters.py、sessions.py、utils.py、auth.py、models.py、exceptions.py",
+    "requests 文档和变更记录（标签 v2.34.2）：https://raw.githubusercontent.com/psf/requests/v2.34.2/docs/user/advanced.rst（Proxies、SOCKS、SSL Cert Verification 三节）、docs/api.rst（Migrating to 1.x 里的日志写法）、HISTORY.md",
+    "urllib3 2.8.0 源码（PyPI 的 urllib3-2.8.0-py3-none-any.whl，SHA-256 0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3）：connectionpool.py、connection.py、poolmanager.py、exceptions.py、util/retry.py、util/ssl_.py、util/url.py、util/proxy.py、util/connection.py、contrib/socks.py、http2/__init__.py",
+    "urllib3 文档和变更记录（标签 2.8.0）：https://raw.githubusercontent.com/urllib3/urllib3/2.8.0/CHANGES.rst、docs/advanced-usage.rst（Proxies、SOCKS Proxies 两节）",
+    "本机实际装的是 urllib3 2.7.0，与 2.8.0 逐文件比过：差别不在 requests 用到的路径上（详见 drivers/requests/NOTES.md“版本”一节）",
+    "PySocks 1.7.1 源码（PyPI 的 PySocks-1.7.1-py3-none-any.whl，SHA-256 2725bd0a9925919b9b51739eea5f9e2bae91e83288108a9ad338b2e3a4435ee5）：socks.py；包内 METADATA 里的 README",
+    "CPython 3.13.18 标准库（本机 /usr/local/lib/python3.13）：http/client.py（set_tunnel、_tunnel、_read_status、putrequest）、ssl.py",
+    "ssl.OPENSSL_VERSION（只读版本号）：OpenSSL 3.5.9；OpenSSL 3.5 默认密钥交换的说法来自它的变更记录，凭记忆引用，未重新核对原文",
+    "research/phase2/cases.json（用例里的用户名、密码及其长度）"
+  ],
+  "rows": {
+    "R01": {
+      "expect": "绝对形式",
+      "basis": "requests/adapters.py:586-595（requests 2.34.2） request_url：经非 SOCKS 代理的非 https 请求把完整 URL（urldefragauth）当请求目标；urllib3/poolmanager.py:640-642（urllib3 2.8.0） ProxyManager.connection_from_host 对 http 目标连的是代理本身；urllib3/util/proxy.py:30-32：明文目标从不建隧道。",
+      "confidence": "high"
+    },
+    "R02": {
+      "expect": "Connection: keep-alive",
+      "basis": "requests/utils.py:951-962（requests 2.34.2） default_headers 只有 User-Agent、Accept-Encoding、Accept、Connection: keep-alive；urllib3/connection.py:563-566（urllib3 2.8.0） 原样逐个发出，Host 由 http.client 的 putrequest 加（Lib/http/client.py:1255-1264（CPython 3.13.18））。requests、urllib3 的源码里没有 Proxy-Connection（全文检索无命中；http.client 只在解析响应时读它）；A01 没配凭据，所以没有 Proxy-Authorization。",
+      "confidence": "high"
+    },
+    "R03": {
+      "expect": "a.kaoju.test:443 HTTP/1.1",
+      "basis": "Lib/http/client.py:997-1000（CPython 3.13.18） _tunnel 写 b\"CONNECT %s:%d %s\\r\\n\"，版本取 _http_vsn_str='HTTP/1.1'（:861）；urllib3/connection.py:276（urllib3 2.8.0） 只在 Python 低于 3.11.16 或 3.12.0–3.12.13 时换成自带的 _tunnel 副本，3.13 用标准库的。目标主机和端口来自 urllib3/connectionpool.py:93、:1068-1073。",
+      "confidence": "high"
+    },
+    "R04": {
+      "expect": "Host",
+      "basis": "requests/adapters.py:626-632（requests 2.34.2）：代理 URL 里没有用户名时 proxy_headers 为空；urllib3/connectionpool.py:1068-1073（urllib3 2.8.0） 把它传给 set_tunnel；Lib/http/client.py:955-963（CPython 3.13.18）：headers 为空就清空，再自动补一个 Host；_tunnel（:1002-1010）只发 _tunnel_headers 里的头，不加 User-Agent、Proxy-Connection。",
+      "confidence": "high"
+    },
+    "R05": {
+      "expect": "同目标",
+      "basis": "Lib/http/client.py:960-963（CPython 3.13.18）：Host 取 \"%s:%d\" %（隧道主机，隧道端口），与 :997-999 请求行里的目标是同一对值。",
+      "confidence": "high"
+    },
+    "R06": {
+      "expect": "TLS ClientHello",
+      "basis": "urllib3/connection.py:841-896（urllib3 2.8.0） HTTPSConnection.connect：_tunnel() 返回后立即在同一个套接字上做 TLS 握手。",
+      "confidence": "high"
+    },
+    "R07": {
+      "expect": "超过 1460 字节",
+      "basis": "urllib3/util/ssl_.py:256-328（urllib3 2.8.0） 建 SSLContext(PROTOCOL_TLS_CLIENT) 时不设密钥交换组，requests 2.34.2 不自建上下文（adapters.py:85-119），所以 ClientHello 是 OpenSSL 的默认形态。本机 Python 链接的是 OpenSSL 3.5.9（读 ssl.OPENSSL_VERSION 这个版本号，没有发起连接）；OpenSSL 3.5 的变更记录写明默认密钥交换改为同时提供 X25519MLKEM768 和 X25519，前者的公钥 1216 字节，整个 ClientHello 估算约 1.5 KiB。OpenSSL 的源码和默认配置文件没有逐行核对，记为未验证；链接 OpenSSL 3.4 及更早的 Python（CI 上可能如此）会是“不超过 1460 字节”。",
+      "confidence": "medium"
+    },
+    "R08": {
+      "expect": "http/1.1",
+      "basis": "urllib3/util/ssl_.py:20 ALPN_PROTOCOLS = [\"http/1.1\"]，:435 context.set_alpn_protocols(ALPN_PROTOCOLS)（urllib3 2.8.0）。",
+      "confidence": "high"
+    },
+    "R09": {
+      "expect": "HTTP/1.1",
+      "basis": "同 R08：ALPN 只报 http/1.1。HTTP/2 要先调用 urllib3.http2.inject_into_urllib3() 并装 h2 包（urllib3/http2/__init__.py:15-40（urllib3 2.8.0）；CHANGES.rst 里标为 experimental），requests 不调用，本机也没装 h2。",
+      "confidence": "high"
+    },
+    "R10": {
+      "expect": "1",
+      "basis": "urllib3/poolmanager.py:635-638（urllib3 2.8.0）：https 目标每个 host:port 一个连接池；Session.send 返回前读完正文（requests/sessions.py:826-827（requests 2.34.2）），连接回池；下一次 _get_conn（urllib3/connectionpool.py:279-298）取回同一条连接，只有它已关闭时才重新 CONNECT（:777-779）。",
+      "confidence": "high"
+    },
+    "R11": {
+      "expect": "1",
+      "basis": "urllib3/poolmanager.py:640-642（urllib3 2.8.0）：http 目标的连接池按代理的 host:port 建，三次请求复用同一条到代理的连接（复用逻辑同 R10）。",
+      "confidence": "high"
+    },
+    "R12": {
+      "expect": "2",
+      "basis": "同 R10：两个 https 源各有一个池、各建一条隧道，之后各自复用（urllib3/poolmanager.py:635-638；ProxyManager 类文档 :561-566 的例子）。",
+      "confidence": "high"
+    },
+    "R13": {
+      "expect": "1",
+      "basis": "同 R11：所有明文目标共用到代理的那一个池（urllib3/poolmanager.py:640-642；ProxyManager 类文档 :554-559“One pool was shared by both plain HTTP requests”）。",
+      "confidence": "high"
+    },
+    "R14": {
+      "expect": "6",
+      "basis": "同 R08，不协商 h2，一条隧道同时只能跑一个请求；requests/adapters.py:79-82（requests 2.34.2） pool_block=False、pool_maxsize=10；urllib3/connectionpool.py:285-298（urllib3 2.8.0）：池里没有空闲连接且不阻塞时直接新建。前提：驱动用 6 个线程共用一个 Session（见 NOTES）。",
+      "confidence": "high"
+    },
+    "R15": {
+      "expect": "6",
+      "basis": "同 R14；源站支不支持 h2 对 requests 没有区别。",
+      "confidence": "high"
+    },
+    "R16": {
+      "expect": "6",
+      "basis": "同 R14 的池逻辑，用在到代理的那个池上（urllib3/poolmanager.py:640-642）：6 个并发请求各开一条到代理的连接，用完后 6 条都回池（maxsize=10）。",
+      "confidence": "high"
+    },
+    "R17": {
+      "expect": "经代理",
+      "basis": "requests 只对环境变量里的代理应用 no_proxy 和旁路判断（requests/sessions.py:845-851、utils.py:911-939（requests 2.34.2））；显式传入的 proxies= 由 select_proxy 直接选中（utils.py:885-908），源码里没有对 localhost 或回环地址的特判。",
+      "confidence": "high"
+    },
+    "R18": {
+      "expect": "经代理",
+      "basis": "同 R17：客户端会向代理发 CONNECT localhost:<源站端口>。请求能不能出现在隧道里，还取决于仪器是否把自己的源站端口接到内置源站（PROTOCOL 写的是 443 以外的端口按连不上处理，见 protocol_issues），所以把握降一档。",
+      "confidence": "medium"
+    },
+    "R19": {
+      "expect": "Content-Length",
+      "basis": "requests/models.py:603-644（requests 2.34.2） prepare_body：bytes 或能求出长度的文件对象都设 Content-Length；adapters.py:679 据此 chunked=False；urllib3/connection.py:547-548（urllib3 2.8.0）：已有 Content-Length 就不加 Transfer-Encoding。",
+      "confidence": "high"
+    },
+    "R20": {
+      "expect": "不发",
+      "basis": "requests、urllib3、http.client 的请求路径上都不生成 Expect 头（三处源码检索 Expect、100-continue 无命中）。",
+      "confidence": "high"
+    },
+    "R21": {
+      "expect": "不适用",
+      "basis": "cases.json 里 A15 的 only 不含 requests；requests 没有 WebSocket 客户端。",
+      "confidence": "high"
+    },
+    "R22": {
+      "expect": "不适用",
+      "basis": "cases.json 里 A16 的 only 不含 requests；requests 没有 WebSocket 客户端。",
+      "confidence": "high"
+    },
+    "R23": {
+      "expect": "G / C / 05",
+      "basis": "明文是绝对形式的 GET（R01），首字节“G”；HTTPS 是 CONNECT（R03），首字节“C”；PySocks 的问候以 0x05 开头（socks.py:461-465（PySocks 1.7.1）），写成“05”。",
+      "confidence": "high"
+    },
+    "R24": {
+      "expect": "完整",
+      "basis": "三个用例都是带 Content-Length 的一次性发送（R19），没有 Expect（R20），没有认证重试；正文由 urllib3/connection.py:570-581（urllib3 2.8.0） 整段写出。",
+      "confidence": "high"
+    },
+    "R30": {
+      "expect": "先带",
+      "basis": "requests/adapters.py:295-303、:626-632（requests 2.34.2）：代理 URL 里有用户名就生成 Proxy-Authorization 交给 ProxyManager；urllib3/connectionpool.py:754-756（urllib3 2.8.0）：不走隧道的请求在发出前把 proxy_headers 并进请求头。第一个请求就带。",
+      "confidence": "high"
+    },
+    "R31": {
+      "expect": "先带",
+      "basis": "urllib3/connectionpool.py:1068-1073（urllib3 2.8.0） set_tunnel(headers=self.proxy_headers)；Lib/http/client.py:1002-1010（CPython 3.13.18） 把它们写进 CONNECT。第一个 CONNECT 就带。",
+      "confidence": "high"
+    },
+    "R32": {
+      "expect": "不适用",
+      "basis": "凭据先带（R30），凭据正确，不会收到 407。",
+      "confidence": "high"
+    },
+    "R33": {
+      "expect": "不适用",
+      "basis": "凭据先带（R31），凭据正确，不会收到 407。",
+      "confidence": "high"
+    },
+    "R34": {
+      "expect": "不适用",
+      "basis": "凭据先带（R30），不会收到 407，代理怎样写 407 无从影响。",
+      "confidence": "high"
+    },
+    "R35": {
+      "expect": "不适用",
+      "basis": "凭据先带（R31），不会收到 407。",
+      "confidence": "high"
+    },
+    "R36": {
+      "expect": "3/0",
+      "basis": "同 R30：每个明文请求都并入 Proxy-Authorization；连接复用同 R11。3 个请求，0 个不带。",
+      "confidence": "high"
+    },
+    "R37": {
+      "expect": "先带",
+      "basis": "同一个 ProxyManager 建的每个 https 池都带同一份 _proxy_headers（urllib3/poolmanager.py:622-624（urllib3 2.8.0）），新源的 CONNECT 同样先带。",
+      "confidence": "high"
+    },
+    "R38": {
+      "expect": "1",
+      "basis": "同 R10；认证头只在 CONNECT 上发一次（urllib3/poolmanager.py:521-525 类文档“in the HTTPS/CONNECT case they are sent only once”）。",
+      "confidence": "high"
+    },
+    "R39": {
+      "expect": "没有",
+      "basis": "隧道里的请求不并入 proxy_headers（urllib3/connectionpool.py:754（urllib3 2.8.0） 只在不需要隧道时合并）；跳转时 requests/sessions.py:355-366（requests 2.34.2） rebuild_proxies 先删掉 Proxy-Authorization，只在新地址不是 https 时重新加上（CVE-2023-32681 的修复，HISTORY.md 2.31.0 一节）。",
+      "confidence": "high"
+    },
+    "R40": {
+      "expect": "都成功",
+      "basis": "跳转由 requests 自己处理（adapters.py:701 redirect=False；sessions.py:186-307（requests 2.34.2）），每一跳重新选代理、取连接池；跳到 https 时 CONNECT 的凭据来自 ProxyManager（R31），跳到 http 时由 rebuild_proxies 加上、urllib3 再并入一次同名头（sessions.py:365-366、R30）。",
+      "confidence": "high"
+    },
+    "R41": {
+      "expect": "各用各的凭据",
+      "basis": "同一进程换凭据的常规做法是每次请求传不同的 proxies=（文档 Advanced Usage 的 Proxies 一节）；requests/adapters.py:281-303（requests 2.34.2） 的 proxy_manager 字典以完整的代理 URL（含用户信息）为键，每套凭据一个 ProxyManager，各有各的 proxy_headers 和连接池。",
+      "confidence": "high"
+    },
+    "R42": {
+      "expect": "各开各的隧道",
+      "basis": "同 R41：每个 ProxyManager 有自己的 https 池，隧道不会跨凭据复用；第三步回到第一个用户的池，复用它自己那条隧道。",
+      "confidence": "high"
+    },
+    "R43": {
+      "expect": "1",
+      "basis": "凭据先带（R30），不会先收到 407 再重发；正文只发一遍。",
+      "confidence": "high"
+    },
+    "R44": {
+      "expect": "0",
+      "basis": "凭据先带（R31），6 个 CONNECT 都带凭据，代理不会回 407。",
+      "confidence": "high"
+    },
+    "R45": {
+      "expect": "拿到 407 响应",
+      "basis": "没配凭据时 proxy_headers 为空（requests/adapters.py:626-632（requests 2.34.2））；代理的 407 对 urllib3 是普通响应：requests 传的 Retry(0, read=False)（adapters.py:208-209）下 is_retry 恒为假（urllib3/util/retry.py:438-443（urllib3 2.8.0））；requests 没有处理代理质询的代码（auth.py 里只有 HTTPDigestAuth 处理 401）。调用方拿到 status_code=407 的 Response。",
+      "confidence": "high"
+    },
+    "R46": {
+      "expect": "报错，提到 407",
+      "basis": "Lib/http/client.py:1027-1029（CPython 3.13.18）：状态码不是 200 就关连接并抛 OSError('Tunnel connection failed: 407 <原因短语>')；urllib3/connectionpool.py:833-843（urllib3 2.8.0） 包成 ProxyError，util/retry.py:553-555 抛 MaxRetryError，requests/adapters.py:722-723（requests 2.34.2） 抛 requests.exceptions.ProxyError，消息里保留“407”。",
+      "confidence": "high"
+    },
+    "R47": {
+      "expect": "1",
+      "basis": "带着凭据的请求收到 407 后直接作为响应返回（同 R45），不重试。",
+      "confidence": "high"
+    },
+    "R48": {
+      "expect": "1",
+      "basis": "CONNECT 带着凭据收到 407 即抛错（同 R46）；Retry(0, read=False) 不重试（urllib3/util/retry.py:553-555）。",
+      "confidence": "high"
+    },
+    "R49": {
+      "expect": "报错，提到 407",
+      "basis": "同 R46。",
+      "confidence": "high"
+    },
+    "R50": {
+      "expect": "报错，提到 403",
+      "basis": "同 R46，状态码换成 403：消息是 'Tunnel connection failed: 403 …'。",
+      "confidence": "high"
+    },
+    "R51": {
+      "expect": "拿到 403 响应",
+      "basis": "同 R45：明文请求得到的 403 是普通响应。",
+      "confidence": "high"
+    },
+    "R52": {
+      "expect": "带",
+      "basis": "同 R30：带不带只看代理 URL 里有没有用户名，与代理是否要求认证无关。",
+      "confidence": "high"
+    },
+    "R53": {
+      "expect": "带",
+      "basis": "同 R31：CONNECT 的头来自 proxy_headers，与代理是否要求认证无关。",
+      "confidence": "high"
+    },
+    "R60": {
+      "expect": "原样",
+      "basis": "链路：驱动把用户名、密码各自 quote(…, safe='') 后写进代理 URL → requests/utils.py:1046-1067（requests 2.34.2） prepend_scheme_if_needed（经 urllib3/util/url.py:535-536（urllib3 2.8.0），只规范化、不解码）→ utils.py:1076-1080 get_auth_from_url 对用户名、密码各做一次 unquote → auth.py:65-73 按 latin-1 编码、用冒号拼接、base64。全是 ASCII 且无需转义，逐字节不变。",
+      "confidence": "high"
+    },
+    "R61": {
+      "expect": "原样",
+      "basis": "同 R60 的链路：这些标点要么是非保留字符，要么被 quote 成 %XX 再由 unquote 还原。",
+      "confidence": "high"
+    },
+    "R62": {
+      "expect": "原样",
+      "basis": "同 R60 的链路：@ % + / 空格都被 quote(safe='') 写成 %XX；还原用的是 unquote 而不是 unquote_plus，“+”不会变成空格；“%41”先写成 %2541，不会被解成 A。前提是驱动按 NOTES 用 safe=''：不转义的话“/”会截断 URL 的 authority。",
+      "confidence": "high"
+    },
+    "R63": {
+      "expect": "客户端报错",
+      "basis": "requests/auth.py:65-66（requests 2.34.2） _basic_auth_str 对 str 用户名做 .encode('latin1')；unquote 把 %E7%94%A8… 按 UTF-8 解成“用户-séssion-ß”，“用户”二字不在 latin-1 里，抛 UnicodeEncodeError。调用点是 adapters.py:295（proxy_manager_for → proxy_headers），在连接代理之前；send 只捕获 LocationValueError（:661-666），异常原样抛给调用方，代理收不到任何请求。把握中等：前提是驱动按常规写法把 UTF-8 字节百分号编码进 URL，不做绕过。",
+      "confidence": "medium"
+    },
+    "R64": {
+      "expect": "客户端报错",
+      "basis": "同 R63：异常在发出任何请求之前抛出，质询里有没有 charset 无从影响。",
+      "confidence": "medium"
+    },
+    "R65": {
+      "expect": "原样",
+      "basis": "同 R60 的链路；requests、urllib3、http.client 对头的长度没有上限检查（_tunnel 只校验头名和换行符，Lib/http/client.py:1002-1009（CPython 3.13.18））。",
+      "confidence": "high"
+    },
+    "R66": {
+      "expect": "原样",
+      "basis": "同 R65：HTTP 这一侧没有 255 字节的界限。",
+      "confidence": "high"
+    },
+    "R67": {
+      "expect": "原样",
+      "basis": "同 R65。",
+      "confidence": "high"
+    },
+    "R68": {
+      "expect": "原样",
+      "basis": "同 R62：密码走同一条 quote/unquote 链路（requests/utils.py:1080）。",
+      "confidence": "high"
+    },
+    "R69": {
+      "expect": "原样",
+      "basis": "写成 user:@host 时 urlparse 给出的 password 是空串，get_auth_from_url 返回 ('kaoju-user', '')（requests/utils.py:1076-1080（requests 2.34.2））；proxy_headers 只判断用户名非空（adapters.py:629-630），发出 base64('kaoju-user:')。HISTORY.md 2.12.0 一节：“Requests now tolerates empty passwords in proxy credentials”。把握中等：若驱动写成 user@host（没有冒号），password 是 None，unquote 抛 TypeError，被当成没有凭据（utils.py:1081-1082），那样会是“没发凭据”。",
+      "confidence": "medium"
+    },
+    "R70": {
+      "expect": "原样",
+      "basis": "同 R60 的链路：用户名里的冒号写成 %3A，urlparse 按第一个未转义的冒号分开用户名和密码，unquote 还原后按“用户名:密码”拼接（requests/auth.py:71-73）。",
+      "confidence": "high"
+    },
+    "R80": {
+      "expect": "状态码、原因短语",
+      "basis": "Lib/http/client.py:1019-1029（CPython 3.13.18）：_tunnel 读状态行和响应头，状态码不是 200 就关连接并抛 OSError(f'Tunnel connection failed: {code} {message.strip()}')，正文不读；响应头只留在连接对象的 _raw_proxy_headers 里，这个连接随即被 urllib3 丢弃（connectionpool.py:861-863（urllib3 2.8.0））。调用方拿到 requests.exceptions.ProxyError（包装链同 R46），文字里有状态码和原因短语，没有响应头和正文。",
+      "confidence": "high"
+    },
+    "R81": {
+      "expect": "状态码、原因短语、响应头",
+      "basis": "额外手段取 requests 文档 docs/api.rst“Migrating to 1.x”里写的 http.client.HTTPConnection.debuglevel = 1：Lib/http/client.py:1021-1025（CPython 3.13.18） 在判断状态码之前把 CONNECT 响应的每个头打印到标准输出（'header: …'），驱动捕获标准输出就能看到两个头里的记号；正文仍然不读。把握中等：若驱动不采用任何额外手段，这一格是“没有这样的手段”。",
+      "confidence": "medium"
+    },
+    "R82": {
+      "expect": "状态码、原因短语",
+      "basis": "同 R80，状态码换成 403。",
+      "confidence": "high"
+    },
+    "R83": {
+      "expect": "1",
+      "basis": "隧道失败是 _prepare_proxy 里抛出的异常，不是响应，走不到 Retry-After 的判断（urllib3/connectionpool.py:961-962（urllib3 2.8.0））；即使走到，Retry(0, read=False) 的 total 为 0，is_retry 恒为假（util/retry.py:438-443）。",
+      "confidence": "high"
+    },
+    "R84": {
+      "expect": "看不到",
+      "basis": "CONNECT 的 200 由 http.client 的 _tunnel 消化（Lib/http/client.py:1019-1021（CPython 3.13.18）），头只留在连接对象上；requests 的 Response.headers 来自隧道里源站的响应（requests/adapters.py:382（requests 2.34.2））。",
+      "confidence": "high"
+    },
+    "R85": {
+      "expect": "看得到",
+      "basis": "同 R81 的手段：debuglevel=1 时 _tunnel 把 200 响应的头逐行打印（Lib/http/client.py:1023-1025（CPython 3.13.18））。另一条路是 stream=True 后取 r.raw.connection.get_proxy_response_headers()（:1034-1046，3.12 起有），但 requests 的文档没有写。把握中等：驱动不采用额外手段时是“没有这样的手段”。",
+      "confidence": "medium"
+    },
+    "R86": {
+      "expect": "状态码、原因短语、响应头、正文",
+      "basis": "明文请求被代理回 403 是一个普通响应：status_code、reason、headers、正文都在 Response 上（requests/adapters.py:376-401（requests 2.34.2） build_response）。",
+      "confidence": "high"
+    },
+    "R87": {
+      "expect": "看得到",
+      "basis": "代理附加的头就在响应头里，Response.headers 原样给出（requests/adapters.py:382（requests 2.34.2））。",
+      "confidence": "high"
+    },
+    "R88": {
+      "expect": "新连接",
+      "basis": "失败的 CONNECT 所在的连接被客户端自己关掉（Lib/http/client.py:1027-1028 self.close()；urllib3/connectionpool.py:861-863（urllib3 2.8.0））；a.kaoju.test 又是另一个连接池（R12）。",
+      "confidence": "high"
+    },
+    "R89": {
+      "expect": "成功",
+      "basis": "失败不留状态：连接已丢弃，Session 和 ProxyManager 没有“坏代理”之类的记录；第二个源照常新建隧道。",
+      "confidence": "high"
+    },
+    "R90": {
+      "expect": "换新连接，成功",
+      "basis": "urllib3/connectionpool.py:293-298（urllib3 2.8.0） 取出连接时先探测：is_connection_dropped → conn.is_connected（connection.py:418-422）用 wait_for_read(sock, timeout=0)，对端已发 FIN 时套接字可读，判为已断并关闭；发请求时 http.client 的 auto_open 重新连接。",
+      "confidence": "high"
+    },
+    "R91": {
+      "expect": "换新隧道，成功",
+      "basis": "同 R90 的探测；连接被判已断并关闭后，urlopen 发现 conn.is_closed 且需要隧道，重新 _prepare_proxy 发 CONNECT（urllib3/connectionpool.py:777-779（urllib3 2.8.0））。",
+      "confidence": "high"
+    },
+    "R92": {
+      "expect": "1 次，失败",
+      "basis": "代理读完请求后关连接，getresponse 抛 RemoteDisconnected（Lib/http/client.py:309-313（CPython 3.13.18））；urllib3/connectionpool.py:844-849（urllib3 2.8.0） 包成 ProtocolError 交给 Retry.increment；requests 传的是 Retry(0, read=False)（requests/adapters.py:208-209（requests 2.34.2）），读错误遇到 read is False 立即原样抛出（urllib3/util/retry.py:507-510），不重发；requests 抛 ConnectionError（adapters.py:710-711）。复用前的探测（R90）帮不上忙：发请求时连接还是好的。",
+      "confidence": "high"
+    },
+    "R93": {
+      "expect": "1 次，失败",
+      "basis": "同 R92；重不重发不看方法，read=False 对 GET 和 POST 一样。",
+      "confidence": "high"
+    },
+    "R94": {
+      "expect": "1 次，失败",
+      "basis": "同 R92，发生在隧道里：TLS 套接字读到 EOF（wrap_socket 默认 suppress_ragged_eofs=True，Lib/ssl.py:1165 返回空）→ RemoteDisconnected → 不重发。即使读到的是 SSLError，Retry(0) 的 total 也已用尽（urllib3/util/retry.py:553-555），同样不重发。",
+      "confidence": "high"
+    },
+    "R95": {
+      "expect": "1 次，失败",
+      "basis": "同 R94。",
+      "confidence": "high"
+    },
+    "R96": {
+      "expect": "1 次，失败",
+      "basis": "同 R92：是新连接还是复用的连接，对 urllib3 的重试判断没有区别。",
+      "confidence": "high"
+    },
+    "R97": {
+      "expect": "1 次，失败",
+      "basis": "同 R94。",
+      "confidence": "high"
+    },
+    "R98": {
+      "expect": "1 次，失败",
+      "basis": "同 R92，只是 getresponse 抛的是 ConnectionResetError（OSError），同样被包成 ProtocolError 后因 read=False 原样抛出。",
+      "confidence": "high"
+    },
+    "R99": {
+      "expect": "1 次，失败",
+      "basis": "同 R98，发生在隧道里。",
+      "confidence": "high"
+    },
+    "R100": {
+      "expect": "1 次，失败",
+      "basis": "CONNECT 发出后读状态行读到 EOF，_tunnel 抛 RemoteDisconnected（Lib/http/client.py:1019、:309-313（CPython 3.13.18））；此时连接已标记 has_connected_to_proxy（urllib3/connection.py:841-844（urllib3 2.8.0）），所以包成 ProtocolError 而不是 ProxyError（connectionpool.py:833-845），read=False 立即抛出，不重发 CONNECT。",
+      "confidence": "high"
+    },
+    "R101": {
+      "expect": "1 次，失败",
+      "basis": "同 R94：ALPN 只报 http/1.1（R08），源站支持 h2 也按 HTTP/1.1 走；第二个请求复用同一条隧道，被切断后不重发。",
+      "confidence": "high"
+    },
+    "R110": {
+      "expect": "00",
+      "basis": "socks.py:457-465（PySocks 1.7.1）：没有用户名和密码时问候是 05 01 00，只提供“无认证”。requests 没配凭据时传的是空串（requests/utils.py:1082、adapters.py:284-288（requests 2.34.2）），set_proxy 把空串变成 None（socks.py:317-319）。",
+      "confidence": "high"
+    },
+    "R111": {
+      "expect": "00,02",
+      "basis": "socks.py:457-461（PySocks 1.7.1）：用户名和密码都非空时问候是 05 02 00 02。",
+      "confidence": "high"
+    },
+    "R112": {
+      "expect": "域名",
+      "basis": "urllib3/contrib/socks.py:200-202（urllib3 2.8.0）：socks5h 对应 rdns=True；socks.py:566-570（PySocks 1.7.1）：不是 IP 的主机名在 rdns 为真时写成 ATYP=03 加域名。",
+      "confidence": "high"
+    },
+    "R113": {
+      "expect": "不知道",
+      "basis": "socks5 对应 rdns=False（urllib3/contrib/socks.py:197-199（urllib3 2.8.0））；socks.py:571-585（PySocks 1.7.1） 在本地调用 getaddrinfo('localhost', 端口, AF_UNSPEC, …, AI_ADDRCONFIG)，取第一条结果，按它的地址族写 ATYP=01 或 04。所以不会是“域名”，也不会直连；是 IPv4 还是 IPv6 取决于运行机器的解析顺序和有没有非回环的 IPv6 地址，源码决定不了，本机和 CI 可能不同。",
+      "confidence": "low"
+    },
+    "R114": {
+      "expect": "其他",
+      "basis": "PySocks 先连上代理并完成方法协商，写请求时才在本地解析目标（socks.py:519-520、:571-576（PySocks 1.7.1））；解析失败抛 gaierror，finally 里 writer.close() 把已缓冲的 05 01 00 三个字节冲出去（:540-542），连接随后关闭。代理端口上有连接、有问候，但没有完整的请求：既不是“没连代理就报错”，也不是“把域名交给了代理”。把握中等：取决于 matrix.py 把这种半截请求归到哪一类。",
+      "confidence": "medium"
+    },
+    "R115": {
+      "expect": "TLS ClientHello",
+      "basis": "urllib3/contrib/socks.py:161-170（urllib3 2.8.0）：SOCKSHTTPSConnection 的 _new_conn 返回已经接通的 SOCKS 套接字，HTTPSConnection.connect 随即在上面做 TLS（connection.py:827、:878-896），没有 CONNECT。",
+      "confidence": "high"
+    },
+    "R116": {
+      "expect": "明文 HTTP",
+      "basis": "requests/adapters.py:587-597（requests 2.34.2）：SOCKS 代理下明文请求用源站形式的路径，直接在 SOCKS 连接上发 GET /… HTTP/1.1。",
+      "confidence": "high"
+    },
+    "R117": {
+      "expect": "成功",
+      "basis": "socks.py:480-503（PySocks 1.7.1）：服务端选 02 后发 01、ULEN、UNAME、PLEN、PASSWD，状态 00 即继续；用户名 10 字节、密码 12 字节，长度字节没有问题（对照 R128）。",
+      "confidence": "high"
+    },
+    "R118": {
+      "expect": "成功",
+      "basis": "socks.py:480、:508（PySocks 1.7.1）：服务端选 00 就跳过认证，直接发请求。",
+      "confidence": "high"
+    },
+    "R119": {
+      "expect": "提到认证或方法",
+      "basis": "socks.py:510-513（PySocks 1.7.1） 抛 SOCKS5AuthError('All offered SOCKS5 authentication methods were rejected')；ProxyError 继承自 IOError，被 :810-814 包成 GeneralProxyError('Socket error', …)；urllib3/contrib/socks.py:128-143（urllib3 2.8.0） 取出里层文字写成 NewConnectionError('… Failed to establish a new connection: All offered SOCKS5 authentication methods were rejected')；requests 抛 ConnectionError（requests/adapters.py:729（requests 2.34.2））。文字里有 authentication 和 methods。",
+      "confidence": "high"
+    },
+    "R120": {
+      "expect": "提到认证或方法",
+      "basis": "socks.py:501-503（PySocks 1.7.1） 抛 SOCKS5AuthError('SOCKS5 authentication failed')，包装链同 R119。",
+      "confidence": "high"
+    },
+    "R121": {
+      "expect": "能区分",
+      "basis": "socks.py:529-533、:101-110（PySocks 1.7.1）：应答码非 0 时消息分别是 '0x02: Connection not allowed by ruleset'、'0x04: Host unreachable'、'0x05: Connection refused'，经 R119 的包装链原样进入 requests 的 ConnectionError 文字。",
+      "confidence": "high"
+    },
+    "R122": {
+      "expect": "1",
+      "basis": "SOCKSProxyManager 就是 PoolManager（urllib3/contrib/socks.py:173-182（urllib3 2.8.0）），每个目标 host:port 一个池；连接复用同 R10，三次请求一条 SOCKS 连接。",
+      "confidence": "high"
+    },
+    "R123": {
+      "expect": "6",
+      "basis": "同 R15：每个并发请求各建一条到目标的连接，也就是各做一次 SOCKS5 握手。",
+      "confidence": "high"
+    },
+    "R124": {
+      "expect": "各开各的连接",
+      "basis": "同 R41：requests/adapters.py:281-293（requests 2.34.2） 以完整的代理 URL 为键，每套凭据一个 SOCKSProxyManager，用户名密码作为 _socks_options 进连接参数（urllib3/contrib/socks.py:214-222（urllib3 2.8.0））。",
+      "confidence": "high"
+    },
+    "R125": {
+      "expect": "原样",
+      "basis": "requests/adapters.py:284-288（requests 2.34.2） 把 get_auth_from_url 解出的用户名密码显式传给 SOCKSProxyManager；socks.py:317-319（PySocks 1.7.1） 用 str.encode()（UTF-8）转成字节，:491-494 写出。用户名 39 字节，长度字节正常。",
+      "confidence": "high"
+    },
+    "R126": {
+      "expect": "原样",
+      "basis": "同 R125；quote(safe='')/unquote 的链路同 R62，SOCKS 这一侧不经过 latin-1。",
+      "confidence": "high"
+    },
+    "R127": {
+      "expect": "原样",
+      "basis": "同 R125：socks.py:318（PySocks 1.7.1） 的 username.encode() 默认是 UTF-8，用户名 18 字节。与 HTTP 代理（R63）不同，这里不经过 latin-1。",
+      "confidence": "high"
+    },
+    "R128": {
+      "expect": "变了",
+      "basis": "socks.py:491（PySocks 1.7.1） 用 chr(len(username)).encode() 写长度字节：长度不小于 128 时 chr(n).encode() 是两个字节的 UTF-8（255 写成 C3 BF）。服务端按 RFC 1929 读到 ULEN=0xC3=195，用户名成了 BF 加原用户名的前 194 字节，再把原用户名的第 195 个字节（“4”，0x34=52）当成 PLEN、读 52 字节当密码，密码不符，回失败。客户端自己没有任何长度检查。把握中等：依赖 obsproxy 对这段畸形字节的解析和记录方式。",
+      "confidence": "medium"
+    },
+    "R129": {
+      "expect": "变了",
+      "basis": "同 R128：256 写成 C4 80，服务端读到 ULEN=196、PLEN 取到“5”（53）。PySocks 不检查 RFC 1929 的 255 字节上限，不会在客户端报错。",
+      "confidence": "medium"
+    },
+    "R130": {
+      "expect": "原样",
+      "basis": "同 R125；密码 13 字节，quote/unquote 的链路同 R68。",
+      "confidence": "high"
+    },
+    "R131": {
+      "expect": "客户端报错",
+      "basis": "空密码：get_auth_from_url 返回 ('kaoju-user', '')，socks.py:319（PySocks 1.7.1） 把空密码变成 None，:457 的 if username and password 不成立，问候只提供 00；代理要求用户名密码认证，回 FF，客户端抛 SOCKS5AuthError（:510-513）。没有 socks5_auth，驱动这一步失败。",
+      "confidence": "high"
+    },
+    "R132": {
+      "expect": "原样",
+      "basis": "同 R125：冒号写成 %3A，unquote 还原后整个作为 SOCKS5 的 UNAME 字段；SOCKS5 的用户名和密码是两个字段，不存在按冒号拆的问题。",
+      "confidence": "high"
+    }
+  }
+}

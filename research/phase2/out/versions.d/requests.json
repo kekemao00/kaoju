@@ -1,0 +1,32 @@
+{
+ "cmd": [
+  "sh",
+  "drivers/requests/run.sh"
+ ],
+ "desc": "Python requests（SOCKS 用 PySocks）：一个用例一个 Session，代理用 proxies= 参数、凭据写在代理 URL 里，信任测试 CA 用 verify=ca_file；run.sh 按 KAOJU_REQUESTS_PYTHON、drivers/requests/.venv、python3 的顺序找解释器，依赖钉在 drivers/requests/requirements.txt",
+ "env": {
+  "arch": "x86_64",
+  "kernel": "6.18.44-fc-v338",
+  "nssdb": true,
+  "obsproxy": "obsproxy 1.0.0（事件格式第 1 版）",
+  "os": "Ubuntu 24.04.5 LTS",
+  "python": "3.13.18",
+  "run_at_utc": "2026-11-10T19:41:44Z",
+  "tcpdump": [
+   "tcpdump version 4.99.4",
+   "libpcap version 1.10.4 (with TPACKET_V3)",
+   "OpenSSL 3.0.13 30 Jan 2024"
+  ]
+ },
+ "versions": {
+  "PySocks": "1.7.1",
+  "certifi": "2026.10.23",
+  "charset-normalizer": "3.5.2",
+  "idna": "3.20",
+  "matches_requirements_txt": true,
+  "openssl": "OpenSSL 3.5.9 29 Sep 2026",
+  "python": "3.13.18",
+  "requests": "2.34.2",
+  "urllib3": "2.8.0"
+ }
+}

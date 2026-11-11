@@ -1,0 +1,9 @@
+# requests 驱动的依赖，版本全部钉死。装法：
+#   python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
+requests==2.34.2
+urllib3==2.8.0
+PySocks==1.7.1
+# requests 的硬依赖
+certifi==2026.10.23
+charset-normalizer==3.5.2
+idna==3.20

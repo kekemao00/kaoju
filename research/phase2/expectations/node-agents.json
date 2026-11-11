@@ -1,0 +1,540 @@
+{
+ "variant": "node-agents",
+ "written": "2026-11-10",
+ "method": "只凭文档和源码，未做任何实测",
+ "client_version": "Node v22.23.4；http-proxy-agent 9.1.0、https-proxy-agent 9.1.0、socks-proxy-agent 10.1.0、agent-base 9.0.0、socks 2.8.10",
+ "sources": [
+  "HPA = http-proxy-agent@9.1.0 的 dist/index.js；另读 README.md、dist/index.d.ts",
+  "HSPA = https-proxy-agent@9.1.0 的 dist/index.js；PPR = 同包 dist/parse-proxy-response.js；另读 README.md、dist/index.d.ts",
+  "SPA = socks-proxy-agent@10.1.0 的 dist/index.js；另读 README.md",
+  "AB9 = agent-base@9.0.0 的 dist/index.js",
+  "SOCKS = socks@2.8.10 的 build/client/socksclient.js；constants.js = 同包 build/common/constants.js；另读 build/common/helpers.js、util.js，smart-buffer@4.2.0 的 build/smartbuffer.js",
+  "TooTallNate/proxy-agents 仓库 main 分支 packages/{https-proxy-agent,http-proxy-agent,socks-proxy-agent,agent-base}/CHANGELOG.md（2026-11-10 取）",
+  "下面 basis 里的缩写：NODE = nodejs/node 的 v22.x 分支 lib/ 下的文件（2026-11-10 从 raw.githubusercontent.com 取，src/node_version.h 写 22.23.5；被测的是 22.23.4，未逐行比对两个补丁版本）；读了 _http_agent.js、_http_client.js、_http_outgoing.js、https.js、tls.js、internal/tls/wrap.js、src/crypto/crypto_context.cc",
+  "本机 node -p 只读了 process.versions（node 22.23.4、openssl 3.5.9、非共享库）和 tls.DEFAULT_ECDH_CURVE，没有发起任何网络连接；另读了本机 /etc/hosts 里 localhost 的行",
+  "research/phase2/harness/proxyhttp.go:80-94（失败响应一次写出）、server.go:290-299（端口映射）、socks5.go:188（应答 10 字节）；research/phase2/runner/matrix.py（取值的字符串格式）；research/phase2/cases.json、rows.json、PROTOCOL.md",
+  "npm 包用 npm pack 取（2026-11-10 的 latest），只读不执行；行号是解包后文件的行号"
+ ],
+ "rows": {
+  "R01": {
+   "expect": "绝对形式",
+   "basis": "HPA:40-57 addRequest 里调 setRequestProps：用 Host 头和 req.path 拼出完整 URL，再赋给 req.path（端口是 80 时不写端口）；HPA:106 用 net.connect 连到代理后把请求原样写出去，没有 CONNECT。",
+   "confidence": "high"
+  },
+  "R02": {
+   "expect": "Proxy-Connection: close; Connection: close",
+   "basis": "HPA:66-70：没有显式给 Proxy-Connection 时按 this.keepAlive 写 Keep-Alive 或 close；http.Agent 的 keepAlive 默认是 false（NODE/_http_agent.js:185），README 的例子不传选项。Connection: close 是 Node 自己补在头的最后的：非 keepAlive 且 maxSockets 无限的 Agent 使 shouldKeepAlive=false（NODE/_http_client.js:338-340），_storeHeader 于是写 Connection: close（NODE/_http_outgoing.js:544-546）。顺序：Host 在 ClientRequest 构造时先设（_http_client.js:375），Proxy-Connection 在随后的 addRequest 里设（_http_client.js:404），Connection 由 _storeHeader 追加在末尾。A01 没配凭据，所以没有 Proxy-Authorization。",
+   "confidence": "high"
+  },
+  "R03": {
+   "expect": "a.kaoju.test:443 HTTP/1.1",
+   "basis": "HSPA:85-86：payload = `CONNECT ${host}:${opts.port} HTTP/1.1`；opts.port 来自 ClientRequest（默认端口取 agent.defaultPort，https 请求下是 443，AB9:127-130）。",
+   "confidence": "high"
+  },
+  "R04": {
+   "expect": "Host, Proxy-Connection",
+   "basis": "HSPA:82-100：headers 从空对象开始（没传 headers 选项），有凭据才加 Proxy-Authorization（A02 没有），然后 Host（:92）、Proxy-Connection（:93-97），按插入顺序逐个写出。",
+   "confidence": "high"
+  },
+  "R05": {
+   "expect": "同目标",
+   "basis": "HSPA:86 与 :92 用同一个 `${host}:${opts.port}`。",
+   "confidence": "high"
+  },
+  "R06": {
+   "expect": "TLS ClientHello",
+   "basis": "HSPA:107-116：CONNECT 回 200 且 secureEndpoint 时在原套接字上 tls.connect({…, socket})。",
+   "confidence": "high"
+  },
+  "R07": {
+   "expect": "超过 1460 字节",
+   "basis": "未量过，按构成估算。本机 node 报告 process.versions.openssl 是 3.5.9、不是外部共享库；Node 的 tls.DEFAULT_ECDH_CURVE 是 'auto'（NODE/tls.js:92），只有不是 auto 时才调 SSL_CTX_set1_curves_list（NODE src/crypto/crypto_context.cc:2072），所以用 OpenSSL 3.5 的默认组，其中默认发 X25519MLKEM768 和 X25519 两个 key_share（前者 1216 字节）。key_share 扩展约 1262 字节，加上 SNI、密码套件、签名算法等几百字节，估计 1500 到 1700 字节。没有 ALPN 扩展（见 R08）。若这个构建实际不发 ML-KEM 的 key_share，就会落到 512 字节左右，取值相反。",
+   "confidence": "medium"
+  },
+  "R08": {
+   "expect": "无",
+   "basis": "隧道里的 TLS 由 https-proxy-agent 直接调 tls.connect，选项是请求的选项去掉 host、path、port（HSPA:113-116）；Node 的 https 客户端路径不给 ALPNProtocols 设默认值（NODE/_http_client.js、_http_agent.js 里没有 ALPN 字样；https.js:82 的默认值只用于 Server），tls 只在选项里有 ALPNProtocols 时才设（NODE/internal/tls/wrap.js:1008）。HSPA:55 的 ALPNProtocols:['http/1.1'] 只用于到 https:// 代理本身的 TLS。",
+   "confidence": "high"
+  },
+  "R09": {
+   "expect": "HTTP/1.1",
+   "basis": "Node 的 http/https 模块只说 HTTP/1.1；隧道里不提供 ALPN（R08）。axios 默认 httpVersion 是 1（AX:685-686），而且 AX:1155-1164 明确拒绝 HTTP/2 加代理。",
+   "confidence": "high"
+  },
+  "R10": {
+   "expect": "3",
+   "basis": "Agent 的 keepAlive 默认 false（NODE/_http_agent.js:185），README 的写法不传选项；请求因此带 Connection: close、shouldKeepAlive=false（NODE/_http_client.js:338-340），响应结束后套接字销毁。每个请求调一次 connect()，各发一个 CONNECT（AB9:91-99、HSPA:67-103）。",
+   "confidence": "high"
+  },
+  "R11": {
+   "expect": "3",
+   "basis": "同 R10：HttpProxyAgent 的 keepAlive 默认 false，Proxy-Connection: close 加 Connection: close，每个请求在 connect() 里 net.connect 一次（HPA:106）。",
+   "confidence": "high"
+  },
+  "R12": {
+   "expect": "4",
+   "basis": "同 R10，每个请求一条新隧道。",
+   "confidence": "high"
+  },
+  "R13": {
+   "expect": "4",
+   "basis": "同 R11，每个请求一条新连接。",
+   "confidence": "high"
+  },
+  "R14": {
+   "expect": "6",
+   "basis": "maxSockets 默认无限（agent-base 9 此时连占位套接字都不建，AB9:50-52），6 个并发请求各调一次 connect()；Node 的 https 不说 h2，不会合并。",
+   "confidence": "high"
+  },
+  "R15": {
+   "expect": "6",
+   "basis": "同 R14。",
+   "confidence": "high"
+  },
+  "R16": {
+   "expect": "6",
+   "basis": "同 R14，换成 HttpProxyAgent。",
+   "confidence": "high"
+  },
+  "R17": {
+   "expect": "经代理",
+   "basis": "三个 Agent 都没有 no_proxy 或回环地址的例外：HttpProxyAgent 无条件改写请求并连代理（HPA:40-45、106）。端口不是 80 时写进绝对 URL（HPA:52-54）。",
+   "confidence": "high"
+  },
+  "R18": {
+   "expect": "经代理",
+   "basis": "同 R17，HttpsProxyAgent 无条件发 CONNECT（HSPA:67-103）；servername 取 localhost（HSPA:10-19），测试证书含这个名字。",
+   "confidence": "high"
+  },
+  "R19": {
+   "expect": "Content-Length",
+   "basis": "取决于驱动怎么写正文。按 Node 文档的写法（req.end(buffer)，或先设 Content-Length 头再 write）是 Content-Length：end() 带正文且头还没生成时 Node 自己算出长度（NODE/_http_outgoing.js:990）。http-proxy-agent 重新生成请求头时这个长度还在（HPA:79-96）。如果驱动不设头就 req.write(buf) 再 req.end()，或者用流 pipe，会是 chunked。",
+   "confidence": "medium"
+  },
+  "R20": {
+   "expect": "不发",
+   "basis": "Node 的 http 客户端只有调用方自己设了 Expect 头才发（NODE/_http_client.js:383-390）；axios 和三个 Agent 都不设。",
+   "confidence": "high"
+  },
+  "R21": {
+   "expect": "不适用",
+   "basis": "A15 的 only 不含这一列（cases.json）。",
+   "confidence": "high"
+  },
+  "R22": {
+   "expect": "不适用",
+   "basis": "A16 的 only 不含这一列（cases.json）。",
+   "confidence": "high"
+  },
+  "R23": {
+   "expect": "G / C / 05",
+   "basis": "明文是 GET 的绝对形式（R01）；HTTPS 是 CONNECT（R03）；SOCKS5 的第一个包以 0x05 开头（SOCKS:491）。",
+   "confidence": "high"
+  },
+  "R24": {
+   "expect": "完整",
+   "basis": "http-proxy-agent 只替换缓冲里的请求头部分，正文原样保留（HPA:90-96）；HTTPS 的正文在隧道里由 Node 照常发送。没有会截断正文的逻辑。",
+   "confidence": "high"
+  },
+  "R30": {
+   "expect": "先带",
+   "basis": "凭据写在代理 URL 里时，HPA:62-65 对每个请求无条件加 Proxy-Authorization: Basic。",
+   "confidence": "high"
+  },
+  "R31": {
+   "expect": "先带",
+   "basis": "HSPA:88-91：URL 里有用户名或密码就在第一个 CONNECT 上带 Proxy-Authorization。",
+   "confidence": "high"
+  },
+  "R32": {
+   "expect": "不适用",
+   "basis": "凭据先带且正确（见 R30、R31），B01 里代理不会回 407；按行规则，没有收到过 407 是“不适用”。",
+   "confidence": "high"
+  },
+  "R33": {
+   "expect": "不适用",
+   "basis": "凭据先带且正确（见 R30、R31），B02 里代理不会回 407；按行规则，没有收到过 407 是“不适用”。",
+   "confidence": "high"
+  },
+  "R34": {
+   "expect": "不适用",
+   "basis": "凭据先带且正确（见 R30、R31），B03 里代理不会回 407；按行规则，没有收到过 407 是“不适用”。",
+   "confidence": "high"
+  },
+  "R35": {
+   "expect": "不适用",
+   "basis": "凭据先带且正确（见 R30、R31），B04 里代理不会回 407；按行规则，没有收到过 407 是“不适用”。",
+   "confidence": "high"
+  },
+  "R36": {
+   "expect": "3/0",
+   "basis": "三个请求各带凭据（R30），没有不带凭据的探测请求，也没有重试。",
+   "confidence": "high"
+  },
+  "R37": {
+   "expect": "先带",
+   "basis": "每个 CONNECT 都带（HSPA:88-91），与目标无关。",
+   "confidence": "high"
+  },
+  "R38": {
+   "expect": "3",
+   "basis": "同 R10：不复用隧道。",
+   "confidence": "high"
+  },
+  "R39": {
+   "expect": "没有",
+   "basis": "HTTPS：Proxy-Authorization 只写进 CONNECT 的 payload（HSPA:86-100），不加到隧道里的请求上。重定向由驱动自己跟（Node 的 http 模块不跟随重定向），每一跳是一个新的请求对象，不会带上一跳的头。明文一跳的 Proxy-Authorization 在给代理的绝对形式请求上，不计入。",
+   "confidence": "high"
+  },
+  "R40": {
+   "expect": "都成功",
+   "basis": "Node 的 http/https 不会自己跟随重定向，驱动得手写循环：每一跳按 URL 的协议选 HttpProxyAgent 或 HttpsProxyAgent。这样写三种都能走通；这一格测到的主要是驱动。",
+   "confidence": "medium"
+  },
+  "R41": {
+   "expect": "各用各的凭据",
+   "basis": "常规做法是每个凭据一个 Agent 实例；凭据在构造时固定在 agent.proxy 上（HPA:16），每个请求按所用 Agent 加头（HPA:62-65）。连接也不复用（R11）。",
+   "confidence": "high"
+  },
+  "R42": {
+   "expect": "各开各的隧道",
+   "basis": "每个凭据一个 HttpsProxyAgent，隧道也不复用（R10）。",
+   "confidence": "high"
+  },
+  "R43": {
+   "expect": "1",
+   "basis": "凭据先带（R30），不会因 407 重发。",
+   "confidence": "high"
+  },
+  "R44": {
+   "expect": "0",
+   "basis": "6 个 CONNECT 都先带凭据（R31）。",
+   "confidence": "high"
+  },
+  "R45": {
+   "expect": "拿到 407 响应",
+   "basis": "没配凭据时不加 Proxy-Authorization（HPA:62），代理的 407 就是这个请求的普通响应，http.request 的 response 事件照常触发。onProxyAuth 没配，http-proxy-agent 的代码里也没有用到它。",
+   "confidence": "high"
+  },
+  "R46": {
+   "expect": "拿到 407 响应",
+   "basis": "CONNECT 的响应不是 200、又没配 onProxyAuth 时，https-proxy-agent 关掉到代理的连接，返回一个只读的假套接字，等请求挂上解析器后把代理的响应字节原样推给它（HSPA:135-158）。调用方在 https.request 的 response 事件里看到 statusCode 407、statusMessage、头和正文（正文要与头在同一次读里到达；obsproxy 是一次 Write 写出，harness/proxyhttp.go:80-94）。",
+   "confidence": "high"
+  },
+  "R47": {
+   "expect": "1",
+   "basis": "凭据先带，407 之后没有任何重试逻辑（没配 onProxyAuth；axios 不重试）。",
+   "confidence": "high"
+  },
+  "R48": {
+   "expect": "1",
+   "basis": "同 R47；一个 CONNECT，带着错的凭据。https-proxy-agent 只有配了 onProxyAuth 才会重试（HSPA:121-134），5.x 没有这个分支。",
+   "confidence": "high"
+  },
+  "R49": {
+   "expect": "拿到 407 响应",
+   "basis": "同 R46：407 被回放成这个请求的响应。",
+   "confidence": "high"
+  },
+  "R50": {
+   "expect": "拿到 403 响应",
+   "basis": "同 R46 的回放机制，对任何非 200 状态都一样（HSPA:135-158）。",
+   "confidence": "high"
+  },
+  "R51": {
+   "expect": "拿到 403 响应",
+   "basis": "明文请求，代理的 403 是普通响应。",
+   "confidence": "high"
+  },
+  "R52": {
+   "expect": "带",
+   "basis": "配了凭据就无条件带，不看代理要不要（见 R30）。",
+   "confidence": "high"
+  },
+  "R53": {
+   "expect": "带",
+   "basis": "配了凭据就无条件带（见 R31）。",
+   "confidence": "high"
+  },
+  "R60": {
+   "expect": "原样",
+   "basis": "只有字母、数字、连字符，转义前后一样。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "high"
+  },
+  "R61": {
+   "expect": "原样",
+   "basis": "下划线、点、波浪号不转义，等号、分号、逗号被 encodeURIComponent 转义后原样解回。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "high"
+  },
+  "R62": {
+   "expect": "原样",
+   "basis": "@、%、+、/、空格都被 encodeURIComponent 转义（% 变 %25），解回原样。注意：如果驱动改用 `url.username = 用户名` 赋值，URL 的 setter 不转义 %，“%41”会被 decodeURIComponent 解成“A”，这格就是“变了”。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "medium"
+  },
+  "R63": {
+   "expect": "原样",
+   "basis": "非 ASCII 字符按 UTF-8 转义再解回；Buffer.from(字符串) 默认 UTF-8。不看质询里的 charset。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "high"
+  },
+  "R64": {
+   "expect": "原样",
+   "basis": "同 R63；客户端不解析质询。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "high"
+  },
+  "R65": {
+   "expect": "原样",
+   "basis": "没有长度检查。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "high"
+  },
+  "R66": {
+   "expect": "原样",
+   "basis": "没有长度检查。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "high"
+  },
+  "R67": {
+   "expect": "原样",
+   "basis": "没有长度检查；1024 字节的用户名 base64 后约 1.4 KB，在头的长度限制之内。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "high"
+  },
+  "R68": {
+   "expect": "原样",
+   "basis": "密码同样 decodeURIComponent；%2F 先被转义成 %252F 再解回 %2F。若用 `url.password = 密码` 赋值则 %2F 会被解成 /。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "medium"
+  },
+  "R69": {
+   "expect": "原样",
+   "basis": "用户名非空就进入分支，密码为空串，得到“用户名:”。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "high"
+  },
+  "R70": {
+   "expect": "原样",
+   "basis": "冒号被转义成 %3A 再解回，原样拼接。 驱动要把用户名和密码各自用 encodeURIComponent 转义后拼进代理 URL（socks-proxy-agent 的 README 例子里用户名中的 @ 就写成 %40）。HSPA:88-91：auth = decodeURIComponent(proxy.username) + ':' + decodeURIComponent(proxy.password)，再 Buffer.from(auth)（UTF-8）转 base64。WHATWG URL 解析器不改动已经转义好的 userinfo，所以往返无损。",
+   "confidence": "high"
+  },
+  "R80": {
+   "expect": "状态码、原因短语、响应头、正文",
+   "basis": "同 R46 的回放：调用方拿到的是一个普通的 IncomingMessage，statusCode 502、statusMessage（原因短语）、headers、正文都在（HSPA:135-158；obsproxy 一次写出头和正文，harness/proxyhttp.go:80-94）。",
+   "confidence": "high"
+  },
+  "R81": {
+   "expect": "状态码、原因短语、响应头、正文",
+   "basis": "默认用法已经全看得到。额外手段是 proxyConnect 事件（HSPA:104-105，请求和 Agent 上都发，内容是 statusCode、statusText、headers；CHANGELOG 6.1.0 记载，README 没写）。驱动若认为它不算“文档里写明的手段”而不用，这格是“没有这样的手段”。",
+   "confidence": "medium"
+  },
+  "R82": {
+   "expect": "状态码、原因短语、响应头、正文",
+   "basis": "同 R80。",
+   "confidence": "high"
+  },
+  "R83": {
+   "expect": "1",
+   "basis": "没有任何重试逻辑，也不看 Retry-After；503 被回放成响应交给调用方。",
+   "confidence": "high"
+  },
+  "R84": {
+   "expect": "看不到",
+   "basis": "CONNECT 的 200 响应由 https-proxy-agent 自己读掉（PPR:33-87），调用方的 response 是隧道里源站的响应。",
+   "confidence": "high"
+  },
+  "R85": {
+   "expect": "看得到",
+   "basis": "proxyConnect 事件带 connect.headers（PPR:56-86 解析出全部头，HSPA:104-105 发出）。是否算“文档里写明”同 R81。",
+   "confidence": "medium"
+  },
+  "R86": {
+   "expect": "状态码、原因短语、响应头、正文",
+   "basis": "明文请求，代理的 403 是普通响应。",
+   "confidence": "high"
+  },
+  "R87": {
+   "expect": "看得到",
+   "basis": "代理加的头就在这个响应的头里（res.headers；axios 是 response.headers）。",
+   "confidence": "high"
+  },
+  "R88": {
+   "expect": "新连接",
+   "basis": "非 200 时 https-proxy-agent 先 socket.destroy()（HSPA:145）；而且每个请求本来就新开连接。",
+   "confidence": "high"
+  },
+  "R89": {
+   "expect": "成功",
+   "basis": "失败的 CONNECT 不留下状态；下一个请求新开连接、新发 CONNECT。",
+   "confidence": "high"
+  },
+  "R90": {
+   "expect": "换新连接，成功",
+   "basis": "不复用连接（R11），s2 本来就走新连接。",
+   "confidence": "high"
+  },
+  "R91": {
+   "expect": "换新隧道，成功",
+   "basis": "不复用隧道（R10），s2 本来就走新隧道。",
+   "confidence": "high"
+  },
+  "R92": {
+   "expect": "未触发",
+   "basis": "不复用连接或隧道（R10、R11），带这个 k 的请求总是所在连接上的第一个，only_if_reused 的丢弃不会生效。",
+   "confidence": "high"
+  },
+  "R93": {
+   "expect": "未触发",
+   "basis": "不复用连接或隧道（R10、R11），带这个 k 的请求总是所在连接上的第一个，only_if_reused 的丢弃不会生效。",
+   "confidence": "high"
+  },
+  "R94": {
+   "expect": "未触发",
+   "basis": "不复用连接或隧道（R10、R11），带这个 k 的请求总是所在连接上的第一个，only_if_reused 的丢弃不会生效。",
+   "confidence": "high"
+  },
+  "R95": {
+   "expect": "未触发",
+   "basis": "不复用连接或隧道（R10、R11），带这个 k 的请求总是所在连接上的第一个，only_if_reused 的丢弃不会生效。",
+   "confidence": "high"
+  },
+  "R96": {
+   "expect": "1 次，失败",
+   "basis": "Node 的 http 客户端不自动重发：连接没回响应就断，请求报 ECONNRESET（socket hang up，NODE/_http_client.js:548、599；RST 时是 read ECONNRESET）。三个 Agent 也没有重试。",
+   "confidence": "high"
+  },
+  "R97": {
+   "expect": "1 次，失败",
+   "basis": "Node 的 http 客户端不自动重发：连接没回响应就断，请求报 ECONNRESET（socket hang up，NODE/_http_client.js:548、599；RST 时是 read ECONNRESET）。",
+   "confidence": "high"
+  },
+  "R98": {
+   "expect": "未触发",
+   "basis": "不复用连接或隧道（R10、R11），带这个 k 的请求总是所在连接上的第一个，only_if_reused 的丢弃不会生效。",
+   "confidence": "high"
+  },
+  "R99": {
+   "expect": "未触发",
+   "basis": "不复用连接或隧道（R10、R11），带这个 k 的请求总是所在连接上的第一个，only_if_reused 的丢弃不会生效。",
+   "confidence": "high"
+  },
+  "R100": {
+   "expect": "1 次，失败",
+   "basis": "PPR:23-27：没收到 CONNECT 响应连接就结束时 reject（“Proxy connection ended before receiving CONNECT response”），错误经 agent-base 传给请求（AB9:114-117），没有重试。",
+   "confidence": "high"
+  },
+  "R101": {
+   "expect": "未触发",
+   "basis": "不复用连接或隧道（R10、R11），带这个 k 的请求总是所在连接上的第一个，only_if_reused 的丢弃不会生效。 Node 也不说 h2。",
+   "confidence": "high"
+  },
+  "R110": {
+   "expect": "00",
+   "basis": "SOCKS:480-484：默认只提供 NoAuth，有 userId 或 password 才加 UserPass。",
+   "confidence": "high"
+  },
+  "R111": {
+   "expect": "00,02",
+   "basis": "SOCKS:480-494：有凭据时依次写 0x00、0x02。凭据来自 URL 的 userinfo（SPA:57-68）。",
+   "confidence": "high"
+  },
+  "R112": {
+   "expect": "域名",
+   "basis": "socks5h 不在客户端解析（SPA:46-48，lookup 保持 false），主机名原样交给 socks 库，按域名类型写出（SOCKS:619-622）。",
+   "confidence": "high"
+  },
+  "R113": {
+   "expect": "IPv4",
+   "basis": "socks5 时 lookup=true（SPA:38-41），先用 dns.lookup(host, {}) 解析（SPA:93-107），取第一个地址。本机 /etc/hosts 里 localhost 只有 127.0.0.1 一行，所以是 IPv4（SOCKS:611-613）。换一台 hosts 里把 ::1 也写成 localhost 的机器（CI）可能是 IPv6。",
+   "confidence": "medium"
+  },
+  "R114": {
+   "expect": "没连代理就报错",
+   "basis": "socks5 时先 dns.lookup（SPA:93-107），a.kaoju.test 解析不了，Promise 拒绝（ENOTFOUND），还没走到 SocksClient.createConnection（SPA:128）。",
+   "confidence": "high"
+  },
+  "R115": {
+   "expect": "TLS ClientHello",
+   "basis": "SPA:135-147：SOCKS 建好后 secureEndpoint 时 tls.connect({…, socket})。",
+   "confidence": "high"
+  },
+  "R116": {
+   "expect": "明文 HTTP",
+   "basis": "SPA:149 直接返回套接字，Node 在上面写普通的 HTTP 请求。",
+   "confidence": "high"
+  },
+  "R117": {
+   "expect": "成功",
+   "basis": "SOCKS:540-547 按 RFC 1929 发用户名和密码，状态 0 后发请求（SOCKS:595-598）。",
+   "confidence": "high"
+  },
+  "R118": {
+   "expect": "成功",
+   "basis": "代理选 0x00 时直接发请求（SOCKS:515-517），不发凭据。",
+   "confidence": "high"
+  },
+  "R119": {
+   "expect": "提到认证或方法",
+   "basis": "SOCKS:511 → 错误文字是“Received invalid Socks5 initial handshake (no accepted authentication type)”（constants.js:28），含 auth。错误经 agent-base 原样成为请求的 error 事件。",
+   "confidence": "high"
+  },
+  "R120": {
+   "expect": "提到认证或方法",
+   "basis": "SOCKS:595 → “Socks5 Authentication failed”（constants.js:30）。",
+   "confidence": "high"
+  },
+  "R121": {
+   "expect": "能区分",
+   "basis": "SOCKS:638：“Socks5 proxy rejected connection - ” 加 Socks5Response 的名字：2 是 NotAllowed、4 是 HostUnreachable、5 是 ConnectionRefused（constants.js:76-84）。obsproxy 回满 10 字节（harness/socks5.go:188），够它读 5 字节的头。",
+   "confidence": "high"
+  },
+  "R122": {
+   "expect": "3",
+   "basis": "SocksProxyAgent 的 keepAlive 默认 false，每个请求调一次 connect() 新建 SOCKS 连接（SPA:86-128）。",
+   "confidence": "high"
+  },
+  "R123": {
+   "expect": "6",
+   "basis": "同 R14，没有并发上限。",
+   "confidence": "high"
+  },
+  "R124": {
+   "expect": "各开各的连接",
+   "basis": "每个凭据一个 SocksProxyAgent，连接不复用（R122）。",
+   "confidence": "high"
+  },
+  "R125": {
+   "expect": "原样",
+   "basis": "驱动把用户名和密码用 encodeURIComponent 转义后拼进 socks5h:// 的 URL；SPA:57-68 用 decodeURIComponent 解回，SOCKS:540-547 按 Buffer.byteLength 写长度、按 UTF-8 写内容。",
+   "confidence": "high"
+  },
+  "R126": {
+   "expect": "原样",
+   "basis": "驱动把用户名和密码用 encodeURIComponent 转义后拼进 socks5h:// 的 URL；SPA:57-68 用 decodeURIComponent 解回，SOCKS:540-547 按 Buffer.byteLength 写长度、按 UTF-8 写内容。 与 R62 同样依赖驱动用 encodeURIComponent（而不是 url.username 赋值）。",
+   "confidence": "medium"
+  },
+  "R127": {
+   "expect": "原样",
+   "basis": "驱动把用户名和密码用 encodeURIComponent 转义后拼进 socks5h:// 的 URL；SPA:57-68 用 decodeURIComponent 解回，SOCKS:540-547 按 Buffer.byteLength 写长度、按 UTF-8 写内容。",
+   "confidence": "high"
+  },
+  "R128": {
+   "expect": "原样",
+   "basis": "驱动把用户名和密码用 encodeURIComponent 转义后拼进 socks5h:// 的 URL；SPA:57-68 用 decodeURIComponent 解回，SOCKS:540-547 按 Buffer.byteLength 写长度、按 UTF-8 写内容。 255 正好是 writeUInt8 能写的最大值。",
+   "confidence": "high"
+  },
+  "R129": {
+   "expect": "客户端报错",
+   "basis": "socks 库不检查用户名长度：SOCKS:544 的 buff.writeUInt8(256) 抛 RangeError（Buffer.writeUInt8 越界）。这个调用在套接字的 data 事件处理函数里（SOCKS:300-306 → 515-522 → 540-547），外面没有 try，异常变成进程级的 uncaughtException，认证包没发出去，请求本身一直挂到超时。驱动要装 uncaughtException 处理并自己计时，才能把这一步记成失败；否则进程直接退出，这格会是“没有结果”。",
+   "confidence": "medium"
+  },
+  "R130": {
+   "expect": "原样",
+   "basis": "驱动把用户名和密码用 encodeURIComponent 转义后拼进 socks5h:// 的 URL；SPA:57-68 用 decodeURIComponent 解回，SOCKS:540-547 按 Buffer.byteLength 写长度、按 UTF-8 写内容。 密码同样处理。",
+   "confidence": "high"
+  },
+  "R131": {
+   "expect": "原样",
+   "basis": "URL 的 password 是空串时 SPA:63-67 仍把 password 定义成 ''；用户名非空，SOCKS:483 提供 0x02；认证包里密码长度写 0（SOCKS:546-547）。",
+   "confidence": "high"
+  },
+  "R132": {
+   "expect": "原样",
+   "basis": "驱动把用户名和密码用 encodeURIComponent 转义后拼进 socks5h:// 的 URL；SPA:57-68 用 decodeURIComponent 解回，SOCKS:540-547 按 Buffer.byteLength 写长度、按 UTF-8 写内容。 冒号转义成 %3A 再解回；SOCKS5 里用户名和密码是分开的字段。",
+   "confidence": "high"
+  }
+ }
+}

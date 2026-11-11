@@ -1,0 +1,2 @@
+# npm ci 装出来的依赖，不进仓库
+/node_modules/

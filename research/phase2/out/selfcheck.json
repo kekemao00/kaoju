@@ -1,0 +1,1859 @@
+{
+ "expected_file": "selfcheck_expected.json",
+ "has_data": true,
+ "mismatches": [],
+ "pass": true,
+ "rows": {
+  "R01": {
+   "cases": {
+    "A01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "绝对形式",
+    "2": "绝对形式",
+    "3": "绝对形式"
+   },
+   "stable": true,
+   "value": "绝对形式"
+  },
+  "R02": {
+   "cases": {
+    "A01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "Proxy-Connection: keep-alive",
+    "2": "Proxy-Connection: keep-alive",
+    "3": "Proxy-Connection: keep-alive"
+   },
+   "stable": true,
+   "value": "Proxy-Connection: keep-alive"
+  },
+  "R03": {
+   "cases": {
+    "A02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "a.kaoju.test:443 HTTP/1.1",
+    "2": "a.kaoju.test:443 HTTP/1.1",
+    "3": "a.kaoju.test:443 HTTP/1.1"
+   },
+   "stable": true,
+   "value": "a.kaoju.test:443 HTTP/1.1"
+  },
+  "R04": {
+   "cases": {
+    "A02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "Host, User-Agent, Proxy-Connection",
+    "2": "Host, User-Agent, Proxy-Connection",
+    "3": "Host, User-Agent, Proxy-Connection"
+   },
+   "stable": true,
+   "value": "Host, User-Agent, Proxy-Connection"
+  },
+  "R05": {
+   "cases": {
+    "A02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "同目标",
+    "2": "同目标",
+    "3": "同目标"
+   },
+   "stable": true,
+   "value": "同目标"
+  },
+  "R06": {
+   "cases": {
+    "A02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "TLS ClientHello",
+    "2": "TLS ClientHello",
+    "3": "TLS ClientHello"
+   },
+   "stable": true,
+   "value": "TLS ClientHello"
+  },
+  "R07": {
+   "cases": {
+    "A02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "data": {
+    "1": {
+     "client_hello_len": 517
+    },
+    "2": {
+     "client_hello_len": 517
+    },
+    "3": {
+     "client_hello_len": 517
+    }
+   },
+   "footnotes": [
+    "ClientHello 长度（TLS 记录长度加 5 字节记录头）：3 遍里最小 517、最大 517 字节"
+   ],
+   "per_repeat": {
+    "1": "不超过 1460 字节",
+    "2": "不超过 1460 字节",
+    "3": "不超过 1460 字节"
+   },
+   "stable": true,
+   "value": "不超过 1460 字节"
+  },
+  "R08": {
+   "cases": {
+    "A02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "http/1.1",
+    "2": "http/1.1",
+    "3": "http/1.1"
+   },
+   "stable": true,
+   "value": "http/1.1"
+  },
+  "R09": {
+   "cases": {
+    "A02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "HTTP/1.1",
+    "2": "HTTP/1.1",
+    "3": "HTTP/1.1"
+   },
+   "stable": true,
+   "value": "HTTP/1.1"
+  },
+  "R10": {
+   "cases": {
+    "A03": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1",
+    "2": "1",
+    "3": "1"
+   },
+   "stable": true,
+   "value": "1"
+  },
+  "R100": {
+   "cases": {
+    "F11": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  },
+  "R101": {
+   "cases": {
+    "F12": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  },
+  "R11": {
+   "cases": {
+    "A04": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1",
+    "2": "1",
+    "3": "1"
+   },
+   "stable": true,
+   "value": "1"
+  },
+  "R110": {
+   "cases": {
+    "S01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "00",
+    "2": "00",
+    "3": "00"
+   },
+   "stable": true,
+   "value": "00"
+  },
+  "R111": {
+   "cases": {
+    "S05": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "00,02",
+    "2": "00,02",
+    "3": "00,02"
+   },
+   "stable": true,
+   "value": "00,02"
+  },
+  "R112": {
+   "cases": {
+    "S01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "域名",
+    "2": "域名",
+    "3": "域名"
+   },
+   "stable": true,
+   "value": "域名"
+  },
+  "R113": {
+   "cases": {
+    "S03": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "IPv4",
+    "2": "IPv4",
+    "3": "IPv4"
+   },
+   "stable": true,
+   "value": "IPv4"
+  },
+  "R114": {
+   "cases": {
+    "S04": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "没连代理就报错",
+    "2": "没连代理就报错",
+    "3": "没连代理就报错"
+   },
+   "stable": true,
+   "value": "没连代理就报错"
+  },
+  "R115": {
+   "cases": {
+    "S01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "TLS ClientHello",
+    "2": "TLS ClientHello",
+    "3": "TLS ClientHello"
+   },
+   "stable": true,
+   "value": "TLS ClientHello"
+  },
+  "R116": {
+   "cases": {
+    "S02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "明文 HTTP",
+    "2": "明文 HTTP",
+    "3": "明文 HTTP"
+   },
+   "stable": true,
+   "value": "明文 HTTP"
+  },
+  "R117": {
+   "cases": {
+    "S05": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "成功",
+    "2": "成功",
+    "3": "成功"
+   },
+   "stable": true,
+   "value": "成功"
+  },
+  "R118": {
+   "cases": {
+    "S06": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "成功",
+    "2": "成功",
+    "3": "成功"
+   },
+   "stable": true,
+   "value": "成功"
+  },
+  "R119": {
+   "cases": {
+    "S07": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "提到认证或方法",
+    "2": "提到认证或方法",
+    "3": "提到认证或方法"
+   },
+   "stable": true,
+   "value": "提到认证或方法"
+  },
+  "R12": {
+   "cases": {
+    "A05": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "2",
+    "2": "2",
+    "3": "2"
+   },
+   "stable": true,
+   "value": "2"
+  },
+  "R120": {
+   "cases": {
+    "S08": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "提到认证或方法",
+    "2": "提到认证或方法",
+    "3": "提到认证或方法"
+   },
+   "stable": true,
+   "value": "提到认证或方法"
+  },
+  "R121": {
+   "cases": {
+    "S09": [
+     "1",
+     "2",
+     "3"
+    ],
+    "S10": [
+     "1",
+     "2",
+     "3"
+    ],
+    "S11": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "能区分",
+    "2": "能区分",
+    "3": "能区分"
+   },
+   "stable": true,
+   "value": "能区分"
+  },
+  "R122": {
+   "cases": {
+    "S12": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1",
+    "2": "1",
+    "3": "1"
+   },
+   "stable": true,
+   "value": "1"
+  },
+  "R123": {
+   "cases": {
+    "S13": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "6",
+    "2": "6",
+    "3": "6"
+   },
+   "stable": true,
+   "value": "6"
+  },
+  "R124": {
+   "cases": {
+    "S14": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "各开各的连接",
+    "2": "各开各的连接",
+    "3": "各开各的连接"
+   },
+   "stable": true,
+   "value": "各开各的连接"
+  },
+  "R125": {
+   "cases": {
+    "S15": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R126": {
+   "cases": {
+    "S16": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R127": {
+   "cases": {
+    "S17": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R128": {
+   "cases": {
+    "S18": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R129": {
+   "cases": {
+    "S19": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "客户端报错",
+    "2": "客户端报错",
+    "3": "客户端报错"
+   },
+   "stable": true,
+   "value": "客户端报错"
+  },
+  "R13": {
+   "cases": {
+    "A06": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1",
+    "2": "1",
+    "3": "1"
+   },
+   "stable": true,
+   "value": "1"
+  },
+  "R130": {
+   "cases": {
+    "S20": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R131": {
+   "cases": {
+    "S21": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R132": {
+   "cases": {
+    "S22": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R14": {
+   "cases": {
+    "A07": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "6",
+    "2": "6",
+    "3": "6"
+   },
+   "stable": true,
+   "value": "6"
+  },
+  "R15": {
+   "cases": {
+    "A08": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "6",
+    "2": "6",
+    "3": "6"
+   },
+   "stable": true,
+   "value": "6"
+  },
+  "R16": {
+   "cases": {
+    "A09": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "6",
+    "2": "6",
+    "3": "6"
+   },
+   "stable": true,
+   "value": "6"
+  },
+  "R17": {
+   "cases": {
+    "A10": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "经代理",
+    "2": "经代理",
+    "3": "经代理"
+   },
+   "stable": true,
+   "value": "经代理"
+  },
+  "R18": {
+   "cases": {
+    "A11": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "经代理",
+    "2": "经代理",
+    "3": "经代理"
+   },
+   "stable": true,
+   "value": "经代理"
+  },
+  "R19": {
+   "cases": {
+    "A12": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "Content-Length",
+    "2": "Content-Length",
+    "3": "Content-Length"
+   },
+   "stable": true,
+   "value": "Content-Length"
+  },
+  "R20": {
+   "cases": {
+    "A14": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "不发",
+    "2": "不发",
+    "3": "不发"
+   },
+   "stable": true,
+   "value": "不发"
+  },
+  "R21": {
+   "cases": {
+    "A15": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "绝对形式的 GET 加 Upgrade",
+    "2": "绝对形式的 GET 加 Upgrade",
+    "3": "绝对形式的 GET 加 Upgrade"
+   },
+   "stable": true,
+   "value": "绝对形式的 GET 加 Upgrade"
+  },
+  "R22": {
+   "cases": {
+    "A16": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "CONNECT 到 443 端口，隧道里 TLS",
+    "2": "CONNECT 到 443 端口，隧道里 TLS",
+    "3": "CONNECT 到 443 端口，隧道里 TLS"
+   },
+   "stable": true,
+   "value": "CONNECT 到 443 端口，隧道里 TLS"
+  },
+  "R23": {
+   "cases": {
+    "A01": [
+     "1",
+     "2",
+     "3"
+    ],
+    "A02": [
+     "1",
+     "2",
+     "3"
+    ],
+    "S01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "G / C / 05",
+    "2": "G / C / 05",
+    "3": "G / C / 05"
+   },
+   "stable": true,
+   "value": "G / C / 05"
+  },
+  "R24": {
+   "cases": {
+    "A12": [
+     "1",
+     "2",
+     "3"
+    ],
+    "A13": [
+     "1",
+     "2",
+     "3"
+    ],
+    "A14": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "完整",
+    "2": "完整",
+    "3": "完整"
+   },
+   "stable": true,
+   "value": "完整"
+  },
+  "R30": {
+   "cases": {
+    "B01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "先带",
+    "2": "先带",
+    "3": "先带"
+   },
+   "stable": true,
+   "value": "先带"
+  },
+  "R31": {
+   "cases": {
+    "B02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "先带",
+    "2": "先带",
+    "3": "先带"
+   },
+   "stable": true,
+   "value": "先带"
+  },
+  "R32": {
+   "cases": {
+    "B01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "不适用",
+    "2": "不适用",
+    "3": "不适用"
+   },
+   "stable": true,
+   "value": "不适用"
+  },
+  "R33": {
+   "cases": {
+    "B02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "不适用",
+    "2": "不适用",
+    "3": "不适用"
+   },
+   "stable": true,
+   "value": "不适用"
+  },
+  "R34": {
+   "cases": {
+    "B03": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "不适用",
+    "2": "不适用",
+    "3": "不适用"
+   },
+   "stable": true,
+   "value": "不适用"
+  },
+  "R35": {
+   "cases": {
+    "B04": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "不适用",
+    "2": "不适用",
+    "3": "不适用"
+   },
+   "stable": true,
+   "value": "不适用"
+  },
+  "R36": {
+   "cases": {
+    "B05": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "3/0",
+    "2": "3/0",
+    "3": "3/0"
+   },
+   "stable": true,
+   "value": "3/0"
+  },
+  "R37": {
+   "cases": {
+    "B06": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "先带",
+    "2": "先带",
+    "3": "先带"
+   },
+   "stable": true,
+   "value": "先带"
+  },
+  "R38": {
+   "cases": {
+    "B07": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1",
+    "2": "1",
+    "3": "1"
+   },
+   "stable": true,
+   "value": "1"
+  },
+  "R39": {
+   "cases": {
+    "B02": [
+     "1",
+     "2",
+     "3"
+    ],
+    "B07": [
+     "1",
+     "2",
+     "3"
+    ],
+    "B08": [
+     "1",
+     "2",
+     "3"
+    ],
+    "B09": [
+     "1",
+     "2",
+     "3"
+    ],
+    "B10": [
+     "1",
+     "2",
+     "3"
+    ],
+    "B12": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "没有",
+    "2": "没有",
+    "3": "没有"
+   },
+   "stable": true,
+   "value": "没有"
+  },
+  "R40": {
+   "cases": {
+    "B08": [
+     "1",
+     "2",
+     "3"
+    ],
+    "B09": [
+     "1",
+     "2",
+     "3"
+    ],
+    "B10": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "都成功",
+    "2": "都成功",
+    "3": "都成功"
+   },
+   "stable": true,
+   "value": "都成功"
+  },
+  "R41": {
+   "cases": {
+    "B11": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "各用各的凭据",
+    "2": "各用各的凭据",
+    "3": "各用各的凭据"
+   },
+   "stable": true,
+   "value": "各用各的凭据"
+  },
+  "R42": {
+   "cases": {
+    "B12": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "各开各的隧道",
+    "2": "各开各的隧道",
+    "3": "各开各的隧道"
+   },
+   "stable": true,
+   "value": "各开各的隧道"
+  },
+  "R43": {
+   "cases": {
+    "B13": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1",
+    "2": "1",
+    "3": "1"
+   },
+   "stable": true,
+   "value": "1"
+  },
+  "R44": {
+   "cases": {
+    "B14": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "0",
+    "2": "0",
+    "3": "0"
+   },
+   "stable": true,
+   "value": "0"
+  },
+  "R45": {
+   "cases": {
+    "C01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "拿到 407 响应",
+    "2": "拿到 407 响应",
+    "3": "拿到 407 响应"
+   },
+   "stable": true,
+   "value": "拿到 407 响应"
+  },
+  "R46": {
+   "cases": {
+    "C02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "报错，提到 407",
+    "2": "报错，提到 407",
+    "3": "报错，提到 407"
+   },
+   "stable": true,
+   "value": "报错，提到 407"
+  },
+  "R47": {
+   "cases": {
+    "C03": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1",
+    "2": "1",
+    "3": "1"
+   },
+   "stable": true,
+   "value": "1"
+  },
+  "R48": {
+   "cases": {
+    "C04": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1",
+    "2": "1",
+    "3": "1"
+   },
+   "stable": true,
+   "value": "1"
+  },
+  "R49": {
+   "cases": {
+    "C04": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "报错，提到 407",
+    "2": "报错，提到 407",
+    "3": "报错，提到 407"
+   },
+   "stable": true,
+   "value": "报错，提到 407"
+  },
+  "R50": {
+   "cases": {
+    "C05": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "报错，提到 403",
+    "2": "报错，提到 403",
+    "3": "报错，提到 403"
+   },
+   "stable": true,
+   "value": "报错，提到 403"
+  },
+  "R51": {
+   "cases": {
+    "C08": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "拿到 403 响应",
+    "2": "拿到 403 响应",
+    "3": "拿到 403 响应"
+   },
+   "stable": true,
+   "value": "拿到 403 响应"
+  },
+  "R52": {
+   "cases": {
+    "C06": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "带",
+    "2": "带",
+    "3": "带"
+   },
+   "stable": true,
+   "value": "带"
+  },
+  "R53": {
+   "cases": {
+    "C07": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "带",
+    "2": "带",
+    "3": "带"
+   },
+   "stable": true,
+   "value": "带"
+  },
+  "R60": {
+   "cases": {
+    "D01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R61": {
+   "cases": {
+    "D02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R62": {
+   "cases": {
+    "D03": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R63": {
+   "cases": {
+    "D04": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R64": {
+   "cases": {
+    "D05": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R65": {
+   "cases": {
+    "D06": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R66": {
+   "cases": {
+    "D07": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R67": {
+   "cases": {
+    "D08": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R68": {
+   "cases": {
+    "D09": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R69": {
+   "cases": {
+    "D10": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R70": {
+   "cases": {
+    "D11": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "原样",
+    "2": "原样",
+    "3": "原样"
+   },
+   "stable": true,
+   "value": "原样"
+  },
+  "R80": {
+   "cases": {
+    "E01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "状态码、原因短语",
+    "2": "状态码、原因短语",
+    "3": "状态码、原因短语"
+   },
+   "stable": true,
+   "value": "状态码、原因短语"
+  },
+  "R81": {
+   "cases": {
+    "E01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [
+    "手段：rawref 自己记录的 CONNECT 响应"
+   ],
+   "per_repeat": {
+    "1": "状态码、原因短语、响应头、正文",
+    "2": "状态码、原因短语、响应头、正文",
+    "3": "状态码、原因短语、响应头、正文"
+   },
+   "stable": true,
+   "value": "状态码、原因短语、响应头、正文"
+  },
+  "R82": {
+   "cases": {
+    "E02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "状态码、原因短语",
+    "2": "状态码、原因短语",
+    "3": "状态码、原因短语"
+   },
+   "stable": true,
+   "value": "状态码、原因短语"
+  },
+  "R83": {
+   "cases": {
+    "E03": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1",
+    "2": "1",
+    "3": "1"
+   },
+   "stable": true,
+   "value": "1"
+  },
+  "R84": {
+   "cases": {
+    "E04": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "看不到",
+    "2": "看不到",
+    "3": "看不到"
+   },
+   "stable": true,
+   "value": "看不到"
+  },
+  "R85": {
+   "cases": {
+    "E04": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [
+    "手段：rawref 自己记录的 CONNECT 响应"
+   ],
+   "per_repeat": {
+    "1": "看得到",
+    "2": "看得到",
+    "3": "看得到"
+   },
+   "stable": true,
+   "value": "看得到"
+  },
+  "R86": {
+   "cases": {
+    "E05": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "状态码、原因短语、响应头、正文",
+    "2": "状态码、原因短语、响应头、正文",
+    "3": "状态码、原因短语、响应头、正文"
+   },
+   "stable": true,
+   "value": "状态码、原因短语、响应头、正文"
+  },
+  "R87": {
+   "cases": {
+    "E06": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "看得到",
+    "2": "看得到",
+    "3": "看得到"
+   },
+   "stable": true,
+   "value": "看得到"
+  },
+  "R88": {
+   "cases": {
+    "E07": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "新连接",
+    "2": "新连接",
+    "3": "新连接"
+   },
+   "stable": true,
+   "value": "新连接"
+  },
+  "R89": {
+   "cases": {
+    "E07": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "成功",
+    "2": "成功",
+    "3": "成功"
+   },
+   "stable": true,
+   "value": "成功"
+  },
+  "R90": {
+   "cases": {
+    "F01": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "失败",
+    "2": "失败",
+    "3": "失败"
+   },
+   "stable": true,
+   "value": "失败"
+  },
+  "R91": {
+   "cases": {
+    "F02": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "失败",
+    "2": "失败",
+    "3": "失败"
+   },
+   "stable": true,
+   "value": "失败"
+  },
+  "R92": {
+   "cases": {
+    "F03": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  },
+  "R93": {
+   "cases": {
+    "F04": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  },
+  "R94": {
+   "cases": {
+    "F05": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  },
+  "R95": {
+   "cases": {
+    "F06": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  },
+  "R96": {
+   "cases": {
+    "F07": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  },
+  "R97": {
+   "cases": {
+    "F08": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  },
+  "R98": {
+   "cases": {
+    "F09": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  },
+  "R99": {
+   "cases": {
+    "F10": [
+     "1",
+     "2",
+     "3"
+    ]
+   },
+   "footnotes": [],
+   "per_repeat": {
+    "1": "1 次，失败",
+    "2": "1 次，失败",
+    "3": "1 次，失败"
+   },
+   "stable": true,
+   "value": "1 次，失败"
+  }
+ },
+ "variant": "rawref"
+}

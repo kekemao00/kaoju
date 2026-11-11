@@ -1,0 +1,536 @@
+{
+ "variant": "node-undici",
+ "written": "2026-11-10",
+ "method": "只凭文档和源码，未做任何实测",
+ "client_version": "undici 8.12.4（npm），运行在 Node.js v22.23.4（OpenSSL 3.5.9）上",
+ "sources": [
+  "出处前缀：node: 指 nodejs/node 标签 v22.23.4 的路径；u6: 指同一标签下 deps/undici/src/lib/（内置 undici 6.29.1）；u8: 指 npm 包 undici 8.12.4 的 package/lib/。行号是这些版本的。",
+  "npm 包 undici 8.12.4（npm pack undici，2026-11-10；dist-tags.latest 是 8.12.4，2026-11-05 发布；engines.node >=22.19.0）：lib/dispatcher/proxy-agent.js、socks5-proxy-agent.js、pool.js、agent.js、client.js、client-h1.js、client-h2.js，lib/core/connect.js、socks5-client.js、socks5-utils.js、request.js、errors.js，lib/api/api-request.js、api-connect.js",
+  "同一个包的文档：docs/docs/api/ProxyAgent.md、Socks5ProxyAgent.md、DiagnosticsChannel.md、Interceptors.md、Errors.md",
+  "对比用的旧版 npm 包（只看 lib/dispatcher/proxy-agent.js、lib/core/connect.js、lib/dispatcher/pool.js）：6.21.3、6.22.0、7.4.0、7.5.0、7.9.0、7.10.0、7.22.0、7.23.0、7.30.2、8.0.0 到 8.12.0 的各个 x.y.0",
+  "本机 node -p process.versions：node 22.23.4、undici 6.29.1、openssl 3.5.9、nghttp2 1.69.0；node -p tls.DEFAULT_ECDH_CURVE 是 auto，process.config.variables.node_shared_openssl 是 false",
+  "research/phase2/runner/matrix.py、harness/server.go（只为确认取值的规范化写法和端口映射）"
+ ],
+ "rows": {
+  "R01": {
+   "expect": "绝对形式",
+   "basis": "8.12.4 的 ProxyAgent 不设 proxyTunnel 时按目标协议决定（u8:dispatcher/proxy-agent.js:41-43、:121、:170）：http: 目标不建隧道，交给 Http1ProxyWrapper 把 path 改写成 origin + path（:78-89）发给代理；文档 ProxyAgent.md 的 proxyTunnel 一项写的也是这样。（这个默认值是 8.7.0 才改的，8.6.x 及以前、7.x、内置的 6.29.1 都是先 CONNECT 到 80。）",
+   "confidence": "high"
+  },
+  "R02": {
+   "expect": "connection: keep-alive",
+   "basis": "u8:dispatcher/client-h1.js:1347-1356：host 之后固定写 connection: keep-alive（小写；pipelining 默认 1）。A01 没配凭据，Http1ProxyWrapper 没有代理头可加（proxy-agent.js:86）；proxy-connection 只加在 CONNECT 上（:224）。fetch 另加的头不在这一行要列的名字里。",
+   "confidence": "high"
+  },
+  "R03": {
+   "expect": "a.kaoju.test:443 HTTP/1.1",
+   "basis": "u8:dispatcher/proxy-agent.js:211-214、:219：请求目标是 opts.host 补上默认端口；u8:dispatcher/client-h1.js:1343 写 ${method} ${path} HTTP/1.1。",
+   "confidence": "high"
+  },
+  "R04": {
+   "expect": "host, connection, proxy-connection",
+   "basis": "u8:dispatcher/client-h1.js:1343-1370：host、connection（CONNECT 时是 close）之后按顺序写调用方的头；ProxyAgent 给的是 {...代理头, host, 'proxy-connection': 'keep-alive'}（proxy-agent.js:221-225，connections 未设时加），host 被单独取走，A02 没有凭据，剩下 proxy-connection。",
+   "confidence": "high"
+  },
+  "R05": {
+   "expect": "不同",
+   "basis": "u8:dispatcher/proxy-agent.js:211-223：请求目标补了 :443，host 头用 opts.host 原样（a.kaoju.test）。",
+   "confidence": "high"
+  },
+  "R06": {
+   "expect": "TLS ClientHello",
+   "basis": "u8:dispatcher/proxy-agent.js:242-256：https: 目标在隧道套接字上做 TLS。",
+   "confidence": "high"
+  },
+  "R07": {
+   "expect": "超过 1460 字节",
+   "basis": "ClientHello 由 OpenSSL 3.5.9 生成（本机 process.versions.openssl；node_shared_openssl 为 false，是随 Node 一起编的）。Node 默认的 ecdhCurve 是 auto（本机 tls.DEFAULT_ECDH_CURVE），不改 OpenSSL 的默认组；按我对 OpenSSL 3.5 的了解（没有逐字核对 OpenSSL 源码，记为“未验证”），它默认的组列表以 X25519MLKEM768 开头并为它和 X25519 各发一个 key share，X25519MLKEM768 的公钥是 1216 字节，整个 ClientHello 因此超过 1460 字节。如果这个构建没有启用混合后量子组，就会落在 500 字节上下，这一格翻转。",
+   "confidence": "medium"
+  },
+  "R08": {
+   "expect": "http/1.1,h2",
+   "basis": "u8:core/connect.js:76 allowH2 默认 true（8.0.0 起；7.x 和 6.x 是 false），:98 没设 preferH2 时 ALPNProtocols 是 ['http/1.1', 'h2']，按这个顺序发出。",
+   "confidence": "high"
+  },
+  "R09": {
+   "expect": "HTTP/2.0",
+   "basis": "客户端提供 http/1.1 和 h2（R08）；源站是 Go 的 net/http，ALPN 按服务端的偏好选，h2 排在前面，所以选 h2（这一点依据的是 Go 的行为，未对着 harness 核对配置）。undici 看到 socket.alpnProtocol 是 h2 就走 HTTP/2。",
+   "confidence": "medium"
+  },
+  "R10": {
+   "expect": "1",
+   "basis": "同一个源一个 Pool，h2 会话保持，三个请求依次复用同一条隧道。",
+   "confidence": "high"
+  },
+  "R11": {
+   "expect": "1",
+   "basis": "Http1ProxyWrapper 里是一个到代理的 Pool（u8:dispatcher/proxy-agent.js:58-62），连接保持（keepAliveTimeout 默认 4 秒），连续请求复用。",
+   "confidence": "high"
+  },
+  "R12": {
+   "expect": "2",
+   "basis": "按源分 Pool，各一条隧道。",
+   "confidence": "high"
+  },
+  "R13": {
+   "expect": "2",
+   "basis": "Agent 按源调用 factory（u8:dispatcher/agent.js:86-97），每个源各有一个 Http1ProxyWrapper 和它自己的到代理的 Pool（proxy-agent.js:153-188），连接不跨源共用。",
+   "confidence": "medium"
+  },
+  "R14": {
+   "expect": "1",
+   "basis": "u8:dispatcher/pool.js:34-56、:106-126：https 且允许 h2 时，Pool 先只让一个 Client 去连（协议探测），其余请求留在 Pool 的队列里；ALPN 选了 h2，6 个请求都复用这一条会话（maxConcurrentStreams 默认 100）。这个探测是 8.11.0 加的，之前的 8.x 大概会开 6 条。",
+   "confidence": "medium"
+  },
+  "R15": {
+   "expect": "6",
+   "basis": "同一段代码：探测的那条连接协商出 http/1.1 后放开（u8:dispatcher/pool.js:117-126），其余 5 个请求各开一条连接（connections 不限、pipelining 为 1）。共 6 条隧道。",
+   "confidence": "medium"
+  },
+  "R16": {
+   "expect": "6",
+   "basis": "到代理的 Pool 是 http:，不做协议探测；不限连接数、pipelining 为 1，6 个并发 6 条连接。",
+   "confidence": "high"
+  },
+  "R17": {
+   "expect": "经代理",
+   "basis": "显式的 ProxyAgent 没有例外名单，所有请求都交给它（NO_PROXY 只有 EnvHttpProxyAgent 才看）。",
+   "confidence": "high"
+  },
+  "R18": {
+   "expect": "经代理",
+   "basis": "同 R17。",
+   "confidence": "high"
+  },
+  "R19": {
+   "expect": "Content-Length",
+   "basis": "正文是 Buffer 时长度已知，writeH1 写 content-length（u8:dispatcher/client-h1.js 的 writeBuffer）；用 undici 的 fetch 时由 fetch 加 content-length 头，正文按已知长度发，不用 chunked。前提：驱动把正文读成 Buffer 再给；给流（长度未知）会变成 chunked。",
+   "confidence": "medium"
+  },
+  "R20": {
+   "expect": "不发",
+   "basis": "undici 的 HTTP/1.1 不发 Expect：expectContinue 默认 false 且只对 h2 有意义，调用方自己设 expect 头会被拒绝（u8:core/request.js:565-566）。",
+   "confidence": "high"
+  },
+  "R21": {
+   "expect": "不适用",
+   "basis": "cases.json 里 A15 的 only 只有 chromium-pw、firefox-pw、node-fetch-env、rawref，不含这一列；matrix.py 的 run_status 对 only 不含的列写“不适用”。",
+   "confidence": "high"
+  },
+  "R22": {
+   "expect": "不适用",
+   "basis": "cases.json 里 A16 的 only 只有 chromium-pw、firefox-pw、node-fetch-env、rawref，不含这一列；matrix.py 的 run_status 对 only 不含的列写“不适用”。",
+   "confidence": "high"
+  },
+  "R23": {
+   "expect": "G / C / 05",
+   "basis": "明文是绝对形式的 GET（R01）；HTTPS 是 CONNECT；SOCKS5 的第一个字节是版本号 0x05（u8:core/socks5-client.js:169-176）。",
+   "confidence": "high"
+  },
+  "R24": {
+   "expect": "完整",
+   "basis": "没有认证重试，正文只发一遍。",
+   "confidence": "high"
+  },
+  "R30": {
+   "expect": "先带",
+   "basis": "token（或 URL 里的 userinfo）在构造时变成 proxy-authorization（u8:dispatcher/proxy-agent.js:134-145），不等 407。明文：Http1ProxyWrapper 把代理头并进每个请求（:86）。",
+   "confidence": "high"
+  },
+  "R31": {
+   "expect": "先带",
+   "basis": "token（或 URL 里的 userinfo）在构造时变成 proxy-authorization（u8:dispatcher/proxy-agent.js:134-145），不等 407。CONNECT 的头里直接带（:221-222）。",
+   "confidence": "high"
+  },
+  "R32": {
+   "expect": "不适用",
+   "basis": "先带凭据，凭据正确，收不到 407。",
+   "confidence": "high"
+  },
+  "R33": {
+   "expect": "不适用",
+   "basis": "先带凭据，凭据正确，收不到 407。",
+   "confidence": "high"
+  },
+  "R34": {
+   "expect": "不适用",
+   "basis": "先带凭据，收不到 407。",
+   "confidence": "high"
+  },
+  "R35": {
+   "expect": "不适用",
+   "basis": "先带凭据，收不到 407。",
+   "confidence": "high"
+  },
+  "R36": {
+   "expect": "3/0",
+   "basis": "三个绝对形式的请求复用一条连接，每个都带代理头（u8:dispatcher/proxy-agent.js:86）。",
+   "confidence": "high"
+  },
+  "R37": {
+   "expect": "先带",
+   "basis": "每个 CONNECT 都带（u8:dispatcher/proxy-agent.js:221-222）。",
+   "confidence": "high"
+  },
+  "R38": {
+   "expect": "1",
+   "basis": "同 R10。",
+   "confidence": "high"
+  },
+  "R39": {
+   "expect": "没有",
+   "basis": "代理头只出现在 CONNECT 和发给代理的绝对形式请求上；调用方的头里出现 Proxy-Authorization 会被 dispatch 拒绝（u8:dispatcher/proxy-agent.js:278-279、:389-395）。隧道里的请求不带。",
+   "confidence": "high"
+  },
+  "R40": {
+   "expect": "都成功",
+   "basis": "用 undici 的 fetch 时默认跟随重定向；用 request 时要加 interceptors.redirect（Interceptors.md；request 的 maxRedirections 选项已不支持，u8:core/request.js:162-163）。每一跳按新的源重新走 ProxyAgent。",
+   "confidence": "medium"
+  },
+  "R41": {
+   "expect": "各用各的凭据",
+   "basis": "每个用户一个 ProxyAgent，各有自己的代理头和连接池（凭据是构造参数，u8:dispatcher/proxy-agent.js:134-145），请求用哪个 dispatcher 就带哪份凭据。",
+   "confidence": "high"
+  },
+  "R42": {
+   "expect": "各开各的隧道",
+   "basis": "同 R41：两个 ProxyAgent 的 Pool 互不相通，隧道不会串。",
+   "confidence": "high"
+  },
+  "R43": {
+   "expect": "1",
+   "basis": "先带凭据，没有重试，正文发一遍。",
+   "confidence": "high"
+  },
+  "R44": {
+   "expect": "0",
+   "basis": "6 个 CONNECT 都先带凭据。",
+   "confidence": "high"
+  },
+  "R45": {
+   "expect": "报错，提到 407",
+   "basis": "u8:dispatcher/proxy-agent.js:66-75：Http1ProxyWrapper 拦下 407 的响应，改成 InvalidArgumentError: Proxy Authentication Required (407) 交给调用方（fetch 再包一层 TypeError: fetch failed，原错误在 cause 里）。",
+   "confidence": "high"
+  },
+  "R46": {
+   "expect": "报错，提到 407",
+   "basis": "u8:dispatcher/proxy-agent.js:229-232：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling（fetch 时在 cause 里）。",
+   "confidence": "high"
+  },
+  "R47": {
+   "expect": "1",
+   "basis": "带着凭据发一次，407 被改成错误（R45），不重试。",
+   "confidence": "high"
+  },
+  "R48": {
+   "expect": "1",
+   "basis": "一次 CONNECT，407 后报错，不重试。",
+   "confidence": "high"
+  },
+  "R49": {
+   "expect": "报错，提到 407",
+   "basis": "u8:dispatcher/proxy-agent.js:229-232：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling（fetch 时在 cause 里）。",
+   "confidence": "high"
+  },
+  "R50": {
+   "expect": "报错，提到 403",
+   "basis": "u8:dispatcher/proxy-agent.js:229-232：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling（fetch 时在 cause 里）。",
+   "confidence": "high"
+  },
+  "R51": {
+   "expect": "拿到 403 响应",
+   "basis": "Http1ProxyWrapper 只拦 407（u8:dispatcher/proxy-agent.js:68），403 是普通响应。",
+   "confidence": "high"
+  },
+  "R52": {
+   "expect": "带",
+   "basis": "代理头无条件加在每个绝对形式的请求上。",
+   "confidence": "high"
+  },
+  "R53": {
+   "expect": "带",
+   "basis": "代理头无条件加在 CONNECT 上。",
+   "confidence": "high"
+  },
+  "R60": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。",
+   "confidence": "high"
+  },
+  "R61": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。",
+   "confidence": "high"
+  },
+  "R62": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。",
+   "confidence": "high"
+  },
+  "R63": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。先带凭据，看不到质询。",
+   "confidence": "high"
+  },
+  "R64": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。charset 参数不起作用。",
+   "confidence": "high"
+  },
+  "R65": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。",
+   "confidence": "high"
+  },
+  "R66": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。",
+   "confidence": "high"
+  },
+  "R67": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。没有长度限制。",
+   "confidence": "medium"
+  },
+  "R68": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。",
+   "confidence": "high"
+  },
+  "R69": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。token 写法下空密码就是“用户名:”；URL 写法下 8.2.0 起有只有用户名的分支（:143-144），也是“用户名:”。",
+   "confidence": "high"
+  },
+  "R70": {
+   "expect": "原样",
+   "basis": "按文档的写法给 token: 'Basic ' + Buffer.from(用户名 + ':' + 密码).toString('base64')（ProxyAgent.md 的“proxy request with authentication”），undici 原样当作头的值（u8:dispatcher/proxy-agent.js:139-140），字节由驱动自己的 Buffer.from（UTF-8）决定。若改用 URL 里的 userinfo，要各自 encodeURIComponent，undici 会 decodeURIComponent 还原（:141-145），结果相同。",
+   "confidence": "high"
+  },
+  "R80": {
+   "expect": "状态码",
+   "basis": "u8:dispatcher/proxy-agent.js:229-232：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling（fetch 时在 cause 里）。只有状态码。",
+   "confidence": "high"
+  },
+  "R81": {
+   "expect": "状态码、原因短语、响应头",
+   "basis": "node:diagnostics_channel 的 undici:request:headers 频道（docs/docs/api/DiagnosticsChannel.md：“This includes a successful CONNECT or protocol upgrade response”）：CONNECT 的响应到达时发布 statusCode、statusText、headers（u8:core/request.js:381-389，由 u8:dispatcher/client-h1.js:613 传入）。正文不在消息里。前提：驱动订阅这个频道并把三样都记进 extra_text。",
+   "confidence": "medium"
+  },
+  "R82": {
+   "expect": "状态码",
+   "basis": "u8:dispatcher/proxy-agent.js:229-232：CONNECT 的状态码不是 200 时报 RequestAbortedError，消息是 Proxy response (<状态码>) !== 200 when HTTP Tunneling（fetch 时在 cause 里）。",
+   "confidence": "high"
+  },
+  "R83": {
+   "expect": "1",
+   "basis": "CONNECT 非 200 直接报错，不看 Retry-After，不重试。",
+   "confidence": "high"
+  },
+  "R84": {
+   "expect": "看不到",
+   "basis": "CONNECT 成功后只取 socket 和 statusCode（u8:dispatcher/proxy-agent.js:228）；undici:proxy:connected 频道也只给 socket 和 connectParams（:235-240）。",
+   "confidence": "high"
+  },
+  "R85": {
+   "expect": "看得到",
+   "basis": "node:diagnostics_channel 的 undici:request:headers 频道（docs/docs/api/DiagnosticsChannel.md：“This includes a successful CONNECT or protocol upgrade response”）：CONNECT 的响应到达时发布 statusCode、statusText、headers（u8:core/request.js:381-389，由 u8:dispatcher/client-h1.js:613 传入）。正文不在消息里。前提：驱动订阅这个频道并把三样都记进 extra_text。",
+   "confidence": "medium"
+  },
+  "R86": {
+   "expect": "状态码、原因短语、响应头、正文",
+   "basis": "403 是普通响应：fetch 的 Response 有 status、statusText、headers、正文；request 的结果也有 statusCode、statusText（u8:api/api-request.js:135）、headers、body。",
+   "confidence": "high"
+  },
+  "R87": {
+   "expect": "看得到",
+   "basis": "代理加的头就在这个响应的 headers 里。",
+   "confidence": "high"
+  },
+  "R88": {
+   "expect": "新连接",
+   "basis": "CONNECT 失败后套接字被销毁（u8:dispatcher/proxy-agent.js:230），下一个 CONNECT 新开连接。",
+   "confidence": "high"
+  },
+  "R89": {
+   "expect": "成功",
+   "basis": "失败只影响 fail.kaoju.test 那个源。",
+   "confidence": "high"
+  },
+  "R90": {
+   "expect": "换新连接，成功",
+   "basis": "空闲时收到 FIN，到代理的 Client 销毁套接字（u8:dispatcher/client-h1.js:1015-1027），没有在跑的请求；s2 触发重连。",
+   "confidence": "high"
+  },
+  "R91": {
+   "expect": "换新隧道，成功",
+   "basis": "隧道里是 h2 会话（R09）：套接字收到 FIN 后销毁（u8:dispatcher/client-h2.js:859-860），会话随之结束，s2 重新 CONNECT。h2 这条路径读得不如 h1 细。",
+   "confidence": "medium"
+  },
+  "R92": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：等响应时连接被关，队首请求报错（u8:dispatcher/client-h1.js:1015-1027、:1059-1065）；fetch 只在 421 时重试，RetryAgent 和 interceptors.retry 都不是默认。",
+   "confidence": "high"
+  },
+  "R93": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：等响应时连接被关，队首请求报错（u8:dispatcher/client-h1.js:1015-1027、:1059-1065）；fetch 只在 421 时重试，RetryAgent 和 interceptors.retry 都不是默认。",
+   "confidence": "high"
+  },
+  "R94": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：等响应时连接被关，队首请求报错（u8:dispatcher/client-h1.js:1015-1027、:1059-1065）；fetch 只在 421 时重试，RetryAgent 和 interceptors.retry 都不是默认。（F05、F06、F08、F10 的源站只说 HTTP/1.1。）",
+   "confidence": "high"
+  },
+  "R95": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：等响应时连接被关，队首请求报错（u8:dispatcher/client-h1.js:1015-1027、:1059-1065）；fetch 只在 421 时重试，RetryAgent 和 interceptors.retry 都不是默认。（F05、F06、F08、F10 的源站只说 HTTP/1.1。）",
+   "confidence": "high"
+  },
+  "R96": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：等响应时连接被关，队首请求报错（u8:dispatcher/client-h1.js:1015-1027、:1059-1065）；fetch 只在 421 时重试，RetryAgent 和 interceptors.retry 都不是默认。",
+   "confidence": "high"
+  },
+  "R97": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：等响应时连接被关，队首请求报错（u8:dispatcher/client-h1.js:1015-1027、:1059-1065）；fetch 只在 421 时重试，RetryAgent 和 interceptors.retry 都不是默认。（F05、F06、F08、F10 的源站只说 HTTP/1.1。）",
+   "confidence": "high"
+  },
+  "R98": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：等响应时连接被关，队首请求报错（u8:dispatcher/client-h1.js:1015-1027、:1059-1065）；fetch 只在 421 时重试，RetryAgent 和 interceptors.retry 都不是默认。",
+   "confidence": "high"
+  },
+  "R99": {
+   "expect": "1 次，失败",
+   "basis": "undici 的 HTTP/1.1 客户端不重发已经写出的请求：等响应时连接被关，队首请求报错（u8:dispatcher/client-h1.js:1015-1027、:1059-1065）；fetch 只在 421 时重试，RetryAgent 和 interceptors.retry 都不是默认。（F05、F06、F08、F10 的源站只说 HTTP/1.1。）",
+   "confidence": "high"
+  },
+  "R100": {
+   "expect": "1 次，失败",
+   "basis": "u8:dispatcher/proxy-agent.js:261-268：建隧道时的 UND_ERR_SOCKET 被包成 ProxyConnectionError（code UND_ERR_PRX_CONN），不再属于会留在队列里重连的错误（u8:dispatcher/client.js:472-493），请求直接失败。（8.6.0 加入；之前会不停重连，见 node-fetch-env 的 R100。）",
+   "confidence": "medium"
+  },
+  "R101": {
+   "expect": "1 次，失败",
+   "basis": "h2 会话所在的套接字收到 FIN 后被销毁（u8:dispatcher/client-h2.js:859-860、:816-846），在跑的流报错；GOAWAY 才有的重放逻辑（:53-61）这里用不上，因为仪器直接断连不发 GOAWAY。h2 路径没有逐行读完，把握不大。",
+   "confidence": "low"
+  },
+  "R110": {
+   "expect": "00",
+   "basis": "ProxyAgent 的 uri 是 socks5:// 时转交 Socks5ProxyAgent（u8:dispatcher/proxy-agent.js:157-168；7.23.0 加入，标为 Experimental）。没有凭据时只提供 NO_AUTH（u8:core/socks5-client.js:83-87）。",
+   "confidence": "high"
+  },
+  "R111": {
+   "expect": "02,00",
+   "basis": "ProxyAgent 的 uri 是 socks5:// 时转交 Socks5ProxyAgent（u8:dispatcher/proxy-agent.js:157-168；7.23.0 加入，标为 Experimental）。用户名和密码都非空时先放 0x02 再放 0x00（u8:core/socks5-client.js:84-87），按这个顺序写出（:169-174）。",
+   "confidence": "high"
+  },
+  "R112": {
+   "expect": "域名",
+   "basis": "u8:dispatcher/socks5-proxy-agent.js:240-247 把 URL 的主机名原样交给 Socks5Client.connect，u8:core/socks5-utils.js:12-40 对不是 IP 字面量的一律按域名（0x03）编码；Socks5ProxyAgent.md：“DNS resolution is delegated to the proxy”。undici 只认 socks5: 和 socks: 两种写法（socks5-proxy-agent.js:61），没有 socks5h，驱动两种用例都只能写 socks5://。",
+   "confidence": "high"
+  },
+  "R113": {
+   "expect": "域名",
+   "basis": "同 R112：undici 没有“客户端自己解析”的模式，localhost 也按域名交给代理。",
+   "confidence": "high"
+  },
+  "R114": {
+   "expect": "把域名交给了代理",
+   "basis": "同 R112：不做本地解析。",
+   "confidence": "high"
+  },
+  "R115": {
+   "expect": "TLS ClientHello",
+   "basis": "u8:dispatcher/socks5-proxy-agent.js:251-260：https: 目标在 SOCKS5 建好的套接字上 tls.connect。",
+   "confidence": "high"
+  },
+  "R116": {
+   "expect": "明文 HTTP",
+   "basis": "http: 目标直接把套接字交给 Pool 发 HTTP/1.1 请求（u8:dispatcher/socks5-proxy-agent.js:250、:291）。",
+   "confidence": "high"
+  },
+  "R117": {
+   "expect": "成功",
+   "basis": "服务端选 0x02 后发 RFC 1929 的认证请求（u8:core/socks5-client.js:203-205、:214-244），状态 0 后继续 CONNECT。",
+   "confidence": "high"
+  },
+  "R118": {
+   "expect": "成功",
+   "basis": "服务端选 0x00 时直接进入已认证状态（u8:core/socks5-client.js:201-202），凭据不发。",
+   "confidence": "high"
+  },
+  "R119": {
+   "expect": "提到认证或方法",
+   "basis": "u8:core/socks5-client.js:194-196：0xFF 时抛 Socks5ProxyError: No acceptable authentication method（含 authentication、method）；经 socks5-proxy-agent.js:166-169、:292-294 交给请求。",
+   "confidence": "high"
+  },
+  "R120": {
+   "expect": "提到认证或方法",
+   "basis": "u8:core/socks5-client.js:261-263：状态非 0 抛 Socks5ProxyError: Authentication failed。",
+   "confidence": "high"
+  },
+  "R121": {
+   "expect": "能区分",
+   "basis": "u8:core/socks5-client.js:350-353、:391-411：消息是 SOCKS5 connection failed: 加上应答码对应的文字（2 是 Connection not allowed by ruleset，4 是 Host unreachable，5 是 Connection refused），code 是 UND_ERR_SOCKS5_REPLY_<n>。",
+   "confidence": "high"
+  },
+  "R122": {
+   "expect": "1",
+   "basis": "每个源一个 Pool（u8:dispatcher/socks5-proxy-agent.js:231-298），连接保持，三个请求依次复用。SOCKS5 这条路径上的 tls.connect 没给 ALPNProtocols（:256-260），是 HTTP/1.1。",
+   "confidence": "medium"
+  },
+  "R123": {
+   "expect": "6",
+   "basis": "Pool 对 https 先探测协议（u8:dispatcher/pool.js:34-38），这条路径没有 ALPN，探测结果是 h1，随后放开，6 个并发共 6 条 SOCKS5 连接。",
+   "confidence": "medium"
+  },
+  "R124": {
+   "expect": "各开各的连接",
+   "basis": "每个用户一个 ProxyAgent（各自的 socks5:// URL），连接池互不相通。",
+   "confidence": "high"
+  },
+  "R125": {
+   "expect": "原样",
+   "basis": "经 ProxyAgent 配 SOCKS5 时凭据只能写在 URL 里（types/proxy-agent.d.ts 和 ProxyAgent.md 都没有 username、password 选项）。u8:dispatcher/proxy-agent.js:126、:162-163 把 URL 对象上的 username、password（仍是百分号转义的形式）当作选项传给 Socks5ProxyAgent，而 u8:dispatcher/socks5-proxy-agent.js:84-87 里选项优先于它自己从 URL 解码出来的值，所以发给代理的是没有解码的字符串。这个用户名只有字母、数字和连字符，转义前后一样。",
+   "confidence": "high"
+  },
+  "R126": {
+   "expect": "变了",
+   "basis": "经 ProxyAgent 配 SOCKS5 时凭据只能写在 URL 里（types/proxy-agent.d.ts 和 ProxyAgent.md 都没有 username、password 选项）。u8:dispatcher/proxy-agent.js:126、:162-163 把 URL 对象上的 username、password（仍是百分号转义的形式）当作选项传给 Socks5ProxyAgent，而 u8:dispatcher/socks5-proxy-agent.js:84-87 里选项优先于它自己从 URL 解码出来的值，所以发给代理的是没有解码的字符串。@ % + / 空格 必须转义才能写进 URL，到达代理的是 sess%40ab%2541%2Bc%2Fd%20e 这样的字节。",
+   "confidence": "medium"
+  },
+  "R127": {
+   "expect": "变了",
+   "basis": "经 ProxyAgent 配 SOCKS5 时凭据只能写在 URL 里（types/proxy-agent.d.ts 和 ProxyAgent.md 都没有 username、password 选项）。u8:dispatcher/proxy-agent.js:126、:162-163 把 URL 对象上的 username、password（仍是百分号转义的形式）当作选项传给 Socks5ProxyAgent，而 u8:dispatcher/socks5-proxy-agent.js:84-87 里选项优先于它自己从 URL 解码出来的值，所以发给代理的是没有解码的字符串。非 ASCII 字符在 URL 的 userinfo 里一定是 %XX 的形式，到达代理的是那串百分号。",
+   "confidence": "medium"
+  },
+  "R128": {
+   "expect": "原样",
+   "basis": "经 ProxyAgent 配 SOCKS5 时凭据只能写在 URL 里（types/proxy-agent.d.ts 和 ProxyAgent.md 都没有 username、password 选项）。u8:dispatcher/proxy-agent.js:126、:162-163 把 URL 对象上的 username、password（仍是百分号转义的形式）当作选项传给 Socks5ProxyAgent，而 u8:dispatcher/socks5-proxy-agent.js:84-87 里选项优先于它自己从 URL 解码出来的值，所以发给代理的是没有解码的字符串。255 字节的字母数字不需要转义；长度检查是大于 255 才报错（u8:core/socks5-client.js:232-234）。",
+   "confidence": "high"
+  },
+  "R129": {
+   "expect": "客户端报错",
+   "basis": "u8:core/socks5-client.js:229-234：用户名超过 255 字节时抛 InvalidArgumentError: Username or password too long，认证请求不发出；代理上没有 socks5_auth，驱动这一步失败。",
+   "confidence": "high"
+  },
+  "R130": {
+   "expect": "变了",
+   "basis": "经 ProxyAgent 配 SOCKS5 时凭据只能写在 URL 里（types/proxy-agent.d.ts 和 ProxyAgent.md 都没有 username、password 选项）。u8:dispatcher/proxy-agent.js:126、:162-163 把 URL 对象上的 username、password（仍是百分号转义的形式）当作选项传给 Socks5ProxyAgent，而 u8:dispatcher/socks5-proxy-agent.js:84-87 里选项优先于它自己从 URL 解码出来的值，所以发给代理的是没有解码的字符串。密码里的 : @ 空格 % + 转义后原样发出。",
+   "confidence": "medium"
+  },
+  "R131": {
+   "expect": "客户端报错",
+   "basis": "密码为空：proxy-agent.js:163 的 opts.password || password 得到空串，socks5-proxy-agent.js:86 再变成 null，u8:core/socks5-client.js:84-87 于是只提供 0x00；代理要求用户名密码，回 0xFF，客户端报 No acceptable authentication method。没有 socks5_auth，这一步失败。",
+   "confidence": "medium"
+  },
+  "R132": {
+   "expect": "变了",
+   "basis": "经 ProxyAgent 配 SOCKS5 时凭据只能写在 URL 里（types/proxy-agent.d.ts 和 ProxyAgent.md 都没有 username、password 选项）。u8:dispatcher/proxy-agent.js:126、:162-163 把 URL 对象上的 username、password（仍是百分号转义的形式）当作选项传给 Socks5ProxyAgent，而 u8:dispatcher/socks5-proxy-agent.js:84-87 里选项优先于它自己从 URL 解码出来的值，所以发给代理的是没有解码的字符串。用户名里的冒号必须写成 %3A（否则 URL 会在那里切开用户名和密码），到达代理的是 sess%3Aab12。",
+   "confidence": "medium"
+  }
+ }
+}

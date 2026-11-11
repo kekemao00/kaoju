@@ -1,0 +1,543 @@
+{
+ "variant": "go",
+ "written": "2026-11-10",
+ "method": "只凭文档和源码，未做任何实测",
+ "client_version": "Go 1.24.7（linux/amd64）标准库：net/http、net/url、crypto/tls、crypto/x509、vendor/golang.org/x/net/http/httpproxy",
+ "sources": [
+  "Go 1.24.7 源码（本机 /usr/local/go/src，VERSION 文件写 go1.24.7）。basis 里的路径都相对于这个目录，行号是这个版本的",
+  "net/http/transport.go：Transport 各字段的文档（Proxy、OnProxyConnectResponse、ProxyConnectHeader、GetProxyConnectHeader、MaxConnsPerHost、MaxIdleConnsPerHost、ExpectContinueTimeout、ForceAttemptHTTP2）、DefaultTransport、Clone、ProxyFromEnvironment、ProxyURL、roundTrip、shouldRetryRequest、connectMethodForRequest、proxyAuth、tryPutIdleConn、queueForIdleConn、getConn、queueForDial、dialConnFor、dialConn、connectMethod.key、mapRoundTripError、readLoop、readLoopPeekFailLocked、persistConn.roundTrip",
+  "net/http/request.go：Request.write、NewRequestWithContext、isReplayable、outgoingLength、expectsContinue",
+  "net/http/client.go：basicAuth、Client.do、defaultCheckRedirect、redirectBehavior；net/http/transfer.go：shouldSendContentLength、noResponseBodyExpected、readTransfer；net/http/response.go：ReadResponse",
+  "net/http/socks_bundle.go：socksDialer.connect、DialWithConn、socksReply.String、socksUsernamePassword.Authenticate",
+  "net/http/h2_bundle.go：http2configureTransports（upgradeFn）、http2clientConnPool.getClientConn、addConnIfNeeded、MarkDead、http2Transport.RoundTripOpt、http2shouldRetryRequest、http2canRetryError、http2clientConnReadLoop.cleanup",
+  "net/url/url.go：User、UserPassword、Userinfo.Username、Password、String、parseAuthority、validUserinfo、Error.Error",
+  "vendor/golang.org/x/net/http/httpproxy/proxy.go：Config.ProxyFunc 的文档、useProxy",
+  "crypto/tls：defaults.go（defaultCurvePreferences、默认密码套件和签名算法）、handshake_client.go（makeClientHello、loadSession）、handshake_messages.go（clientHelloMsg.marshalMsg）、cipher_suites.go；crypto/x509/root_unix.go（SSL_CERT_FILE）；internal/godebugs/table.go（tlsmlkem）",
+  "Go 发行说明（https://raw.githubusercontent.com/golang/website/master/_content/doc/go1.20.md、go1.23.md、go1.24.md、go1.25.md，2026-11-10 取）：1.20 的 OnProxyConnectResponse、1.23 的 X25519Kyber768Draft00、1.24 的 X25519MLKEM768 与 tlsmlkem",
+  "其他版本的 net/http/transport.go（https://raw.githubusercontent.com/golang/go/release-branch.go1.22、go1.23、go1.25 分支，2026-11-10 取），只用来对比 socks5h 和 dialConn 的差别",
+  "research/phase2/harness/proxyhttp.go:306-309（obsproxy 回 407、403 时用的原因短语）、harness/server.go:290-299（端口映射）；research/phase2/runner/matrix.py（取值的字符串格式）；research/phase2/cases.json",
+  "没有运行过任何 Go 程序：ClientHello 的长度是照着编码函数手算的，不是量出来的"
+ ],
+ "rows": {
+  "R01": {
+   "expect": "绝对形式",
+   "basis": "net/http/transport.go:1818-1819 dialConn：代理是 http、目标是 http 时 pconn.isProxy=true；net/http/transport.go:2593 writeLoop 把 isProxy 作为 usingProxy 传给 Request.write；net/http/request.go:646-648 usingProxy 时请求目标写成 scheme://host+RequestURI。",
+   "confidence": "high"
+  },
+  "R02": {
+   "expect": "无",
+   "basis": "net/http/request.go:673-725 Request.write 只写 Host、User-Agent、传输相关的头、调用方的头和 extraHeaders；net/http/transport.go:2756-2785 persistConn.roundTrip 往 extraHeaders 里只加 Accept-Encoding: gzip（DisableKeepAlives 为真时才加 Connection: close，DefaultTransport 的克隆不是）；A01 没配凭据，mutateHeaderFunc 为空（net/http/transport.go:1820-1824）。transport.go、request.go、client.go、transfer.go 里全文检索 Proxy-Connection 无命中。所以到达代理的头是 Host、User-Agent、Accept-Encoding，都不在这一行关心的名单里。",
+   "confidence": "high"
+  },
+  "R03": {
+   "expect": "a.kaoju.test:443 HTTP/1.1",
+   "basis": "net/http/transport.go:1845-1850 CONNECT 请求的 URL 是 {Opaque: cm.targetAddr}，targetAddr 来自 canonicalAddr（net/http/transport.go:976、:2943 起，https 补上 443 端口）；net/http/request.go:649-654 CONNECT 且 Path 为空时请求目标取 URL.Opaque；net/http/request.go:673 版本写死 HTTP/1.1。",
+   "confidence": "high"
+  },
+  "R04": {
+   "expect": "Host, User-Agent",
+   "basis": "net/http/request.go:679 先写 Host，:689-696 Header 里没有 User-Agent 时写默认值 Go-http-client/1.1（net/http/request.go:545）；A02 没配凭据也没设 ProxyConnectHeader，hdr 是空的（net/http/transport.go:1827-1840）；net/http/transfer.go:254-276 shouldSendContentLength 对没有正文的 CONNECT 返回 false，不写 Content-Length。",
+   "confidence": "high"
+  },
+  "R05": {
+   "expect": "同目标",
+   "basis": "net/http/transport.go:1845-1850 connectReq 的 Host 和 URL.Opaque 都是 cm.targetAddr（a.kaoju.test:443）；net/http/request.go:605-611、:679 Host 头取 r.Host。",
+   "confidence": "high"
+  },
+  "R06": {
+   "expect": "TLS ClientHello",
+   "basis": "net/http/transport.go:1906-1910 CONNECT 成功后立刻 pconn.addTLS，在隧道上做 TLS 握手；之前不写任何别的字节。",
+   "confidence": "high"
+  },
+  "R07": {
+   "expect": "超过 1460 字节",
+   "basis": "按 crypto/tls/handshake_messages.go:104-345 的编码逐项数出来是 1492 字节（含 5 字节记录头）：Go 1.24 默认的密钥交换组第一项是 X25519MLKEM768（crypto/tls/defaults.go:20-25），crypto/tls/handshake_client.go:162-186 同时发 X25519MLKEM768（1184+32 字节）和 X25519（32 字节）两个 key share，key_share 扩展共 1262 字节；其余：13 个密码套件、32 字节 session id（:128）、SNI a.kaoju.test、ALPN h2 与 http/1.1、12 个签名算法、5 个组等。没有会话缓存所以没有 session_ticket 和 psk_modes（handshake_client.go:394）。发行说明 Go 1.24“crypto/tls”一节写明默认启用 X25519MLKEM768。前提：驱动的 go.mod 写 go 1.24 或更高；写成 1.23 及以下时 GODEBUG 默认 tlsmlkem=0（internal/godebugs/table.go:60），ClientHello 只有约 270 字节。",
+   "confidence": "high"
+  },
+  "R08": {
+   "expect": "h2,http/1.1",
+   "basis": "net/http/h2_bundle.go:7711-7719 http2configureTransports 把 TLSClientConfig.NextProtos 设成 [h2, http/1.1]；net/http/transport.go:393 起 onceSetNextProtoDefaults 在 ForceAttemptHTTP2 为真（DefaultTransport，net/http/transport.go:51）时启用 HTTP/2；经代理的隧道用同一份配置（net/http/transport.go:1681-1691 addTLS）。",
+   "confidence": "high"
+  },
+  "R09": {
+   "expect": "HTTP/2.0",
+   "basis": "net/http/transport.go:1930-1939 TLS 协商出 h2 后交给 TLSNextProto[\"h2\"]，请求走 HTTP/2；经 CONNECT 隧道也一样（addTLS 之后同一段代码）。",
+   "confidence": "high"
+  },
+  "R10": {
+   "expect": "1",
+   "basis": "HTTP/2 连接建好后放进空闲表并且不取出（net/http/transport.go:1617-1622、:1064-1069、:1201-1203），后两个请求复用同一条连接、同一条隧道。",
+   "confidence": "high"
+  },
+  "R11": {
+   "expect": "1",
+   "basis": "驱动读完并关闭响应体后连接回到空闲池（net/http/transport.go:2395-2404 readLoop、:1052 tryPutIdleConn），下一个请求 queueForIdleConn 取到它（net/http/transport.go:1174-1212）。前提：驱动把每个响应体读到 EOF 再 Close。",
+   "confidence": "high"
+  },
+  "R12": {
+   "expect": "2",
+   "basis": "CONNECT 隧道的 connectMethodKey 含目标地址（net/http/transport.go:2003-2018），HTTP/2 池也按目标地址分（net/http/h2_bundle.go:802）；a、b 各一条，第 3、4 个请求复用。",
+   "confidence": "high"
+  },
+  "R13": {
+   "expect": "1",
+   "basis": "net/http/transport.go:2008-2010 代理是 http、目标是 http 时键里的目标地址清空，“http to proxy, http to anywhere after that”（net/http/transport.go:1987），两个源共用一条到代理的连接。",
+   "confidence": "high"
+  },
+  "R14": {
+   "expect": "6",
+   "basis": "net/http/transport.go:1515-1517 getConn 没有空闲连接就 queueForDial；MaxConnsPerHost 默认 0，不限（net/http/transport.go:1568-1571），每个请求各起一个拨号协程（:1593-1602）。6 个请求几乎同时发出时，6 次拨号都会发出 CONNECT（隧道在 TLS 握手之前就建好了）；TLS 协商出 h2 后多余的连接被关掉（net/http/h2_bundle.go:878-893、:7725-7730，注释写明 http1 Transport 不合并拨号）。隧道数取决于时序，可能少于 6（最先完成的连接会经 net/http/transport.go:1088-1097 交给还在等的请求，但已经发出的 CONNECT 收不回来）。",
+   "confidence": "medium"
+  },
+  "R15": {
+   "expect": "6",
+   "basis": "同 R14 的拨号逻辑；HTTP/1.1 一条连接同时只服务一个请求，每个请求耗时 300 毫秒，没有连接能在别的拨号完成前空出来。MaxConnsPerHost 默认不限（net/http/transport.go:213-218、:1568）。",
+   "confidence": "high"
+  },
+  "R16": {
+   "expect": "6",
+   "basis": "同 R15：明文经代理也是每个并发请求一条到代理的连接。MaxIdleConnsPerHost 默认 2（net/http/transport.go:60、:1040-1045）只决定事后留几条空闲连接，不影响建几条。",
+   "confidence": "high"
+  },
+  "R17": {
+   "expect": "经代理",
+   "basis": "net/http/transport.go:974-979 connectMethodForRequest 只调用 Transport.Proxy；驱动用的是返回固定 URL 的函数（ProxyURL，net/http/transport.go:503-509），不看目标主机。对 localhost 的旁路只在 ProxyFromEnvironment 里（net/http/transport.go:494-501 的文档；vendor/golang.org/x/net/http/httpproxy/proxy.go:116-117、:178-187）。",
+   "confidence": "high"
+  },
+  "R18": {
+   "expect": "经代理",
+   "basis": "同 R17；目标是 https，所以是 CONNECT localhost:<端口>。",
+   "confidence": "high"
+  },
+  "R19": {
+   "expect": "Content-Length",
+   "basis": "net/http/request.go:925-943 NewRequestWithContext 对 *bytes.Buffer、*bytes.Reader、*strings.Reader 设置 ContentLength 和 GetBody；net/http/transfer.go:254-260 长度已知就写 Content-Length。前提：驱动把正文文件读进内存，用 bytes.NewReader 作 body。直接把 *os.File 当 body 时长度未知，会变成 chunked。",
+   "confidence": "medium"
+  },
+  "R20": {
+   "expect": "不发",
+   "basis": "Transport 只在调用方自己设了 Expect: 100-continue 头时才等待（net/http/transport.go:2776-2779、net/http/request.go:1509-1511）；net/http 客户端一侧没有任何自动加 Expect 头的代码。ExpectContinueTimeout 的文档（net/http/transport.go:232-239）也说它只在请求带这个头时起作用。",
+   "confidence": "high"
+  },
+  "R21": {
+   "expect": "不适用",
+   "basis": "cases.json 里 A15 的 only 不含 go 这一列（net/http 没有自带的 WebSocket 客户端）。",
+   "confidence": "high"
+  },
+  "R22": {
+   "expect": "不适用",
+   "basis": "cases.json 里 A16 的 only 不含 go 这一列。",
+   "confidence": "high"
+  },
+  "R23": {
+   "expect": "G / C / 05",
+   "basis": "明文：请求行以 GET 开头（net/http/request.go:673）；HTTPS：以 CONNECT 开头（net/http/transport.go:1845-1866）；SOCKS5：第一个字节是版本号 0x05（net/http/socks_bundle.go:56-57、:223）。",
+   "confidence": "high"
+  },
+  "R24": {
+   "expect": "完整",
+   "basis": "三个用例都是普通的 POST，没有认证重试也没有断连；正文长度已知，Transport 按 Content-Length 原样写出（net/http/transfer.go:355-375），HTTP/2 下（A13）走 h2 的流量控制。",
+   "confidence": "high"
+  },
+  "R30": {
+   "expect": "先带",
+   "basis": "net/http/transport.go:1818-1824 dialConn：代理是 http、目标是 http 时，只要代理 URL 带 userinfo 就给这条连接设 mutateHeaderFunc，往每个请求里写 Proxy-Authorization；net/http/transport.go:2744-2749 persistConn.roundTrip 每次发请求前都调用它；net/http/transport.go:986-996 proxyAuth 生成 \"Basic \"+base64(用户名:密码)。不等质询。Transport.Proxy 的文档（net/http/transport.go:123-125）也写明带 userinfo 就发。",
+   "confidence": "high"
+  },
+  "R31": {
+   "expect": "先带",
+   "basis": "net/http/transport.go:1841-1844 dialConn：建 CONNECT 请求时，代理 URL 带 userinfo 就在头里写 Proxy-Authorization，第一个 CONNECT 就带。net/http 里没有任何处理 407 质询、解析 Proxy-Authenticate 的代码。",
+   "confidence": "high"
+  },
+  "R32": {
+   "expect": "不适用",
+   "basis": "凭据先带（见 R30、R31 的依据），代理不会回 407；rows.json 这一行写明“没有收到过 407 是不适用”。",
+   "confidence": "high"
+  },
+  "R33": {
+   "expect": "不适用",
+   "basis": "凭据先带（见 R30、R31 的依据），代理不会回 407；rows.json 这一行写明“没有收到过 407 是不适用”。",
+   "confidence": "high"
+  },
+  "R34": {
+   "expect": "不适用",
+   "basis": "凭据先带（见 R30、R31 的依据），代理不会回 407；rows.json 这一行写明“没有收到过 407 是不适用”。",
+   "confidence": "high"
+  },
+  "R35": {
+   "expect": "不适用",
+   "basis": "凭据先带（见 R30、R31 的依据），代理不会回 407；rows.json 这一行写明“没有收到过 407 是不适用”。",
+   "confidence": "high"
+  },
+  "R36": {
+   "expect": "3/0",
+   "basis": "三个请求复用同一条连接，每个都经 mutateHeaderFunc 带上 Proxy-Authorization（net/http/transport.go:1820-1824、:2744-2749）；没有不带凭据的请求。",
+   "confidence": "high"
+  },
+  "R37": {
+   "expect": "先带",
+   "basis": "net/http/transport.go:1841-1844 dialConn：建 CONNECT 请求时，代理 URL 带 userinfo 就在头里写 Proxy-Authorization，第一个 CONNECT 就带。net/http 里没有任何处理 407 质询、解析 Proxy-Authenticate 的代码。 每条新隧道的 CONNECT 都这样构造，与访问过哪个源无关。",
+   "confidence": "high"
+  },
+  "R38": {
+   "expect": "1",
+   "basis": "同 R10：HTTP/2 连接复用，只有第一次需要 CONNECT。",
+   "confidence": "high"
+  },
+  "R39": {
+   "expect": "没有",
+   "basis": "Proxy-Authorization 只出现在两个地方：给代理的 CONNECT 请求头（net/http/transport.go:1841-1844）和明文经 http 代理时的 mutateHeaderFunc（net/http/transport.go:1818-1824）。目标是 https 时走的是 case cm.targetScheme == \"https\" 分支，隧道里的连接没有 mutateHeaderFunc，隧道内的请求不带这个头；重定向后的请求重新走 connectMethodForRequest，规则相同。",
+   "confidence": "high"
+  },
+  "R40": {
+   "expect": "都成功",
+   "basis": "Client 默认跟随重定向，最多 10 次（net/http/client.go:819-824 defaultCheckRedirect；302 的 GET 照常跟随，:507 起 redirectBehavior）；跳转后的请求按新 URL 的协议重新选连接方式（net/http/transport.go:974-982），凭据照 R30、R31 的规则先带。",
+   "confidence": "high"
+  },
+  "R41": {
+   "expect": "各用各的凭据",
+   "basis": "connectMethodKey.proxy 是 proxyURL.String()，含 userinfo（net/http/transport.go:2003-2018），不同凭据的代理 URL 是不同的池键，各有各的到代理的连接；Proxy-Authorization 绑定在连接上（mutateHeaderFunc，net/http/transport.go:1820-1824）。明文不经过 HTTP/2 池。前提：驱动用同一个 Transport、Proxy 函数按请求返回不同的 URL；每个用户各建一个 Transport 时结论相同。",
+   "confidence": "high"
+  },
+  "R42": {
+   "expect": "用了别人的隧道",
+   "basis": "net/http/h2_bundle.go:7720-7736 upgradeFn 用目标地址（authority）调 addConnIfNeeded；net/http/h2_bundle.go:886-893 池里已有到同一地址、还能接请求的 HTTP/2 连接时返回 used=false，新建的那条被关掉（:7725-7730）；之后请求经 t2.RoundTrip 走 net/http/h2_bundle.go:8054-8056 GetClientConn(req, addr)，net/http/h2_bundle.go:802-813 只按目标地址取连接。HTTP/2 连接池的键里没有代理 URL，更没有 userinfo。而 HTTP/1 一层的 connectMethodKey 含整个代理 URL 字符串（net/http/transport.go:2003-2018，proxyURL.String() 带 userinfo），所以第二个用户会新建一条隧道（带自己的凭据），协商出 h2 后被丢弃，请求改走第一个用户那条。前提：两个用户共用同一个 Transport（Proxy 函数按请求返回不同 URL）；驱动若给每个用户各建一个 Transport，各有各的 HTTP/2 池，结果相反。",
+   "confidence": "medium"
+  },
+  "R43": {
+   "expect": "1",
+   "basis": "凭据先带（R30），没有 407，也就没有第二遍；POST 不会被自动重发（net/http/request.go:1534-1548）。",
+   "confidence": "high"
+  },
+  "R44": {
+   "expect": "0",
+   "basis": "6 个并发请求各自拨号，每个 CONNECT 都先带凭据（net/http/transport.go:1841-1844），代理没有理由回 407。",
+   "confidence": "high"
+  },
+  "R45": {
+   "expect": "拿到 407 响应",
+   "basis": "明文请求的 407 只是一个普通的响应：readLoop 读到什么就交给调用方（net/http/transport.go:2288-2290），Transport 和 Client 都不处理 407（全文没有对 StatusProxyAuthRequired 的处理）。err 为 nil，StatusCode 是 407。",
+   "confidence": "high"
+  },
+  "R46": {
+   "expect": "报错，没提 407",
+   "basis": "net/http/transport.go:1896-1903 dialConn：CONNECT 的响应状态码不是 200 时，把 resp.Status 在第一个空格处切开，只用后半段（原因短语）做 errors.New，然后关连接；状态码、响应头、正文都不进 error。Client 再包一层 *url.Error（net/http/client.go:617-633），文字是 Get \"<URL>\": <原因短语>（net/url/url.go:32）。 obsproxy 的 407 原因短语是 Proxy Authentication Required（harness/proxyhttp.go:306），error 文字里没有数字 407。",
+   "confidence": "high"
+  },
+  "R47": {
+   "expect": "1",
+   "basis": "代理回 407 后 Transport 把它原样交给调用方（见 R45），不换凭据也不重试；带凭据的请求只有最初那一个。",
+   "confidence": "high"
+  },
+  "R48": {
+   "expect": "1",
+   "basis": "CONNECT 收到非 200 就关连接并返回 error（net/http/transport.go:1896-1903）；拨号失败不重试（net/http/transport.go:685-689 getConn 出错直接返回）。",
+   "confidence": "high"
+  },
+  "R49": {
+   "expect": "报错，没提 407",
+   "basis": "net/http/transport.go:1896-1903 dialConn：CONNECT 的响应状态码不是 200 时，把 resp.Status 在第一个空格处切开，只用后半段（原因短语）做 errors.New，然后关连接；状态码、响应头、正文都不进 error。Client 再包一层 *url.Error（net/http/client.go:617-633），文字是 Get \"<URL>\": <原因短语>（net/url/url.go:32）。 原因短语是 Proxy Authentication Required。",
+   "confidence": "high"
+  },
+  "R50": {
+   "expect": "报错，没提 403",
+   "basis": "net/http/transport.go:1896-1903 dialConn：CONNECT 的响应状态码不是 200 时，把 resp.Status 在第一个空格处切开，只用后半段（原因短语）做 errors.New，然后关连接；状态码、响应头、正文都不进 error。Client 再包一层 *url.Error（net/http/client.go:617-633），文字是 Get \"<URL>\": <原因短语>（net/url/url.go:32）。 obsproxy 这里的原因短语是 Forbidden（harness/proxyhttp.go:309）。",
+   "confidence": "high"
+  },
+  "R51": {
+   "expect": "拿到 403 响应",
+   "basis": "明文请求的 403 是普通响应，原样交给调用方（同 R45 的依据）。",
+   "confidence": "high"
+  },
+  "R52": {
+   "expect": "带",
+   "basis": "net/http/transport.go:1818-1824 dialConn：代理是 http、目标是 http 时，只要代理 URL 带 userinfo 就给这条连接设 mutateHeaderFunc，往每个请求里写 Proxy-Authorization；net/http/transport.go:2744-2749 persistConn.roundTrip 每次发请求前都调用它；net/http/transport.go:986-996 proxyAuth 生成 \"Basic \"+base64(用户名:密码)。不等质询。Transport.Proxy 的文档（net/http/transport.go:123-125）也写明带 userinfo 就发。",
+   "confidence": "high"
+  },
+  "R53": {
+   "expect": "带",
+   "basis": "net/http/transport.go:1841-1844 dialConn：建 CONNECT 请求时，代理 URL 带 userinfo 就在头里写 Proxy-Authorization，第一个 CONNECT 就带。net/http 里没有任何处理 407 质询、解析 Proxy-Authenticate 的代码。",
+   "confidence": "high"
+  },
+  "R60": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。",
+   "confidence": "high"
+  },
+  "R61": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。",
+   "confidence": "high"
+  },
+  "R62": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。 url.UserPassword 不做任何转义或反转义；转义只发生在 URL.String()（只用于连接池的键），不影响发出的头。",
+   "confidence": "high"
+  },
+  "R63": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。 Go 字符串里就是 UTF-8 字节。",
+   "confidence": "high"
+  },
+  "R64": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。 凭据在收到任何质询之前就发了，charset 参数没有机会起作用。",
+   "confidence": "high"
+  },
+  "R65": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。",
+   "confidence": "high"
+  },
+  "R66": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。 HTTP 代理这条路径上没有 255 字节的限制（那个限制只在 SOCKS5 的代码里）。",
+   "confidence": "high"
+  },
+  "R67": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。 请求头的长度在客户端一侧没有上限。",
+   "confidence": "high"
+  },
+  "R68": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。",
+   "confidence": "high"
+  },
+  "R69": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。 空密码时 Password() 返回空串，拼出来是“用户名:”。",
+   "confidence": "high"
+  },
+  "R70": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:986-996 proxyAuth 直接取 proxyURL.User 的 Username() 和 Password()（net/url/url.go:414-428，返回未转义的原字符串），net/http/client.go:422-425 basicAuth 把“用户名:密码”按 Go 字符串的原字节（UTF-8）做 base64，没有长度检查、没有字符集转换、不看质询里的 charset。前提：驱动用 url.UserPassword(用户名, 密码) 构造 userinfo（net/url/url.go:399-401 原样保存），而不是手拼 URL 字符串再解析。 用户名里的冒号原样拼接，不报错也不转义。",
+   "confidence": "high"
+  },
+  "R80": {
+   "expect": "原因短语",
+   "basis": "net/http/transport.go:1896-1903 dialConn：CONNECT 的响应状态码不是 200 时，把 resp.Status 在第一个空格处切开，只用后半段（原因短语）做 errors.New，然后关连接；状态码、响应头、正文都不进 error。Client 再包一层 *url.Error（net/http/client.go:617-633），文字是 Get \"<URL>\": <原因短语>（net/url/url.go:32）。 E01 的原因短语是 KaojuReasonMarker，会出现在 error 文字里；502 这个数字不会。",
+   "confidence": "high"
+  },
+  "R81": {
+   "expect": "状态码、原因短语、响应头、正文",
+   "basis": "Transport.OnProxyConnectResponse（net/http/transport.go:130-133 的文档；Go 1.20 加入）在检查 200 之前被调用（net/http/transport.go:1888-1894），拿到的 connectRes 是 ReadResponse 的结果（:1873），Status、StatusCode、Header 都在。正文：net/http/transfer.go:250-252 只有 HEAD 的响应不读正文，CONNECT 的非 2xx 响应带 Content-Length 时 connectRes.Body 可读。前提：驱动在钩子里把 Status、Header 和（限长读出的）Body 都记进 extra_text；只记 Status 和 Header 时是“状态码、原因短语、响应头”。文档没有明说钩子里可以读 Body，所以只给中等把握。",
+   "confidence": "medium"
+  },
+  "R82": {
+   "expect": "原因短语",
+   "basis": "net/http/transport.go:1896-1903 dialConn：CONNECT 的响应状态码不是 200 时，把 resp.Status 在第一个空格处切开，只用后半段（原因短语）做 errors.New，然后关连接；状态码、响应头、正文都不进 error。Client 再包一层 *url.Error（net/http/client.go:617-633），文字是 Get \"<URL>\": <原因短语>（net/url/url.go:32）。",
+   "confidence": "high"
+  },
+  "R83": {
+   "expect": "1",
+   "basis": "CONNECT 收到 503 就关连接返回 error（net/http/transport.go:1896-1903）；net/http 不解析 Retry-After，拨号失败不重试。",
+   "confidence": "high"
+  },
+  "R84": {
+   "expect": "看不到",
+   "basis": "CONNECT 的 200 响应在 dialConn 里读完即丢（net/http/transport.go:1872-1873、:1896），不交给调用方；最终的 Response 是隧道里源站的响应。",
+   "confidence": "high"
+  },
+  "R85": {
+   "expect": "看得到",
+   "basis": "OnProxyConnectResponse 对 200 也会被调用（net/http/transport.go:1888-1894 在状态码检查之前），connectRes.Header 里有代理附加的头。前提：驱动在钩子里记下 Header。",
+   "confidence": "high"
+  },
+  "R86": {
+   "expect": "状态码、原因短语、响应头、正文",
+   "basis": "明文请求被代理回 403 时调用方拿到完整的 Response：Status 是“403 KaojuReasonMarker”（net/http/response.go:168-173 保留原因短语），Header 和 Body 原样。前提：驱动的 default_text 记了 resp.Status（PROTOCOL 要求“原因短语（接口给的话）”）。",
+   "confidence": "high"
+  },
+  "R87": {
+   "expect": "看得到",
+   "basis": "代理加在响应里的头就在 Response.Header 里，Transport 不过滤逐跳头以外的东西（X-Kaoju-Note、Proxy-Status 都保留）。",
+   "confidence": "high"
+  },
+  "R88": {
+   "expect": "新连接",
+   "basis": "CONNECT 非 200 时不管代理关没关，客户端一律 conn.Close()（net/http/transport.go:1896-1898）；下一个 CONNECT 只能新建连接。",
+   "confidence": "high"
+  },
+  "R89": {
+   "expect": "成功",
+   "basis": "失败的拨号不留下任何状态；对 a.kaoju.test 的请求是另一个池键，重新拨号、CONNECT。",
+   "confidence": "high"
+  },
+  "R90": {
+   "expect": "换新连接，成功",
+   "basis": "空闲连接上 readLoop 一直在 Peek（net/http/transport.go:2275-2282）；代理发 FIN 后 readLoopPeekFailLocked 以 errServerClosedIdle 关掉它（:2417-2436），并从空闲池移除（:2241-2244）。1.5 秒后的请求找不到空闲连接，新建一条。",
+   "confidence": "high"
+  },
+  "R91": {
+   "expect": "换新隧道，成功",
+   "basis": "F02 的源站支持 h2，走的是 HTTP/2：隧道被关后 h2 的 readLoop 结束，连接从 h2 池移除（net/http/h2_bundle.go:9841-9882 cleanup、:955 MarkDead）。下一个请求从 http.Transport 的空闲表拿到的还是那个 h2 的 persistConn，RoundTrip 得到 ErrNoCachedConn（net/http/h2_bundle.go:815-818），net/http/transport.go:712-715 把它移出空闲表后重新循环，新建隧道。即使走 HTTP/1.1，结论同 R90。",
+   "confidence": "high"
+  },
+  "R92": {
+   "expect": "2 次，成功",
+   "basis": "net/http/transport.go:808-853 shouldRetryRequest：连接必须是复用过的（isReused）；请求必须可重放（net/http/request.go:1534-1548 isReplayable：没有正文或有 GetBody，且方法是 GET/HEAD/OPTIONS/TRACE，或带 Idempotency-Key 头）；错误是 transportReadFromServerError（readLoop 等响应首字节时读失败，net/http/transport.go:2275-2294）或 errServerClosedIdle 才重发。 F03：连接是复用的，GET 可重放，请求已写出而代理不回就 FIN，readLoop 的 Peek 得到 EOF，包成 transportReadFromServerError（net/http/transport.go:2218-2224 已写出字节时不改包装）→ 在新连接上重发一次，成功。",
+   "confidence": "high"
+  },
+  "R93": {
+   "expect": "1 次，失败",
+   "basis": "net/http/transport.go:808-853 shouldRetryRequest：连接必须是复用过的（isReused）；请求必须可重放（net/http/request.go:1534-1548 isReplayable：没有正文或有 GetBody，且方法是 GET/HEAD/OPTIONS/TRACE，或带 Idempotency-Key 头）；错误是 transportReadFromServerError（readLoop 等响应首字节时读失败，net/http/transport.go:2275-2294）或 errServerClosedIdle 才重发。 F04 是 POST：请求字节已经写出（不是 nothingWrittenError，net/http/transport.go:832-836），isReplayable 对 POST 返回 false（没有 Idempotency-Key），不重发。调用方得到 EOF。",
+   "confidence": "high"
+  },
+  "R94": {
+   "expect": "2 次，成功",
+   "basis": "net/http/transport.go:808-853 shouldRetryRequest：连接必须是复用过的（isReused）；请求必须可重放（net/http/request.go:1534-1548 isReplayable：没有正文或有 GetBody，且方法是 GET/HEAD/OPTIONS/TRACE，或带 Idempotency-Key 头）；错误是 transportReadFromServerError（readLoop 等响应首字节时读失败，net/http/transport.go:2275-2294）或 errServerClosedIdle 才重发。 F05（源站只说 HTTP/1.1）：TLS 连接读到 EOF，同 R92，GET 在新隧道里重发一次。",
+   "confidence": "high"
+  },
+  "R95": {
+   "expect": "1 次，失败",
+   "basis": "net/http/transport.go:808-853 shouldRetryRequest：连接必须是复用过的（isReused）；请求必须可重放（net/http/request.go:1534-1548 isReplayable：没有正文或有 GetBody，且方法是 GET/HEAD/OPTIONS/TRACE，或带 Idempotency-Key 头）；错误是 transportReadFromServerError（readLoop 等响应首字节时读失败，net/http/transport.go:2275-2294）或 errServerClosedIdle 才重发。 F06 是 POST，同 R93，不重发。",
+   "confidence": "high"
+  },
+  "R96": {
+   "expect": "1 次，失败",
+   "basis": "net/http/transport.go:822-831 shouldRetryRequest：新连接（!pc.isReused()）上的失败一律不重试，注释写明是为了避免对端一直挂断时无限重试。",
+   "confidence": "high"
+  },
+  "R97": {
+   "expect": "1 次，失败",
+   "basis": "同 R96：F08 的隧道是新建的，第一个请求失败不重试。",
+   "confidence": "high"
+  },
+  "R98": {
+   "expect": "2 次，成功",
+   "basis": "net/http/transport.go:808-853 shouldRetryRequest：连接必须是复用过的（isReused）；请求必须可重放（net/http/request.go:1534-1548 isReplayable：没有正文或有 GetBody，且方法是 GET/HEAD/OPTIONS/TRACE，或带 Idempotency-Key 头）；错误是 transportReadFromServerError（readLoop 等响应首字节时读失败，net/http/transport.go:2275-2294）或 errServerClosedIdle 才重发。 F09：RST 让 Peek 返回 ECONNRESET 一类的读错误，同样包成 transportReadFromServerError（注释 net/http/transport.go:1016-1023 明说 io.EOF 或 ECONNRESET 都属于这种情况），GET 重发一次。",
+   "confidence": "high"
+  },
+  "R99": {
+   "expect": "2 次，成功",
+   "basis": "net/http/transport.go:808-853 shouldRetryRequest：连接必须是复用过的（isReused）；请求必须可重放（net/http/request.go:1534-1548 isReplayable：没有正文或有 GetBody，且方法是 GET/HEAD/OPTIONS/TRACE，或带 Idempotency-Key 头）；错误是 transportReadFromServerError（readLoop 等响应首字节时读失败，net/http/transport.go:2275-2294）或 errServerClosedIdle 才重发。 F10：隧道被复位，TLS 连接的读返回底层错误，同 R98。",
+   "confidence": "high"
+  },
+  "R100": {
+   "expect": "1 次，失败",
+   "basis": "CONNECT 写出后 ReadResponse 读到 EOF，返回 unexpected EOF（net/http/response.go:164），dialConn 关连接返回 error（net/http/transport.go:1883-1886）；getConn 出错后 roundTrip 直接返回（:685-689），拨号阶段没有重试。",
+   "confidence": "high"
+  },
+  "R101": {
+   "expect": "1 次，失败",
+   "basis": "HTTP/2：隧道被切断后流以 io.ErrUnexpectedEOF 中止（net/http/h2_bundle.go:9853-9863、:9884-9891）；net/http/h2_bundle.go:8162-8174 http2canRetryError 只对 errClientConnUnusable、GOAWAY、REFUSED_STREAM 等重试，这个错误不在其中。回到 net/http/transport.go:716 shouldRetryRequest：它既不是 nothingWrittenError、transportReadFromServerError，也不是 errServerClosedIdle，走到最后的 return false。所以与 HTTP/1.1（R94）不同，HTTP/2 下已发出的 GET 不重发。",
+   "confidence": "medium"
+  },
+  "R110": {
+   "expect": "00",
+   "basis": "net/http/socks_bundle.go:58-59 没有 AuthMethods 时只提供一个方法 0x00；net/http/transport.go:1803 代理 URL 没有 userinfo 就不设 AuthMethods。",
+   "confidence": "high"
+  },
+  "R111": {
+   "expect": "00,02",
+   "basis": "net/http/transport.go:1803-1813 代理 URL 带 userinfo 时 AuthMethods 是 [NotRequired, UsernamePassword]，net/http/socks_bundle.go:61-68 按这个顺序写出。",
+   "confidence": "high"
+  },
+  "R112": {
+   "expect": "域名",
+   "basis": "net/http/transport.go:1814 把 cm.targetAddr（主机名:端口，未解析）交给 DialWithConn；net/http/socks_bundle.go:92-109 主机不是 IP 字面量就按 FQDN（0x03）写。Transport.Proxy 的文档（net/http/transport.go:119-121）：socks5 与 socks5h 同样处理。",
+   "confidence": "high"
+  },
+  "R113": {
+   "expect": "域名",
+   "basis": "socks5 和 socks5h 走同一个分支（net/http/transport.go:1800），都不在本机解析；localhost 不是 IP 字面量，按 FQDN 发给代理（net/http/socks_bundle.go:92-109）。显式的 Proxy 函数不对 localhost 旁路（同 R17）。",
+   "confidence": "high"
+  },
+  "R114": {
+   "expect": "把域名交给了代理",
+   "basis": "同 R113：scheme 写 socks5 也不在本机解析，域名原样交给代理，请求照常成功。",
+   "confidence": "high"
+  },
+  "R115": {
+   "expect": "TLS ClientHello",
+   "basis": "SOCKS5 握手成功后，目标是 https 就在这条连接上 addTLS（net/http/transport.go:1906-1910）。",
+   "confidence": "high"
+  },
+  "R116": {
+   "expect": "明文 HTTP",
+   "basis": "目标是 http 时 SOCKS5 握手后直接起读写循环（net/http/transport.go:1941-1946），第一个包是源站形式的 GET 请求（socks 分支不设 isProxy，net/http/transport.go:1800-1817）。",
+   "confidence": "high"
+  },
+  "R117": {
+   "expect": "成功",
+   "basis": "net/http/socks_bundle.go:443-470 服务端选 0x02 时发用户名密码，状态为 0 即成功。",
+   "confidence": "high"
+  },
+  "R118": {
+   "expect": "成功",
+   "basis": "net/http/socks_bundle.go:444-446 服务端选了“无认证”时 Authenticate 直接返回 nil，继续发请求。",
+   "confidence": "high"
+  },
+  "R119": {
+   "expect": "提到认证或方法",
+   "basis": "net/http/socks_bundle.go:80-83 服务端回 0xFF 时 error 是 no acceptable authentication methods；net/http/socks_bundle.go:352-356 包成 net.OpError，文字形如 socks connect tcp <代理>-><目标>: no acceptable authentication methods，含 auth 和 method。",
+   "confidence": "high"
+  },
+  "R120": {
+   "expect": "提到认证或方法",
+   "basis": "net/http/socks_bundle.go:467-469 状态非 0 时 error 是 username/password authentication failed，含 password 和 auth。",
+   "confidence": "high"
+  },
+  "R121": {
+   "expect": "能区分",
+   "basis": "net/http/socks_bundle.go:121-123 应答码非 0 时 error 是 \"unknown error \" 加 socksReply.String()；net/http/socks_bundle.go:196-219：2 是 connection not allowed by ruleset，4 是 host unreachable，5 是 connection refused。三段文字不同。",
+   "confidence": "high"
+  },
+  "R122": {
+   "expect": "1",
+   "basis": "同 R10：SOCKS5 连接上协商出 h2，三个请求共用一条。",
+   "confidence": "high"
+  },
+  "R123": {
+   "expect": "6",
+   "basis": "同 R15：池键含目标地址，但 HTTP/1.1 下每个并发请求各拨一条 SOCKS5 连接。",
+   "confidence": "high"
+  },
+  "R124": {
+   "expect": "用了别人的连接",
+   "basis": "net/http/h2_bundle.go:7720-7736 upgradeFn 用目标地址（authority）调 addConnIfNeeded；net/http/h2_bundle.go:886-893 池里已有到同一地址、还能接请求的 HTTP/2 连接时返回 used=false，新建的那条被关掉（:7725-7730）；之后请求经 t2.RoundTrip 走 net/http/h2_bundle.go:8054-8056 GetClientConn(req, addr)，net/http/h2_bundle.go:802-813 只按目标地址取连接。HTTP/2 连接池的键里没有代理 URL，更没有 userinfo。而 HTTP/1 一层的 connectMethodKey 含整个代理 URL 字符串（net/http/transport.go:2003-2018，proxyURL.String() 带 userinfo），所以第二个用户会新建一条隧道（带自己的凭据），协商出 h2 后被丢弃，请求改走第一个用户那条。前提：两个用户共用同一个 Transport（Proxy 函数按请求返回不同 URL）；驱动若给每个用户各建一个 Transport，各有各的 HTTP/2 池，结果相反。 SOCKS5 同理：connectMethodKey 含带 userinfo 的 socks5h:// URL，第二个用户会新开一条 SOCKS5 连接并完成自己的认证，但请求走的是第一个用户那条 h2 连接。",
+   "confidence": "medium"
+  },
+  "R125": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:1803-1813 把 proxyURL.User 的 Username()、Password() 原样放进 socksUsernamePassword；net/http/socks_bundle.go:443-455 Authenticate 按 RFC 1929 写 版本、长度、用户名字节、长度、密码字节，不做转义或编码转换。前提同 R60：用 url.UserPassword 构造。",
+   "confidence": "high"
+  },
+  "R126": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:1803-1813 把 proxyURL.User 的 Username()、Password() 原样放进 socksUsernamePassword；net/http/socks_bundle.go:443-455 Authenticate 按 RFC 1929 写 版本、长度、用户名字节、长度、密码字节，不做转义或编码转换。前提同 R60：用 url.UserPassword 构造。",
+   "confidence": "high"
+  },
+  "R127": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:1803-1813 把 proxyURL.User 的 Username()、Password() 原样放进 socksUsernamePassword；net/http/socks_bundle.go:443-455 Authenticate 按 RFC 1929 写 版本、长度、用户名字节、长度、密码字节，不做转义或编码转换。前提同 R60：用 url.UserPassword 构造。 Go 字符串里就是 UTF-8 字节。",
+   "confidence": "high"
+  },
+  "R128": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:1803-1813 把 proxyURL.User 的 Username()、Password() 原样放进 socksUsernamePassword；net/http/socks_bundle.go:443-455 Authenticate 按 RFC 1929 写 版本、长度、用户名字节、长度、密码字节，不做转义或编码转换。前提同 R60：用 url.UserPassword 构造。 net/http/socks_bundle.go:448 的上限是 len(Username) > 255 才报错，255 字节可以。",
+   "confidence": "high"
+  },
+  "R129": {
+   "expect": "客户端报错",
+   "basis": "net/http/socks_bundle.go:448-450 用户名超过 255 字节时 Authenticate 在写出任何认证字节之前返回 invalid username/password；代理只看到方法协商，没有 socks5_auth。",
+   "confidence": "high"
+  },
+  "R130": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:1803-1813 把 proxyURL.User 的 Username()、Password() 原样放进 socksUsernamePassword；net/http/socks_bundle.go:443-455 Authenticate 按 RFC 1929 写 版本、长度、用户名字节、长度、密码字节，不做转义或编码转换。前提同 R60：用 url.UserPassword 构造。",
+   "confidence": "high"
+  },
+  "R131": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:1803-1813 把 proxyURL.User 的 Username()、Password() 原样放进 socksUsernamePassword；net/http/socks_bundle.go:443-455 Authenticate 按 RFC 1929 写 版本、长度、用户名字节、长度、密码字节，不做转义或编码转换。前提同 R60：用 url.UserPassword 构造。 net/http/socks_bundle.go:448 只拒绝空用户名，空密码不拒绝，PLEN 写 0（RFC 1929 要求 1 到 255，Go 不检查）。",
+   "confidence": "high"
+  },
+  "R132": {
+   "expect": "原样",
+   "basis": "net/http/transport.go:1803-1813 把 proxyURL.User 的 Username()、Password() 原样放进 socksUsernamePassword；net/http/socks_bundle.go:443-455 Authenticate 按 RFC 1929 写 版本、长度、用户名字节、长度、密码字节，不做转义或编码转换。前提同 R60：用 url.UserPassword 构造。 SOCKS5 的用户名和密码分开带长度发送，冒号没有特殊含义。",
+   "confidence": "high"
+  }
+ }
+}
