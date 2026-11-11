@@ -134,37 +134,12 @@ jobs:
           python3 runner/compare_env.py --ci-out "$RUNNER_TEMP/p2-out" --repo-out out \
             --json "$RUNNER_TEMP/p2-out/compare_env.json"
 
-      # firefox-pw 只能在这里跑。把它的原始记录和版本信息打进日志，供取回后提交
-      # （提交时注明来自哪次运行、哪个提交）。内容是一个 tar：raw/firefox-pw.jsonl.gz 和 versions.d/firefox-pw.json。
-      - name: firefox-pw 的原始记录（base64）
+      # firefox-pw 只能在这里跑。它的原始记录在下面的构件 phase2-out 里（raw/firefox-pw.jsonl.gz）；
+      # 这里把读日志尾部就够的小结打出来：两个环境不一致的格子、firefox-pw 每一行的取值、原始记录的 SHA-256。
+      # 原始记录取回后放进仓库时拿这个哈希核对，并注明来自哪次运行、哪个提交。
+      - name: 小结（两个环境的比较、firefox-pw 一列）
         if: ${{ !cancelled() }}
-        run: |
-          out="$RUNNER_TEMP/p2-out"
-          raw="$out/raw/firefox-pw.jsonl.gz"
-          if ! [ -f "$raw" ]; then
-            echo "没有 $raw：firefox-pw 没有跑出来" >&2
-            exit 1
-          fi
-          pack="$RUNNER_TEMP/firefox-pack"
-          mkdir -p "$pack/raw" "$pack/versions.d"
-          cp "$raw" "$pack/raw/firefox-pw.jsonl.gz"
-          python3 - "$out/versions.json" "$pack/versions.d/firefox-pw.json" <<'PY'
-          import json, sys
-          doc = json.load(open(sys.argv[1], encoding="utf-8"))
-          with open(sys.argv[2], "w", encoding="utf-8") as fh:
-              json.dump(doc["variants"]["firefox-pw"], fh, ensure_ascii=False, indent=1, sort_keys=True)
-              fh.write("\n")
-          print("环境：" + json.dumps(doc.get("env"), ensure_ascii=False, sort_keys=True))
-          PY
-          tar -C "$pack" --sort=name --owner=0 --group=0 --numeric-owner --mtime='UTC 2026-01-01' \
-            -cf "$RUNNER_TEMP/firefox-pw.tar" raw/firefox-pw.jsonl.gz versions.d/firefox-pw.json
-          echo "运行：${GITHUB_RUN_ID}（第 ${GITHUB_RUN_ATTEMPT} 次），提交：${GITHUB_SHA}"
-          echo "SHA-256（raw/firefox-pw.jsonl.gz）：$(sha256sum "$pack/raw/firefox-pw.jsonl.gz" | cut -d' ' -f1)"
-          echo "SHA-256（versions.d/firefox-pw.json）：$(sha256sum "$pack/versions.d/firefox-pw.json" | cut -d' ' -f1)"
-          echo "SHA-256（下面这个 tar，base64 解码以后）：$(sha256sum "$RUNNER_TEMP/firefox-pw.tar" | cut -d' ' -f1)"
-          echo "-----BEGIN KAOJU FIREFOX RAW-----"
-          base64 -w 76 "$RUNNER_TEMP/firefox-pw.tar"
-          echo "-----END KAOJU FIREFOX RAW-----"
+        run: python3 runner/ci_summary.py --ci-out "$RUNNER_TEMP/p2-out" --column firefox-pw
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}

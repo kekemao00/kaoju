@@ -42,11 +42,12 @@
 
 按顺序。
 
-1. **Claude**：第 2 阶段收尾。`.github/workflows/phase2.yml` 在 CI 上重跑全部列。跑完以后：
-   从日志里 `-----BEGIN KAOJU FIREFOX RAW-----` 和 `-----END KAOJU FIREFOX RAW-----` 之间取回 Firefox 的数据（base64 解码后是 tar：
-   `raw/firefox-pw.jsonl.gz` 和 `versions.d/firefox-pw.json`，SHA-256 打在日志里），放进 `research/phase2/out/`，
-   重跑 `derive.py`、`matrix.py`、`collect.py`、`tools/report_tables.py --update`，提交时注明来自哪次运行、哪个提交；
-   同时看 `compare_env.py` 打印的两个环境不一致的格子，写进报告。这个工作流还没有在 CI 上成功跑完过，失败了先修工作流。
+1. **用户 + Claude**：第 2 阶段收尾，把 Firefox 一列放进仓库。`.github/workflows/phase2.yml` 在 CI 上重跑全部列（约 45 分钟，已经跑通过）。
+   CI 日志末尾 `-----BEGIN KAOJU CI SUMMARY-----` 之后是小结（`runner/ci_summary.py`）：两个环境不一致的格子、`firefox-pw` 每一行的取值、
+   原始记录的 SHA-256。原始记录在构件 `phase2-out` 里。云端工作区的出口策略下载不了构件（也下载不了日志文件，只能经 GitHub 工具读日志的尾部），
+   所以要**用户**从运行页面下载 `phase2-out` 传回来。拿到以后：核对 `raw/firefox-pw.jsonl.gz` 的 SHA-256 与日志一致，
+   放进 `research/phase2/out/raw/`，从构件的 `versions.json` 做出 `out/versions.d/firefox-pw.json`（`variants.firefox-pw` 加上 `env`），
+   重跑 `derive.py`、`matrix.py`、`collect.py`、`tools/report_tables.py --update`，提交时注明来自哪次运行、哪个提交。
 2. 第 3 到 5 阶段，见 `docs/brief.md`。设计文档的输入是 1B 报告和第 2 阶段报告各自的“对设计的含义”一表，以及第 2 阶段的“已知坑清单”。
    第 2 阶段留给设计文档定的几件事：向上游发 CONNECT 失败后换上游重发算不算“重试非幂等请求”（条款 9110-9.2.2-5 没有单独说）；
    “端口即会话”的端口上收到用户名怎么办；CONNECT 放行哪些端口（只放 443 会让 Node 内置 `fetch` 的明文请求失败）；
@@ -89,8 +90,7 @@
 如实列出，接手后不要当成已验证：
 
 - 1B 报告“已知局限”一节列出的各项（judge 与探测器同机的影响、只有一个观测点等）。
-- 第 2 阶段报告“已知局限”一节列出的各项。尤其是：`firefox-pw` 的驱动一次都没有真正跑过；`phase2.yml` 没有在 CI 上成功跑完过；
-  `spec/fetch_rfcs.sh --from rfc-editor` 本机走不通，只能在 CI 上验证；各驱动的限时和调试手段有没有改变线上字节，没有做对照运行。
+- 第 2 阶段报告“已知局限”一节列出的各项。尤其是：`firefox-pw` 的数据还没进仓库；各驱动的限时和调试手段有没有改变线上字节，没有做对照运行。
 - 测量机上的探测器是不是经 systemd 启动的，没有核实。
 - 网关嵌入 sing-box 时依赖怎么取：模块代理在 2026-11-05 的会话里能下载 sing-box 模块，但还没真正编译过嵌入它的程序。
   另外 sing-box v1.14.4 要求 Go 1.25.5 以上，见下面“工程约束”。

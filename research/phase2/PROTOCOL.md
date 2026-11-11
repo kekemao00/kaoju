@@ -290,4 +290,7 @@ CI 把它们作为构件保存；比对结果（`out/pcap_check.json`）进仓�
   - 各列不是一次跑完的：每列正式运行的时刻和环境记在 `out/versions.d/<列>.json`，合并在 `out/versions.json`。
     curl 是 Ubuntu 的补丁构建，包的版本一并记下。`go` 列首轮有 1 次运行因运行器的端口竞争被抓包核对判为不一致
     （已修，见 `runner/run.py` 的 `PortWindow`），按“查明原因重跑”重跑了那个用例的 3 遍。
+  - “两个环境”一节说 `firefox-pw` 的数据“从 CI 取回后提交”。取回的办法：CI 把全部输出存成构件 `phase2-out`，
+    日志末尾由 `runner/ci_summary.py` 打出这一列每一行的取值和原始记录的 SHA-256。本机的出口策略下载不了构件，
+    原始记录要由人从运行页面下载构件后交回，放进 `out/raw/` 时用日志里的哈希核对。
   - `out/observations/` 不进仓库（约 26 MB，可由 `derive.py` 从 `out/raw/` 重新生成）。
