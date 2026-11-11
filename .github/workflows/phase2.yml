@@ -8,10 +8,12 @@ on:
     branches: [main]
     paths:
       - "research/phase2/**"
+      - "docs/research/phase2-report.md"
       - ".github/workflows/phase2.yml"
   pull_request:
     paths:
       - "research/phase2/**"
+      - "docs/research/phase2-report.md"
       - ".github/workflows/phase2.yml"
 
 permissions:
@@ -92,6 +94,7 @@ jobs:
         run: |
           python3 -m unittest discover -s runner -p 'test_*.py'
           python3 -m unittest discover -s spec -p 'test_*.py'
+          python3 -m unittest discover -s tools -p 'test_*.py'
           for d in drivers/*/; do
             if compgen -G "${d}test_*.py" >/dev/null; then
               python3 -m unittest discover -s "$d" -p 'test_*.py'
@@ -105,6 +108,10 @@ jobs:
           python3 tools/gen_rows.py "$RUNNER_TEMP/rows.gen.json" cases.json
           cmp "$RUNNER_TEMP/rows.gen.json" rows.json
           python3 runner/check_expectations.py
+
+      # 报告里引用的每个格子、每个条款号和生成的表，对着仓库里的矩阵和条款文件核对。
+      - name: 报告里的引用和数字
+        run: python3 tools/report_tables.py --check ../../docs/research/phase2-report.md
 
       # 全部列各 3 遍。步骤与 run_all.sh 的第 4 到 7 步相同（它的第 1 到 3 步上面已经做过），
       # 没有直接调用 run_all.sh 是因为它不转发 --keep-pcap 和 --work，而抓包文件要作为构件保存。

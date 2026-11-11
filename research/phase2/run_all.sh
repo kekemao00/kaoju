@@ -94,6 +94,7 @@ step "2/7 obsproxy：gofmt、go vet、go test -race"
 
 step "3/7 运行器和驱动的单元测试"
 python3 -m unittest discover -s runner -p 'test_*.py'
+python3 -m unittest discover -s tools -p 'test_*.py'
 for d in drivers/*/; do
   if compgen -G "${d}test_*.py" >/dev/null; then
     python3 -m unittest discover -s "$d" -p 'test_*.py'
