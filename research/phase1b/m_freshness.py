@@ -75,6 +75,7 @@ import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pubdb  # noqa: E402  真实库与公开库之间的接缝（PUBLIC.md）
 try:
     import ingest  # noqa: E402  OUTPUT_WHITELIST、parse_ts
 except Exception:  # 库里的 meta.output_whitelist 是后备
@@ -720,6 +721,9 @@ def load_base_times(db, fs, end):
 def load_pool_rules(db, enforce_public=None, public_extra=()):
     """sched.go ineligible() 需要的规则（PoolRules）：judge 的公网 IP（self_ips，不输出）、不探测的端口（start.raw 的 probe.skip_ports，不输出）、
     not_public 规则是否生效。enforce_public=None 时从数据推断；显式给 True/False 时照用（合成库用）。"""
+    pseudo = pubdb.pseudo_v4(db.con)
+    if pseudo:   # 公开库：代理地址的假名都在这个保留地址段里（pub_pseudo.py），要当公网地址看，否则全部落进 not_public
+        public_extra = tuple(public_extra) + tuple(_cidrs([pseudo]))
     self_ips = set()
     if db.has_table("self_ips"):
         self_ips = {r[0] for r in db.q("SELECT ip FROM self_ips WHERE source = 'start.judge_ip'")}

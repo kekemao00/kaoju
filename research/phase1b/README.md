@@ -29,8 +29,17 @@
 | `crosscheck_as_summary_saw.py` | 核对“与 summary.json 不一致”是否全由 summary 漏读的 judge 文件造成（SCHEMA 坑 20）：把这些文件在库里用 TEMP VIEW 藏起来，原样重跑指定模块，比对藏前藏后的不一致项。`run_all.sh` 之后单独跑，写 `out/rotation_check.json` |
 | `check_report_numbers.py` | 核对 `docs/research/phase1b-report.md` 正文里的数都能在 `out/report.md` 和 `out/*.json` 里找到（数字不手抄）；不是数据的常量列在脚本的 `ALLOWED` 里并写明理由 |
 | `out/` | 输出目录：十个模块 JSON、`rotation_check.json` 和 `report.md`。只提交真实数据的结果；夹具或合成数据的输出不提交 |
+| `PUBLIC.md` | 公开数据（决策 D16、D18）：公开的是什么、假名和代表值的规则、随库带上的中间结果、重算结果与 `out/` 必然不同的字段、脱敏挡不住什么 |
+| `run_public.sh` | 第三方的一条命令：在公开库上重算全部输出（不要 Go、证据文件和真实地址） |
+| `pub_export.py` | 真实库 → 公开库：白名单里的列、带密钥的假名、等价的代表值、随库带上的中间结果；`--selftest` 在合成库上核对 |
+| `pub_pseudo.py` | 假名的规则（HMAC-SHA256）：地址保持 /24 结构、judge 的地址单列、哈希和编号等长 |
+| `pubdb.py` | 真实库与公开库之间的接缝：真实库上记下模块从证据文件算出的中间结果（`PHASE1B_RECORD`），公开库上取回 |
+| `pub_check.py` | `compare`：重算结果与 `out/` 比对，只允许清单里的差别；`scan`：用真实库里的身份值扫公开库；`linkage`：假名能被公开列表历史对回去的比例 |
+| `public/` | 导出报告、扫描结果、比对结果和 linkage 的计数（只有计数和列名） |
 
 ## 复现
+
+没有原始数据的第三方：用公开库和 `run_public.sh`，见 [`PUBLIC.md`](PUBLIC.md)。下面是从原始数据包开始的做法。
 
 需要：Python 3.10 以上；Go 1.24（编译 certcheck，或者用 `CERTCHECK=` 指定已编译的二进制）；
 系统根证书 `/etc/ssl/certs/ca-certificates.crt`（Debian / Ubuntu 的 ca-certificates 包，包版本和 Mozilla 根库版本会写进 `mitm.json`，

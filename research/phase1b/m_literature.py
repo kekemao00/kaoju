@@ -50,6 +50,9 @@ import statistics
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pubdb  # noqa: E402  真实库与公开库之间的接缝（PUBLIC.md）
+
 MODULE = "m_literature"
 OUTPUT_NAME = "literature.json"
 PROTOCOL_VERSION = "1.2"
@@ -1108,8 +1111,9 @@ def mani_sslstrip(db, data_dir):
 
     if not hosts:
         return finish("库里没有 judge 的主机名（self_names），无法在正文里找 http://<judge>/，这项算不出")
+    public = pubdb.is_public(db.con)   # 公开库：正文不在，下面的 cache 从库里取回（PUBLIC.md“随库带上的中间结果”）
     ev_dir = os.path.join(data_dir, "evidence") if data_dir else None
-    if not ev_dir or not os.path.isdir(ev_dir):
+    if not public and (not ev_dir or not os.path.isdir(ev_dir)):
         for acc in accs.values():
             acc[K_NOEV] = acc["HTML 不符的请求"]
         return finish("数据目录不可用（--data 或 meta.data_dir 下没有 evidence/），只能报告不符的请求数", "证据目录不可用时无法判定。")
@@ -1120,6 +1124,8 @@ def mani_sslstrip(db, data_dir):
     needles_https = [("https://%s/" % h).lower().encode() for h in hosts]
     needles_http = [("http://%s/" % h).lower().encode() for h in hosts]
     cache = {}   # 证据哈希 → (https 次数, http 次数) 或 None；量级是不同证据文件的个数（证据库有总量上限）
+    if public:
+        cache = {ev: ((nh, np_) if readable else None) for ev, readable, nh, np_ in pubdb.replay_rows(db.con, "body_links")}
     gname = {g: name for name, _, g in GROUPS}
     for cand, proto, bc, ev, path, grp, dense in db.con.execute(sql):   # 游标逐行，不 fetchall
         targets = [accs[("all", "all_plain")]]
@@ -1132,6 +1138,8 @@ def mani_sslstrip(db, data_dir):
         counts = None
         if ev:
             if ev not in cache:
+                if public:
+                    raise SystemExit("公开库的 pub_body_links 里没有这个正文证据的结果：换了参数？见 PUBLIC.md")
                 fp = os.path.join(data_dir, path if path is not None else os.path.join("evidence", ev[:2], ev + ".body"))
                 try:
                     with open(fp, "rb") as fh:
@@ -1175,6 +1183,11 @@ def mani_sslstrip(db, data_dir):
             if bc == K_PARTIAL:
                 k = str(stripped)
                 acc["被改链接数分布（局部改动的请求数）"][k] = acc["被改链接数分布（局部改动的请求数）"].get(k, 0) + 1
+    rec = pubdb.Recorder()
+    if rec.on and not public:
+        rec.put_rows("body_links", ["ev", "readable", "n_https", "n_http"],
+                     [(ev, 1, v[0], v[1]) if v is not None else (ev, 0, None, None) for ev, v in cache.items()])
+        rec.close()
     return finish()
 
 

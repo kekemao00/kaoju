@@ -41,7 +41,7 @@ trusted:                               # 自有或付费的代理，只作兜底
 sources:
   builtin: true                        # 出厂带的 14 个常规列表、4 个聚合器、11 个订阅
   aggregators:
-    enabled: true
+    enabled: false                     # 出厂关闭（05-routing.md 的 DD-39）；打开就是 true
     sample: 5000
   disable: []                          # 按 id 停用出厂来源
   lists:

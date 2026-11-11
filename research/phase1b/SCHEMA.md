@@ -5,6 +5,8 @@
 记录格式的权威来源是 Go 源码的结构体和 json 标签（`research/fieldtest/internal/…`），
 下面每张表都标了对应的结构体；本文件与源码不一致时以源码为准，并请修正本文件。
 
+公开的脱敏库（决策 D16、D18）表名列名与这里相同，只是列少了、地址和哈希换成了假名、几列自由文本换成了代表值，另有 `pub_*` 几张表；每列怎么处理见 [`PUBLIC.md`](PUBLIC.md) 和 `pub_export.py` 的 `SPEC`。
+
 ```sh
 python3 ingest.py --data <数据目录> --db <sqlite 路径> [--state <state.json.gz>] [--sources <sources.json>] [--force]
 ```

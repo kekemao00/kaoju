@@ -1,0 +1,18 @@
+逐字节相同的文件：1 / 12
+  清单里的差别：availability.json /generated_utc（1 处）
+  清单里的差别：freshness.json /generated_utc（1 处）
+  清单里的差别：freshness.json /n/上榜事件（候选层面，按种类）（键的顺序）（1 处）
+  清单里的差别：freshness.json /seconds（1 处）
+  清单里的差别：instrument.json /generated_utc（1 处）
+  清单里的差别：instrument.json /preflight/source（1 处）
+  清单里的差别：integrity.json /generated_utc（1 处）
+  清单里的差别：labels.json /generated_utc（1 处）
+  清单里的差别：lifetime.json /generated_utc（1 处）
+  清单里的差别：lifetime.json /seconds（1 处）
+  清单里的差别：literature.json /generated_utc（1 处）
+  清单里的差别：mitm.json /generated_utc（1 处）
+  清单里的差别：nodes.json /generated_utc（1 处）
+  清单里的差别：posthoc.json /generated_utc（1 处）
+  清单里的差别：posthoc.json /replaced_bodies/前 10 种（并列名次的顺序）（1 处）
+  清单里的差别：report.md （清单里的行）（10 处）
+结论：只有清单里的差别

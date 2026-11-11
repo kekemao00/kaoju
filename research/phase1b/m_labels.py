@@ -46,6 +46,9 @@ import sqlite3
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pubdb  # noqa: E402  真实库与公开库之间的接缝（PUBLIC.md）
+
 MODULE = "m_labels"
 OUTPUT_NAME = "labels.json"
 PROTOCOL_VERSION = "1.2"
@@ -339,6 +342,9 @@ def _fallback_pool(db):
     """
     import ipaddress
     reserved = [ipaddress.ip_network(s) for s in RESERVED_V4]
+    pseudo = pubdb.pseudo_v4(db.con)
+    if pseudo:   # 公开库：代理地址的假名都在这个保留地址段里（pub_pseudo.py），要当公网地址看
+        reserved = [n for n in reserved if str(n) != pseudo]
     self_ips = set()
     if db.has_table("self_ips"):
         self_ips = {v for (v,) in db.q("SELECT DISTINCT ip FROM self_ips") if v}
