@@ -1,6 +1,6 @@
 # 交接记录
 
-最后更新：2026-11-11（第 2 阶段的规范条款、本机 10 列客户端行为矩阵和报告写好；Firefox 一列等 CI；下一步是第 3 阶段）。
+最后更新：2026-11-11（第 2 阶段的规范条款、本机 10 列客户端行为矩阵和报告写好；Firefox 一列在 CI 上跑出来了，原始记录等用户从构件取回；下一步是第 3 阶段）。
 
 这个文件记录“现在做到哪了、下一步是什么、踩过哪些坑”。不随进度变化的规矩在仓库根目录的 `CLAUDE.md`。
 **每次工作结束、状态有变化时，随 PR 更新本文件**，下一个会话才接得上。
@@ -11,7 +11,7 @@
 分析脚本在 `research/phase1b/`，数字都由脚本生成（`research/phase1b/out/`）。
 实测从 2026-11-06T08:06:54Z 跑到 2026-11-09T08:59:49Z，72.88 小时，一个版本、一次启动、没有中断。
 第 2 阶段（规范与客户端行为矩阵）本机部分已完成，结论在 `docs/research/phase2-report.md`，工具和数据在 `research/phase2/`：
-372 条 RFC 条款（引文逐字核对），10 列客户端各 90 个用例 3 遍，抓包核对全部通过。`firefox-pw` 一列只能在 CI 上跑，结果还没取回。
+372 条 RFC 条款（引文逐字核对），10 列客户端各 90 个用例 3 遍，抓包核对全部通过。`firefox-pw` 一列只能在 CI 上跑，已经跑通，取值写在报告的“Firefox”一节，原始记录还在 CI 的构件里。
 网关本身一行代码都还没有，这是有意的：先有测量数据，再有设计。下一步是第 3 阶段（设计文档）。
 
 ## 读这些就够了
@@ -33,7 +33,7 @@
 | --- | --- | --- |
 | 1A | 竞品拆解、来源普查、节点订阅普查 | 完成，报告在 `docs/research/phase1-report.md` |
 | 1B | 72 小时实测 | 完成，报告在 `docs/research/phase1b-report.md`；客户端行为矩阵（`docs/brief.md` 1B 第 5 条）归入第 2 阶段 |
-| 2 | 规范（RFC 9110、9112、1928、1929 等）与客户端行为矩阵 | 本机部分完成，报告在 `docs/research/phase2-report.md`；`firefox-pw` 一列和两个环境的比较等 CI 的结果 |
+| 2 | 规范（RFC 9110、9112、1928、1929 等）与客户端行为矩阵 | 本机部分完成，报告在 `docs/research/phase2-report.md`；两个环境的比较已写进报告；`firefox-pw` 的原始记录待入库 |
 | 3 | 设计文档、验收标准 | 未开始 |
 | 4 | 最小实现，带 CI | 未开始 |
 | 5 | README：只写有证据的声明 | 未开始 |
@@ -45,7 +45,9 @@
 1. **用户 + Claude**：第 2 阶段收尾，把 Firefox 一列放进仓库。`.github/workflows/phase2.yml` 在 CI 上重跑全部列（约 45 分钟，已经跑通过）。
    CI 日志末尾 `-----BEGIN KAOJU CI SUMMARY-----` 之后是小结（`runner/ci_summary.py`）：两个环境不一致的格子、`firefox-pw` 每一行的取值、
    原始记录的 SHA-256。原始记录在构件 `phase2-out` 里。云端工作区的出口策略下载不了构件（也下载不了日志文件，只能经 GitHub 工具读日志的尾部），
-   所以要**用户**从运行页面下载 `phase2-out` 传回来。拿到以后：核对 `raw/firefox-pw.jsonl.gz` 的 SHA-256 与日志一致，
+   所以要**用户**从运行页面下载 `phase2-out` 传回来。
+   报告“Firefox”一节现在引用的是运行 42937077529（构件 ID 13820409058，`raw/firefox-pw.jsonl.gz` 的 SHA-256
+   `25371d7041a7871bc796c7f7f8f8dd42722c4b9ad555653812c180b8a8d55751`）；构件过期或换了一次运行，就以新日志里的哈希为准并改报告。拿到以后：核对 `raw/firefox-pw.jsonl.gz` 的 SHA-256 与日志一致，
    放进 `research/phase2/out/raw/`，从构件的 `versions.json` 做出 `out/versions.d/firefox-pw.json`（`variants.firefox-pw` 加上 `env`），
    重跑 `derive.py`、`matrix.py`、`collect.py`、`tools/report_tables.py --update`，提交时注明来自哪次运行、哪个提交。
 2. 第 3 到 5 阶段，见 `docs/brief.md`。设计文档的输入是 1B 报告和第 2 阶段报告各自的“对设计的含义”一表，以及第 2 阶段的“已知坑清单”。
