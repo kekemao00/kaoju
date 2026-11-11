@@ -37,7 +37,7 @@
 7. **Node 内置的 `fetch` 把明文请求也放进 CONNECT 隧道**（`R01[node-fetch-env]=CONNECT 到 80 端口`），其余 9 列的明文请求都是绝对形式。
 8. **隧道首包都是 TLS ClientHello，但多数超过一个 TCP 包**（R06 全部是 TLS ClientHello；`R07[curl]=不超过 1460 字节`，
    `R07[requests,go,node-undici,chromium-pw]=超过 1460 字节`）。
-9. **Go 的一种常见写法会让两个用户共用一条隧道**（`R42[go]=用了别人的隧道`、`R124[go]=用了别人的连接`），前提见“已知坑清单”第 13 条。
+9. **Go 的一种写法会让两个用户共用一条隧道**（`R42[go]=用了别人的隧道`、`R124[go]=用了别人的连接`），前提见“已知坑清单”第 24 条。
 10. **SOCKS5 的认证不是人人都能配。** Playwright 拒绝给 SOCKS5 代理配凭据（`R117[chromium-pw]=不支持`），Node 的两种环境变量写法和 axios 根本没有 SOCKS5（`R110[node-fetch-env,node-http-env,node-axios]=不支持`）。
 
 仪器和数据的可信度，以及 Firefox 一列的状态，见“数据与仪器”。
