@@ -1,0 +1,88 @@
+# kaoju 配置的例子。字段的含义见 docs/design/06-config.md，结构由 config.schema.json 约束。
+# 口令和带凭据的地址不写在这个文件里：用 *_env 指向环境变量，或用 *_file 指向文件。
+version: 1
+
+listen:
+  - address: 127.0.0.1:7890            # HTTP 代理和 SOCKS5 同一个端口
+  - address: 127.0.0.1:7901            # 端口即会话：给配不了凭据的客户端（经 SOCKS5 的浏览器）
+    session:
+      account: alice
+      session: browser1
+      onfail: error
+
+admin:
+  address: 127.0.0.1:7891              # 只读管理 API 和 /metrics
+
+accounts:
+  - name: alice
+    password_env: KAOJU_ALICE_PASSWORD
+    max_connections: 256
+
+defaults:
+  tier: auto                           # verified / trusted / auto
+  onfail: error                        # error / rebind
+  ttl: 5m
+  life: 10m
+
+policy:
+  connect_ports:
+    verified: [443]
+    trusted: [80, 443]
+    direct: [80, 443]
+  direct:                              # 直连规则：命中的目标不经任何上游
+    - domain_suffix: internal.example
+  deny_targets: []                     # 在内置的私网、回环、链路本地、云元数据地址之外再加
+
+trusted:                               # 自有或付费的代理，只作兜底
+  - name: paid1
+    url_env: KAOJU_TRUSTED_PAID1       # 形如 socks5://用户:口令@主机:端口，放在环境变量里
+    max_connections: 50
+
+sources:
+  builtin: true                        # 出厂带的 14 个常规列表、4 个聚合器、11 个订阅
+  aggregators:
+    enabled: true
+    sample: 5000
+  disable: []                          # 按 id 停用出厂来源
+  lists:
+    - id: my-list
+      url: https://example.org/proxies.txt
+      protocol_hint: socks5
+      interval: 10m
+      license: 未声明
+      terms: https://example.org/terms
+  subscriptions: []
+
+probe:
+  rate: 20                             # 每秒新建连接数的上限
+  per_prefix24: 4
+  ports_per_ip: 8
+  pool_target: auto                    # 或者一个整数
+  verify_ttl: 10m
+
+observers:
+  public:
+    enabled: true
+    rate: 2                            # 每个公共回显服务每秒最多几次
+  judge:
+    url: https://judge.example.org
+    pin_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+
+routing:
+  strategy: round_robin                # round_robin / p2c / thompson
+  upstream_max_connections: 8
+  attempts: 3
+  attempt_timeout: 5s
+  connect_budget: 15s
+
+session:
+  observe_interval: 60s
+  max_egress_age: 120s
+  stable_observations: 3
+  sticky_min_age: 2h
+
+storage:
+  path: ./kaoju.db
+
+log:
+  level: info
