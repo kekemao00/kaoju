@@ -12,7 +12,7 @@
 **表名、列名和真实库相同，分析模块一行不改就能在上面跑**；只是列少了，地址、主机名、哈希换成了假名，几列自由文本换成了“等价的代表值”。
 
 ```sh
-# 下载发布附件，核对 SHA-256（写在发布说明和 docs/HANDOFF.md 里），解压
+# 下载发布附件，核对 SHA-256（写在 public/RELEASE.md 里），解压
 xz -d phase1b-public-v1.sqlite.xz
 # 在公开库上重算全部输出（4 核的机器上一个多小时；只要 Python 3.10 以上的标准库，不要 Go、不要证据文件、不联网）
 ./run_public.sh phase1b-public-v1.sqlite /tmp/phase1b-out
