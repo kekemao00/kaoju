@@ -1,0 +1,52 @@
+# 1B 分析脚本的自检：九个模块、事后分析、报告表格，以及公开数据用的假名和接缝（PUBLIC.md）。
+# 只用合成数据，不连接任何代理，不需要真实库。第三方 action 按提交哈希固定。
+name: phase1b
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "research/phase1b/**"
+      - "!research/phase1b/out/**"
+      - ".github/workflows/phase1b.yml"
+  pull_request:
+    paths:
+      - "research/phase1b/**"
+      - "!research/phase1b/out/**"
+      - ".github/workflows/phase1b.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase1b-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24.x"
+          cache: false
+      - name: 公开数据：假名、接缝、导出
+        working-directory: research/phase1b
+        run: |
+          python3 -I pub_pseudo.py
+          python3 -I pubdb.py
+          python3 -I pub_export.py --selftest
+      - name: 模块自检
+        working-directory: research/phase1b
+        run: |
+          set -e
+          for m in m_instrument m_availability m_lifetime m_freshness m_labels m_integrity m_mitm m_nodes m_literature m_posthoc report_tables; do
+            echo "::group::$m"
+            python3 -I "$m.py" --selftest
+            echo "::endgroup::"
+          done

@@ -73,6 +73,9 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pubdb  # noqa: E402  真实库与公开库之间的接缝（PUBLIC.md）
+
 MODULE = "m_mitm"
 OUTPUT_NAME = "mitm.json"
 PROTOCOL_VERSION = "1.2"
@@ -789,14 +792,13 @@ def _chk_row(ev, t, v):
     return (ev, t, 1 if v.get("ok") else 0, v.get("err_class"), v.get("chain_len"), v.get("root_org"))
 
 
-def verify_chains(db, data_dir, roots, certcheck_arg, hosts, ips, batch=CERTCHECK_BATCH, roots_note=None):
-    """对 m 里存下了证书链的尝试做校验。结果进 TEMP 表 leafinfo（每个证据文件一行，与时刻无关）和
-    chk（ts_epoch 为空的一行代表这个文件的全部尝试；要重算的文件每个不同尝试时刻一行）。返回给输出用的 certcheck 一节。
+LEAFINFO_COLS = ["ev", "parse_ok", "n_certs", "leaf_sha256", "name_judge", "name_basis", "san_n", "self_signed", "is_ca",
+                 "not_before_epoch", "not_after_epoch", "chain_nb_epoch", "chain_na_epoch", "subject_org", "issuer_org",
+                 "public_key", "sig_alg", "problem"]
+CHK_COLS = ["ev", "ts_epoch", "ok", "err_class", "chain_len", "root_org"]
 
-    粒度（DEFINITIONS“校验时刻”）：每个文件在 tmin、tmax 各校验一次；两端结果相同、且没有有效期边界落在 [tmin, tmax] 内，
-    就一行代表全部；否则把文件记进 TEMP 表 refine_ev，第二遍按每个不同的尝试时刻重算。
-    内存：文件清单（TEMP 表 evf）和重算清单都用游标逐行取；certcheck 按批调用（每批不超过 batch 次校验），结果边读边写 TEMP 表。
-    leaf 描述每个文件只要一次：只有 tmin 那一次让 certcheck 输出叶子，其余都带 noleaf。"""
+
+def _create_chain_tables(db):
     db.x("DROP TABLE IF EXISTS leafinfo")
     db.x("""CREATE TEMP TABLE leafinfo (ev TEXT PRIMARY KEY, parse_ok INTEGER, n_certs INTEGER, leaf_sha256 TEXT, name_judge INTEGER,
             name_basis TEXT, san_n INTEGER, self_signed INTEGER, is_ca INTEGER, not_before_epoch REAL, not_after_epoch REAL,
@@ -804,6 +806,58 @@ def verify_chains(db, data_dir, roots, certcheck_arg, hosts, ips, batch=CERTCHEC
     db.x("DROP TABLE IF EXISTS chk")
     db.x("CREATE TEMP TABLE chk (ev TEXT, ts_epoch REAL, ok INTEGER, err_class TEXT, chain_len INTEGER, root_org TEXT)")
     db.x("CREATE INDEX chk_key ON chk(ev, ts_epoch)")
+
+
+def _chain_scope(db):
+    """记下、取回证书链校验结果时的范围标记：时间窗不同，m 里的尝试不同，要校验的时刻也就不同。"""
+    return "fs=%r;fe=%r" % (getattr(db, "fs", None), getattr(db, "fe", None))
+
+
+def verify_chains(db, data_dir, roots, certcheck_arg, hosts, ips, batch=CERTCHECK_BATCH, roots_note=None):
+    """证书链校验的入口，结果在 TEMP 表 leafinfo、chk 和返回的 certcheck 一节里（见 _verify_chain_files）。
+
+    真实库：读证据文件、调 certcheck；设了 PHASE1B_RECORD 时把两张表和返回值记下来（pubdb.Recorder）。
+    公开库：证据文件不在，取回导出时记下的结果（PUBLIC.md“随库带上的中间结果”）。只带了默认时间窗那一次的，换了窗口会报错停下。
+    leafinfo 在公开库里有三处与真实库不同，都不进本模块的任何输出：有效期只留长度（not_before_epoch 归零）、
+    chain_nb_epoch / chain_na_epoch 为空、problem 只留“有没有”。"""
+    scope = _chain_scope(db)
+    if pubdb.is_public(db.con):
+        _create_chain_tables(db)
+        db.many("INSERT INTO leafinfo VALUES (%s)" % ",".join("?" * len(LEAFINFO_COLS)), pubdb.replay_rows(db.con, "chains_leafinfo", scope))
+        db.many("INSERT INTO chk VALUES (%s)" % ",".join("?" * len(CHK_COLS)), pubdb.replay_rows(db.con, "chains_chk", scope))
+        info = pubdb.replay_json(db.con, "chains_info", scope)
+        n_stored = int(db.scalar("SELECT COUNT(DISTINCT ev) FROM m WHERE ev_state = 'stored'") or 0)
+        if n_stored != info.get("stored_files"):
+            raise SystemExit("公开库带的证书链校验结果与这次要校验的文件数对不上（库里 %r 个，这次 %d 个）：换了参数？见 PUBLIC.md"
+                             % (info.get("stored_files"), n_stored))
+        note = pubdb.replay_json(db.con, "chains_roots_note", scope, missing_ok=True)
+        if note is not None and info.get("roots") is not None:
+            info["roots"]["roots_note"] = note
+        return info
+    info = _verify_chain_files(db, data_dir, roots, certcheck_arg, hosts, ips, batch=batch, roots_note=roots_note)
+    rec = pubdb.Recorder()
+    if rec.on:
+        core = json.loads(json.dumps(info))     # roots_note 是调用方给的说明（m_literature 不给），单独记，两个模块记下的其余内容必须相同
+        if core.get("roots") is not None:
+            core["roots"]["roots_note"] = None
+        rec.put_rows("chains_leafinfo", LEAFINFO_COLS, db.q("SELECT * FROM leafinfo ORDER BY rowid"), scope)
+        rec.put_rows("chains_chk", CHK_COLS, db.q("SELECT * FROM chk ORDER BY rowid"), scope)
+        rec.put_json("chains_info", core, scope)
+        if roots_note is not None:
+            rec.put_json("chains_roots_note", roots_note, scope)
+        rec.close()
+    return info
+
+
+def _verify_chain_files(db, data_dir, roots, certcheck_arg, hosts, ips, batch=CERTCHECK_BATCH, roots_note=None):
+    """对 m 里存下了证书链的尝试做校验。结果进 TEMP 表 leafinfo（每个证据文件一行，与时刻无关）和
+    chk（ts_epoch 为空的一行代表这个文件的全部尝试；要重算的文件每个不同尝试时刻一行）。返回给输出用的 certcheck 一节。
+
+    粒度（DEFINITIONS“校验时刻”）：每个文件在 tmin、tmax 各校验一次；两端结果相同、且没有有效期边界落在 [tmin, tmax] 内，
+    就一行代表全部；否则把文件记进 TEMP 表 refine_ev，第二遍按每个不同的尝试时刻重算。
+    内存：文件清单（TEMP 表 evf）和重算清单都用游标逐行取；certcheck 按批调用（每批不超过 batch 次校验），结果边读边写 TEMP 表。
+    leaf 描述每个文件只要一次：只有 tmin 那一次让 certcheck 输出叶子，其余都带 noleaf。"""
+    _create_chain_tables(db)
     db.x("DROP TABLE IF EXISTS refine_ev")
     db.x("CREATE TEMP TABLE refine_ev (ev TEXT PRIMARY KEY, path TEXT)")
 

@@ -35,6 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import m_integrity as mi  # noqa: E402  分类规则、DB、窗口、输出检查都用它的
+import pubdb  # noqa: E402  真实库与公开库之间的接缝（PUBLIC.md）
 import m_mitm as mm  # noqa: E402  证书名字的解析（dn_get）和地址正则
 
 MODULE = "m_posthoc"
@@ -296,7 +297,9 @@ def judge_info_page(db, data_dir):
                 key = "%s%s" % (proto or "?", "（TLS）" if tls else "")
                 jside["Host 是 judge 的名字"][key] = jside["Host 是 judge 的名字"].get(key, 0) + int(n)
         out["judge 收到的 GET /（noise 记录）"] = jside
-    if prefix is None or not data_dir or not db.has_table("evidence"):
+    # 公开库：正文不在，每个证据“是不是说明页”取回导出时记下的结果（PUBLIC.md“随库带上的中间结果”）
+    public = pubdb.is_public(db.con) and pubdb.has_replay(db.con, "body_infopage")
+    if prefix is None or (not data_dir and not public) or not db.has_table("evidence"):
         out["note"] = "没有比对正文：%s" % ("缺 --data" if not data_dir else (src if prefix is None else "库里没有 evidence 表"))
         return out
     evs = db.q("""SELECT ev, COUNT(*) FROM pcf WHERE body_change = ? AND ev IS NOT NULL GROUP BY ev""", (k,))
@@ -304,19 +307,36 @@ def judge_info_page(db, data_dir):
     paths = {h: p for h, p in db.q("SELECT hash, path FROM evidence WHERE ext = 'body'")}
     hit = set()
     unread = 0
+    states = dict(pubdb.replay_rows(db.con, "body_infopage")) if public else {}   # 证据哈希 → hit / miss / unread
     for ev, _n in evs:
+        if public:
+            if ev not in states:
+                raise SystemExit("公开库的 pub_body_infopage 里没有这个正文证据的结果：换了参数？见 PUBLIC.md")
+            if states[ev] == "unread":
+                unread += 1
+            elif states[ev] == "hit":
+                hit.add(ev)
+            continue
         path = paths.get(ev)
         if not path:
+            states[ev] = "unread"
             unread += 1
             continue
         try:
             with open(os.path.join(data_dir, path), "rb") as f:
                 head = f.read(len(prefix))
         except OSError:
+            states[ev] = "unread"
             unread += 1
             continue
+        states[ev] = "miss"
         if head == prefix:
+            states[ev] = "hit"
             hit.add(ev)
+    rec = pubdb.Recorder()
+    if rec.on and not public:
+        rec.put_rows("body_infopage", ["ev", "state"], [(ev, states[ev]) for ev, _n in evs])
+        rec.close()
     db.x("DROP TABLE IF EXISTS temp.infoev")
     db.x("CREATE TEMP TABLE infoev (ev TEXT PRIMARY KEY)")
     db.con.executemany("INSERT INTO infoev VALUES (?)", [(e,) for e in hit])
@@ -376,7 +396,15 @@ def mitm_fleet(db, fs, aws_ranges):
     groups = {r[0]: bool(r[1]) for r in db.q("SELECT ip, big FROM mip")}
     nets = None
     aws_note = None
-    if aws_ranges:
+    # 公开库：地址是假名，对不上 AWS 的地址段；每个中间人 IP 落在哪个区域取回导出时记下的结果（真实库上没给 --aws-ranges 就没有）
+    public = pubdb.is_public(db.con)
+    aws_region = None
+    if public:
+        if pubdb.has_replay(db.con, "aws"):
+            aws_region = dict(pubdb.replay_rows(db.con, "aws"))
+            aws_note = pubdb.replay_json(db.con, "aws_note")
+    elif aws_ranges:
+        aws_region = {}
         import ipaddress
         with open(aws_ranges, encoding="utf-8") as f:
             d = json.load(f)
@@ -396,12 +424,17 @@ def mitm_fleet(db, fs, aws_ranges):
             if len(s_) < min_ips:
                 small |= s_ & ipset
         g["签发者组织出现在不到 %d 个 IP 上的（不列名字，合并后的 IP 数）" % min_ips] = len(small)
-        if nets is not None:
+        if aws_region is not None:
             import ipaddress
             regions = []
             for ip in ips:
-                a = ipaddress.ip_address(ip)
-                r = next((reg for net, reg in nets if a.version == net.version and a in net), None)
+                if public:
+                    if ip not in aws_region:
+                        raise SystemExit("公开库的 pub_aws 里没有这个 IP 的结果：换了参数？见 PUBLIC.md")
+                else:
+                    a = ipaddress.ip_address(ip)
+                    aws_region[ip] = next((reg for net, reg in nets if a.version == net.version and a in net), None)
+                r = aws_region[ip]
                 if r is not None:
                     regions.append(r)
             g["落在 AWS 公布地址段里的 IP"] = ratio(len(regions), len(ips))
@@ -409,6 +442,11 @@ def mitm_fleet(db, fs, aws_ranges):
         out[name] = g
     if aws_note:
         out["AWS 地址段文件"] = aws_note
+    rec = pubdb.Recorder()
+    if rec.on and not public and aws_region is not None:
+        rec.put_rows("aws", ["ip", "region"], sorted(aws_region.items()))
+        rec.put_json("aws_note", aws_note)
+        rec.close()
     out["note"] = ("签发者组织只是证书里写的名字：链按公共根校验不过（m_mitm），名字可以随便写，不代表真是这家 CA 签的。"
                    "整体上出现在不到 %d 个 IP 上的组织名不列出（同 m_mitm 的门槛：只在一两个 IP 上出现的名字能把一家真实机构和一个具体的代理对上号）" % mm.ORG_MIN_IPS)
     return out

@@ -1,0 +1,1176 @@
+{
+ "public_version": "1",
+ "概况": {
+  "登记的 IPv4（不同值）": 62189,
+  "公网 /24": 33182,
+  "保持原样的 /24（out/ 里点了名的）": 101,
+  "judge 的名字个数": 1,
+  "judge 的地址个数（不含回环）": 1,
+  "证书上的组织名（不同值）": 1249,
+  "其中原样保留的（至少 5 个代理 IP）": 112
+ },
+ "表": {
+  "agg_member": {
+   "行": 15398,
+   "公开的列": [
+    "rid",
+    "agg_sample_rid",
+    "ts",
+    "ts_epoch",
+    "src",
+    "seq",
+    "cand",
+    "cand_ip",
+    "cand_port",
+    "prefix24"
+   ],
+   "换过的列": {
+    "cand": "cand",
+    "cand_ip": "ip",
+    "prefix24": "p24"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "agg_sample": {
+   "行": 4,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "src",
+    "union",
+    "exclusive",
+    "sample",
+    "seed"
+   ],
+   "换过的列": {},
+   "不出的列": [
+    "members",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "att": {
+   "行": 5069198,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "visit",
+    "cand",
+    "proto",
+    "dst",
+    "kind",
+    "arm",
+    "nonce",
+    "tcp_ok",
+    "tcp_ms",
+    "tcp_class",
+    "tcp_code",
+    "tcp_sniff",
+    "hs_ok",
+    "hs_ms",
+    "hs_class",
+    "hs_code",
+    "hs_sniff",
+    "tls_ok",
+    "tls_ms",
+    "tls_class",
+    "tls_ver",
+    "tls_cipher",
+    "tls_leaf",
+    "tls_subj",
+    "tls_issuer",
+    "tls_self",
+    "tls_sniff",
+    "http_ok",
+    "http_ms",
+    "http_class",
+    "http_code",
+    "http_sniff",
+    "http_len",
+    "http_sha",
+    "http_pre",
+    "http_suf",
+    "http_sim",
+    "http_canary",
+    "http_flags",
+    "http_added",
+    "http_ev",
+    "class",
+    "ip",
+    "ev",
+    "ms",
+    "cand_kind",
+    "cand_ip",
+    "cand_port",
+    "prefix24",
+    "tls_detail_enum"
+   ],
+   "换过的列": {
+    "cand": "cand",
+    "dst": "dst",
+    "nonce": "nonce",
+    "tls_leaf": "leaf",
+    "tls_subj": "subj",
+    "tls_issuer": "issuer",
+    "http_sha": "hash",
+    "http_ev": "hash",
+    "ip": "ip",
+    "ev": "hash",
+    "cand_ip": "ip",
+    "prefix24": "p24"
+   },
+   "不出的列": [
+    "tcp_detail",
+    "tcp_banner",
+    "hs_detail",
+    "hs_banner",
+    "tls_detail",
+    "tls_banner",
+    "http_detail",
+    "http_banner",
+    "http_hdr",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "att_http_added": {
+   "行": 1619164,
+   "公开的列": [
+    "rid",
+    "att_rid",
+    "header"
+   ],
+   "换过的列": {},
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "att_http_flag": {
+   "行": 1836,
+   "公开的列": [
+    "rid",
+    "att_rid",
+    "flag"
+   ],
+   "换过的列": {},
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "bad_line": {
+   "行": 0,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "lineno",
+    "why"
+   ],
+   "换过的列": {},
+   "不出的列": [
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "cand_src": {
+   "行": 101867,
+   "公开的列": [
+    "rid",
+    "key",
+    "src_idx",
+    "src_name",
+    "labels",
+    "label_names"
+   ],
+   "换过的列": {
+    "key": "cand"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "cands": {
+   "行": 75064,
+   "公开的列": [
+    "rid",
+    "key",
+    "ip",
+    "port",
+    "prefix24",
+    "group",
+    "srcs",
+    "n_srcs",
+    "listed",
+    "labels",
+    "label_names",
+    "ts",
+    "ts_epoch",
+    "first_seen",
+    "first_seen_epoch",
+    "delisted_at",
+    "delisted_at_epoch",
+    "next",
+    "next_epoch",
+    "visits",
+    "fails",
+    "state",
+    "state_name",
+    "ok_mask",
+    "ok_protos",
+    "ever_ok",
+    "last_ok",
+    "last_ok_epoch",
+    "last_full",
+    "last_full_epoch",
+    "last_extra",
+    "last_extra_epoch"
+   ],
+   "换过的列": {
+    "key": "cand",
+    "ip": "ip",
+    "prefix24": "p24"
+   },
+   "不出的列": [
+    "first_seen_raw",
+    "delisted_at_raw",
+    "next_raw",
+    "last_ok_raw",
+    "last_full_raw",
+    "last_extra_raw",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "error": {
+   "行": 0,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "what"
+   ],
+   "换过的列": {},
+   "不出的列": [
+    "err",
+    "stack",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "evidence": {
+   "行": 80482,
+   "公开的列": [
+    "hash",
+    "ext",
+    "bytes",
+    "path"
+   ],
+   "换过的列": {
+    "hash": "hash",
+    "path": "ev_path"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "file_kind": {
+   "行": 875,
+   "公开的列": [
+    "file_id",
+    "k",
+    "n"
+   ],
+   "换过的列": {},
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "files": {
+   "行": 224,
+   "公开的列": [
+    "id",
+    "name",
+    "prefix",
+    "hour",
+    "compressed",
+    "bytes",
+    "status",
+    "records",
+    "bad_lines",
+    "first_ts",
+    "last_ts",
+    "note"
+   ],
+   "换过的列": {},
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "list_event": {
+   "行": 2619085,
+   "公开的列": [
+    "rid",
+    "snap_rid",
+    "ts",
+    "ts_epoch",
+    "src",
+    "label",
+    "cand",
+    "event",
+    "base",
+    "cand_ip",
+    "cand_port",
+    "prefix24"
+   ],
+   "换过的列": {
+    "cand": "cand",
+    "cand_ip": "ip",
+    "prefix24": "p24"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "misc": {
+   "行": 0,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "k",
+    "ts",
+    "ts_epoch"
+   ],
+   "换过的列": {},
+   "不出的列": [
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "nerr": {
+   "行": 275266,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "round",
+    "node",
+    "arm",
+    "msg"
+   ],
+   "换过的列": {
+    "node": "node",
+    "msg": "nerr_msg"
+   },
+   "不出的列": [
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "node": {
+   "行": 31561,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "src",
+    "id",
+    "scheme",
+    "host",
+    "method",
+    "aid",
+    "flow",
+    "net",
+    "sec",
+    "insecure",
+    "why"
+   ],
+   "换过的列": {
+    "id": "node",
+    "host": "node_host"
+   },
+   "不出的列": [
+    "port",
+    "hdr",
+    "sni",
+    "plugin",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "node_event": {
+   "行": 118715,
+   "公开的列": [
+    "rid",
+    "nsnap_rid",
+    "ts",
+    "ts_epoch",
+    "src",
+    "node",
+    "event",
+    "base"
+   ],
+   "换过的列": {
+    "node": "node"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "noise": {
+   "行": 39982,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "remote",
+    "tls",
+    "tls_ver",
+    "cipher",
+    "sni",
+    "alpn",
+    "hello_fp",
+    "method",
+    "target",
+    "proto",
+    "host",
+    "nonce",
+    "age_s",
+    "kind",
+    "req_canary",
+    "status",
+    "err",
+    "n"
+   ],
+   "换过的列": {
+    "remote": "ip",
+    "sni": "host",
+    "target": "target",
+    "host": "host",
+    "nonce": "nonce",
+    "err": "nonempty"
+   },
+   "不出的列": [
+    "rport",
+    "headers",
+    "raw_head",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "noise_dropped": {
+   "行": 6,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "remote",
+    "tls",
+    "tls_ver",
+    "cipher",
+    "sni",
+    "alpn",
+    "hello_fp",
+    "method",
+    "target",
+    "proto",
+    "host",
+    "nonce",
+    "age_s",
+    "kind",
+    "req_canary",
+    "status",
+    "err",
+    "n"
+   ],
+   "换过的列": {
+    "remote": "ip",
+    "sni": "host",
+    "target": "target",
+    "host": "host",
+    "nonce": "nonce",
+    "err": "nonempty"
+   },
+   "不出的列": [
+    "rport",
+    "headers",
+    "raw_head",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "npre": {
+   "行": 948842,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "round",
+    "node",
+    "dns_ok",
+    "dns_ms",
+    "dns_class",
+    "dns_code",
+    "dns_sniff",
+    "ips",
+    "tcp_ok",
+    "tcp_ms",
+    "tcp_class",
+    "tcp_code",
+    "tcp_sniff",
+    "class",
+    "n_ips"
+   ],
+   "换过的列": {
+    "node": "node",
+    "ips": "json_ips"
+   },
+   "不出的列": [
+    "dns_detail",
+    "dns_banner",
+    "tcp_detail",
+    "tcp_banner",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "npre_ip": {
+   "行": 1000623,
+   "公开的列": [
+    "rid",
+    "npre_rid",
+    "node",
+    "round",
+    "seq",
+    "ip"
+   ],
+   "换过的列": {
+    "node": "node",
+    "ip": "ip"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "nround": {
+   "行": 140,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "round",
+    "known",
+    "listed",
+    "supported",
+    "backoff",
+    "tcp_ok",
+    "probed",
+    "ok_strict",
+    "ok_linked",
+    "bad_config",
+    "batches",
+    "ms",
+    "err"
+   ],
+   "换过的列": {
+    "err": "nonempty"
+   },
+   "不出的列": [
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "nsnap": {
+   "行": 1540,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "src",
+    "status",
+    "err",
+    "bytes",
+    "lines",
+    "unparsed",
+    "n",
+    "base",
+    "changed",
+    "ms",
+    "n_add",
+    "n_del"
+   ],
+   "换过的列": {
+    "err": "nonempty"
+   },
+   "不出的列": [
+    "sha256",
+    "add",
+    "del",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "req": {
+   "行": 1116154,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "remote",
+    "tls",
+    "tls_ver",
+    "cipher",
+    "sni",
+    "alpn",
+    "hello_fp",
+    "method",
+    "target",
+    "proto",
+    "host",
+    "nonce",
+    "age_s",
+    "kind",
+    "req_canary",
+    "status",
+    "err",
+    "n"
+   ],
+   "换过的列": {
+    "remote": "ip",
+    "sni": "host",
+    "target": "target",
+    "host": "host",
+    "nonce": "nonce",
+    "err": "nonempty"
+   },
+   "不出的列": [
+    "rport",
+    "headers",
+    "raw_head",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "req_dropped": {
+   "行": 0,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "remote",
+    "tls",
+    "tls_ver",
+    "cipher",
+    "sni",
+    "alpn",
+    "hello_fp",
+    "method",
+    "target",
+    "proto",
+    "host",
+    "nonce",
+    "age_s",
+    "kind",
+    "req_canary",
+    "status",
+    "err",
+    "n"
+   ],
+   "换过的列": {
+    "remote": "ip",
+    "sni": "host",
+    "target": "target",
+    "host": "host",
+    "nonce": "nonce",
+    "err": "nonempty"
+   },
+   "不出的列": [
+    "rport",
+    "headers",
+    "raw_head",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "req_header": {
+   "行": 10016388,
+   "公开的列": [
+    "rid",
+    "req_rid",
+    "nonce",
+    "seq",
+    "name",
+    "value"
+   ],
+   "换过的列": {
+    "nonce": "nonce",
+    "value": "header_value"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "self_ips": {
+   "行": 5,
+   "公开的列": [
+    "ip",
+    "source",
+    "n"
+   ],
+   "换过的列": {
+    "ip": "ip"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "self_leaf": {
+   "行": 3,
+   "公开的列": [
+    "leaf",
+    "source",
+    "n",
+    "first_ts",
+    "last_ts"
+   ],
+   "换过的列": {
+    "leaf": "leaf"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "self_names": {
+   "行": 3,
+   "公开的列": [
+    "name",
+    "source",
+    "n"
+   ],
+   "换过的列": {
+    "name": "judge_name"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "snap": {
+   "行": 22095,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "src",
+    "label",
+    "status",
+    "err",
+    "bytes",
+    "n",
+    "q_lines",
+    "q_garbage",
+    "q_hostname",
+    "q_no_port",
+    "q_bad_range",
+    "q_duplicate",
+    "q_with_credentials",
+    "base",
+    "agg",
+    "ms",
+    "changed",
+    "n_add",
+    "n_del"
+   ],
+   "换过的列": {
+    "err": "nonempty"
+   },
+   "不出的列": [
+    "etag",
+    "sha256",
+    "add",
+    "del",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "start": {
+   "行": 1,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "resumed_candidates",
+    "load_err",
+    "http_port",
+    "https_port",
+    "probe",
+    "payload_sha256",
+    "judge_host_sha8",
+    "judge_ip_sha8",
+    "raw"
+   ],
+   "换过的列": {
+    "load_err": "nonempty",
+    "http_port": "port_rank",
+    "https_port": "port_rank",
+    "probe": "probe",
+    "payload_sha256": "json_hashes",
+    "judge_host_sha8": "sha8",
+    "judge_ip_sha8": "sha8",
+    "raw": "start_raw"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "stat": {
+   "行": 875,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "up_min",
+    "visits",
+    "records",
+    "pool"
+   ],
+   "换过的列": {},
+   "不出的列": [
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "stat_pool": {
+   "行": 8750,
+   "公开的列": [
+    "rid",
+    "stat_rid",
+    "ts",
+    "ts_epoch",
+    "key",
+    "value"
+   ],
+   "换过的列": {},
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "stop": {
+   "行": 1,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "visits"
+   ],
+   "换过的列": {},
+   "不出的列": [
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "tls_fail": {
+   "行": 35142,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "remote",
+    "tls",
+    "tls_ver",
+    "cipher",
+    "sni",
+    "alpn",
+    "hello_fp",
+    "method",
+    "target",
+    "proto",
+    "host",
+    "nonce",
+    "age_s",
+    "kind",
+    "req_canary",
+    "status",
+    "err",
+    "n"
+   ],
+   "换过的列": {
+    "remote": "ip",
+    "sni": "host",
+    "target": "target",
+    "host": "host",
+    "nonce": "nonce",
+    "err": "nonempty"
+   },
+   "不出的列": [
+    "rport",
+    "headers",
+    "raw_head",
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "version": {
+   "行": 1,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "version"
+   ],
+   "换过的列": {},
+   "不出的列": [
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "visit": {
+   "行": 2278229,
+   "公开的列": [
+    "rid",
+    "file_id",
+    "ts",
+    "ts_epoch",
+    "visit",
+    "cand",
+    "group",
+    "n",
+    "prev",
+    "state",
+    "full",
+    "listed",
+    "labels",
+    "tried",
+    "ok",
+    "auth",
+    "aborted",
+    "next_min",
+    "ms",
+    "cand_ip",
+    "cand_port",
+    "prefix24",
+    "n_ok"
+   ],
+   "换过的列": {
+    "cand": "cand",
+    "cand_ip": "ip",
+    "prefix24": "p24"
+   },
+   "不出的列": [
+    "raw"
+   ],
+   "SPEC 里有而库里没有的列": []
+  },
+  "visit_ok": {
+   "行": 568011,
+   "公开的列": [
+    "rid",
+    "visit_rid",
+    "visit",
+    "cand",
+    "ts",
+    "ts_epoch",
+    "proto"
+   ],
+   "换过的列": {
+    "cand": "cand"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  },
+  "visit_tried": {
+   "行": 3656443,
+   "公开的列": [
+    "rid",
+    "visit_rid",
+    "visit",
+    "cand",
+    "seq",
+    "proto"
+   ],
+   "换过的列": {
+    "cand": "cand"
+   },
+   "不出的列": [],
+   "SPEC 里有而库里没有的列": []
+  }
+ },
+ "随库带上的中间结果": {
+  "pub_aws": {
+   "行": 312,
+   "列": [
+    "ip",
+    "region"
+   ],
+   "换过的列": {
+    "ip": "ip"
+   }
+  },
+  "pub_body_infopage": {
+   "行": 30084,
+   "列": [
+    "ev",
+    "state"
+   ],
+   "换过的列": {
+    "ev": "hash"
+   }
+  },
+  "pub_body_links": {
+   "行": 30639,
+   "列": [
+    "ev",
+    "readable",
+    "n_https",
+    "n_http"
+   ],
+   "换过的列": {
+    "ev": "hash"
+   }
+  },
+  "pub_chains_chk": {
+   "行": 21030,
+   "列": [
+    "ev",
+    "ts_epoch",
+    "ok",
+    "err_class",
+    "chain_len",
+    "root_org"
+   ],
+   "换过的列": {
+    "ev": "hash"
+   }
+  },
+  "pub_chains_leafinfo": {
+   "行": 21030,
+   "列": [
+    "ev",
+    "parse_ok",
+    "n_certs",
+    "leaf_sha256",
+    "name_judge",
+    "name_basis",
+    "san_n",
+    "self_signed",
+    "is_ca",
+    "not_before_epoch",
+    "not_after_epoch",
+    "chain_nb_epoch",
+    "chain_na_epoch",
+    "subject_org",
+    "issuer_org",
+    "public_key",
+    "sig_alg",
+    "problem"
+   ],
+   "换过的列": {
+    "ev": "hash",
+    "leaf_sha256": "leaf",
+    "not_before_epoch": "nb_zero",
+    "not_after_epoch": "na_rel",
+    "chain_nb_epoch": "null",
+    "chain_na_epoch": "null",
+    "subject_org": "json_orgs",
+    "issuer_org": "json_orgs",
+    "problem": "nonempty"
+   }
+  },
+  "pub_json:chains_info": {
+   "字节": 967
+  },
+  "pub_json:chains_roots_note": {
+   "字节": 54
+  },
+  "pub_json:aws_note": {
+   "字节": 111
+  },
+  "pub_file": [
+   "preflight.txt",
+   "summary.json"
+  ]
+ },
+ "meta": {
+  "带上的键": [
+   "ingest_version",
+   "ingested_at_utc",
+   "python",
+   "sqlite",
+   "files_read",
+   "records_total",
+   "records_by_kind",
+   "first_ts",
+   "last_ts",
+   "duplicate_hour_files",
+   "unknown_fields",
+   "misplaced_kinds",
+   "judge_host_sha8（假名）",
+   "judge_ip_sha8（假名）",
+   "payload_len",
+   "state_cands",
+   "state_tz_offsets",
+   "state_sampled",
+   "state_mtime_utc",
+   "sources_sha256",
+   "sources_names",
+   "cand_src_names",
+   "cand_src_check",
+   "evidence_files",
+   "evidence_bytes",
+   "summary_json（脱敏，同 summary.json）",
+   "output_whitelist",
+   "output_rules",
+   "ingest_seconds",
+   "judge_leaf_observed（假名）",
+   "judge_leaf_observed_count",
+   "judge_leaf_pem_sha256（假名）",
+   "judge_leaf_pem_present",
+   "judge_leaf_pem_matches_observed",
+   "judge_leaf_tls_ok_extra（假名）",
+   "judge_leaf_tls_ok_extra_count"
+  ],
+  "不出的键": [
+   "data_dir",
+   "state_file",
+   "sources_file"
+  ],
+  "其中 SPEC 没提到的键": []
+ },
+ "索引": {
+  "重建的索引": 43,
+  "没建的索引（列不在公开库里）": []
+ },
+ "假名个数（不同原值）": {
+  "ip": 58807,
+  "cand": 116445,
+  "node": 31561,
+  "hash": 91681,
+  "leaf": 15183,
+  "p24": 21346,
+  "host": 22,
+  "subj": 6233,
+  "issuer": 1739,
+  "org": 1249,
+  "nerr": 20076,
+  "nonce": 1824970
+ },
+ "代表值核对": {
+  "nerr.msg 不同原文": 20076,
+  "nerr.msg 类别": [
+   "config: x",
+   "dns",
+   "eof",
+   "other",
+   "refused",
+   "timeout",
+   "x509"
+  ]
+ },
+ "其他核对": {
+  "证书名字（不同值）逐个核对": 7972,
+  "请求头的值里带出探测器地址（留下假名）": 559519
+ }
+}
