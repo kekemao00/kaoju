@@ -12,9 +12,7 @@
   "chromium-pw",
   "firefox-pw"
  ],
- "columns_missing": [
-  "firefox-pw"
- ],
+ "columns_missing": [],
  "columns_with_data": [
   "curl",
   "curl-anyauth",
@@ -25,7 +23,8 @@
   "node-undici",
   "node-agents",
   "node-axios",
-  "chromium-pw"
+  "chromium-pw",
+  "firefox-pw"
  ],
  "matrix_version": 1,
  "pcap_gate": "on",
@@ -86,7 +85,23 @@
      "stable": true,
      "value": "绝对形式"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "绝对形式",
+      "2": "绝对形式",
+      "3": "绝对形式"
+     },
+     "stable": true,
+     "value": "绝对形式"
+    },
     "go": {
      "cases": {
       "A01": [
@@ -267,7 +282,23 @@
      "stable": true,
      "value": "Proxy-Connection: Keep-Alive"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "Connection: keep-alive",
+      "2": "Connection: keep-alive",
+      "3": "Connection: keep-alive"
+     },
+     "stable": true,
+     "value": "Connection: keep-alive"
+    },
     "go": {
      "cases": {
       "A01": [
@@ -453,7 +484,23 @@
      "stable": true,
      "value": "a.kaoju.test:443 HTTP/1.1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "a.kaoju.test:443 HTTP/1.1",
+      "2": "a.kaoju.test:443 HTTP/1.1",
+      "3": "a.kaoju.test:443 HTTP/1.1"
+     },
+     "stable": true,
+     "value": "a.kaoju.test:443 HTTP/1.1"
+    },
     "go": {
      "cases": {
       "A02": [
@@ -634,7 +681,23 @@
      "stable": true,
      "value": "Host, User-Agent, Proxy-Connection"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "User-Agent, Proxy-Connection, Connection, Host",
+      "2": "User-Agent, Proxy-Connection, Connection, Host",
+      "3": "User-Agent, Proxy-Connection, Connection, Host"
+     },
+     "stable": true,
+     "value": "User-Agent, Proxy-Connection, Connection, Host"
+    },
     "go": {
      "cases": {
       "A02": [
@@ -815,7 +878,23 @@
      "stable": true,
      "value": "同目标"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "同目标",
+      "2": "同目标",
+      "3": "同目标"
+     },
+     "stable": true,
+     "value": "同目标"
+    },
     "go": {
      "cases": {
       "A02": [
@@ -1002,7 +1081,23 @@
      "stable": true,
      "value": "TLS ClientHello"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "TLS ClientHello",
+      "2": "TLS ClientHello",
+      "3": "TLS ClientHello"
+     },
+     "stable": true,
+     "value": "TLS ClientHello"
+    },
     "go": {
      "cases": {
       "A02": [
@@ -1222,7 +1317,36 @@
      "stable": true,
      "value": "不超过 1460 字节"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "data": {
+      "1": {
+       "client_hello_len": 1894
+      },
+      "2": {
+       "client_hello_len": 1894
+      },
+      "3": {
+       "client_hello_len": 1894
+      }
+     },
+     "footnotes": [
+      "ClientHello 长度（TLS 记录长度加 5 字节记录头）：3 遍里最小 1894、最大 1894 字节"
+     ],
+     "per_repeat": {
+      "1": "超过 1460 字节",
+      "2": "超过 1460 字节",
+      "3": "超过 1460 字节"
+     },
+     "stable": true,
+     "value": "超过 1460 字节"
+    },
     "go": {
      "cases": {
       "A02": [
@@ -1494,7 +1618,23 @@
      "stable": true,
      "value": "h2,http/1.1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "h2,http/1.1",
+      "2": "h2,http/1.1",
+      "3": "h2,http/1.1"
+     },
+     "stable": true,
+     "value": "h2,http/1.1"
+    },
     "go": {
      "cases": {
       "A02": [
@@ -1675,7 +1815,23 @@
      "stable": true,
      "value": "HTTP/2.0"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "HTTP/2.0",
+      "2": "HTTP/2.0",
+      "3": "HTTP/2.0"
+     },
+     "stable": true,
+     "value": "HTTP/2.0"
+    },
     "go": {
      "cases": {
       "A02": [
@@ -1856,7 +2012,23 @@
      "stable": true,
      "value": "1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A03": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "1",
+      "3": "1"
+     },
+     "stable": true,
+     "value": "1"
+    },
     "go": {
      "cases": {
       "A03": [
@@ -2037,7 +2209,23 @@
      "stable": true,
      "value": "1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A04": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "2",
+      "3": "1"
+     },
+     "stable": false,
+     "value": "1 / 2"
+    },
     "go": {
      "cases": {
       "A04": [
@@ -2218,7 +2406,23 @@
      "stable": true,
      "value": "2"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A05": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "2",
+      "2": "2",
+      "3": "2"
+     },
+     "stable": true,
+     "value": "2"
+    },
     "go": {
      "cases": {
       "A05": [
@@ -2399,7 +2603,23 @@
      "stable": true,
      "value": "1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A06": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "1",
+      "3": "2"
+     },
+     "stable": false,
+     "value": "1 / 2"
+    },
     "go": {
      "cases": {
       "A06": [
@@ -2580,7 +2800,23 @@
      "stable": true,
      "value": "1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A07": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "1",
+      "3": "1"
+     },
+     "stable": true,
+     "value": "1"
+    },
     "go": {
      "cases": {
       "A07": [
@@ -2764,7 +3000,23 @@
      "stable": true,
      "value": "6"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A08": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "6",
+      "2": "6",
+      "3": "6"
+     },
+     "stable": true,
+     "value": "6"
+    },
     "go": {
      "cases": {
       "A08": [
@@ -2948,7 +3200,23 @@
      "stable": true,
      "value": "5"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A09": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "6",
+      "2": "6",
+      "3": "6"
+     },
+     "stable": true,
+     "value": "6"
+    },
     "go": {
      "cases": {
       "A09": [
@@ -3129,7 +3397,23 @@
      "stable": true,
      "value": "经代理"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A10": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "经代理",
+      "2": "经代理",
+      "3": "经代理"
+     },
+     "stable": true,
+     "value": "经代理"
+    },
     "go": {
      "cases": {
       "A10": [
@@ -3312,7 +3596,23 @@
      "stable": true,
      "value": "经代理"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A11": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "经代理",
+      "2": "经代理",
+      "3": "经代理"
+     },
+     "stable": true,
+     "value": "经代理"
+    },
     "go": {
      "cases": {
       "A11": [
@@ -3493,7 +3793,23 @@
      "stable": true,
      "value": "Content-Length"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A12": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "Content-Length",
+      "2": "Content-Length",
+      "3": "Content-Length"
+     },
+     "stable": true,
+     "value": "Content-Length"
+    },
     "go": {
      "cases": {
       "A12": [
@@ -3677,7 +3993,23 @@
      "stable": true,
      "value": "发"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A14": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "不发",
+      "2": "不发",
+      "3": "不发"
+     },
+     "stable": true,
+     "value": "不发"
+    },
     "go": {
      "cases": {
       "A14": [
@@ -3845,7 +4177,23 @@
      "stable": true,
      "value": "不适用"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A15": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "CONNECT 到 80 端口，隧道里明文升级",
+      "2": "CONNECT 到 80 端口，隧道里明文升级",
+      "3": "CONNECT 到 80 端口，隧道里明文升级"
+     },
+     "stable": true,
+     "value": "CONNECT 到 80 端口，隧道里明文升级"
+    },
     "go": {
      "cases": {
       "A15": []
@@ -3962,7 +4310,23 @@
      "stable": true,
      "value": "不适用"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A16": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "CONNECT 到 443 端口，隧道里 TLS",
+      "2": "CONNECT 到 443 端口，隧道里 TLS",
+      "3": "CONNECT 到 443 端口，隧道里 TLS"
+     },
+     "stable": true,
+     "value": "CONNECT 到 443 端口，隧道里 TLS"
+    },
     "go": {
      "cases": {
       "A16": []
@@ -4127,7 +4491,33 @@
      "stable": true,
      "value": "G / C / 05"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A01": [
+       "1",
+       "2",
+       "3"
+      ],
+      "A02": [
+       "1",
+       "2",
+       "3"
+      ],
+      "S01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "G / C / 05",
+      "2": "G / C / 05",
+      "3": "G / C / 05"
+     },
+     "stable": true,
+     "value": "G / C / 05"
+    },
     "go": {
      "cases": {
       "A01": [
@@ -4416,7 +4806,33 @@
      "stable": true,
      "value": "完整"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "A12": [
+       "1",
+       "2",
+       "3"
+      ],
+      "A13": [
+       "1",
+       "2",
+       "3"
+      ],
+      "A14": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "完整",
+      "2": "完整",
+      "3": "完整"
+     },
+     "stable": true,
+     "value": "完整"
+    },
     "go": {
      "cases": {
       "A12": [
@@ -4667,7 +5083,23 @@
      "stable": true,
      "value": "等 407 再带"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "等 407 再带",
+      "2": "等 407 再带",
+      "3": "等 407 再带"
+     },
+     "stable": true,
+     "value": "等 407 再带"
+    },
     "go": {
      "cases": {
       "B01": [
@@ -4848,7 +5280,23 @@
      "stable": true,
      "value": "等 407 再带"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "等 407 再带",
+      "2": "等 407 再带",
+      "3": "等 407 再带"
+     },
+     "stable": true,
+     "value": "等 407 再带"
+    },
     "go": {
      "cases": {
       "B02": [
@@ -5029,7 +5477,23 @@
      "stable": true,
      "value": "原连接"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原连接",
+      "2": "原连接",
+      "3": "原连接"
+     },
+     "stable": true,
+     "value": "原连接"
+    },
     "go": {
      "cases": {
       "B01": [
@@ -5210,7 +5674,23 @@
      "stable": true,
      "value": "原连接"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原连接",
+      "2": "原连接",
+      "3": "原连接"
+     },
+     "stable": true,
+     "value": "原连接"
+    },
     "go": {
      "cases": {
       "B02": [
@@ -5391,7 +5871,23 @@
      "stable": true,
      "value": "成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B03": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "成功",
+      "2": "成功",
+      "3": "成功"
+     },
+     "stable": true,
+     "value": "成功"
+    },
     "go": {
      "cases": {
       "B03": [
@@ -5572,7 +6068,23 @@
      "stable": true,
      "value": "成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B04": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "成功",
+      "2": "成功",
+      "3": "成功"
+     },
+     "stable": true,
+     "value": "成功"
+    },
     "go": {
      "cases": {
       "B04": [
@@ -5753,7 +6265,23 @@
      "stable": true,
      "value": "6/3"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B05": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "5/1",
+      "2": "6/1",
+      "3": "6/1"
+     },
+     "stable": false,
+     "value": "5/1 / 6/1"
+    },
     "go": {
      "cases": {
       "B05": [
@@ -5934,7 +6462,23 @@
      "stable": true,
      "value": "等 407 再带"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B06": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "先带",
+      "2": "先带",
+      "3": "先带"
+     },
+     "stable": true,
+     "value": "先带"
+    },
     "go": {
      "cases": {
       "B06": [
@@ -6115,7 +6659,23 @@
      "stable": true,
      "value": "1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B07": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "1",
+      "3": "1"
+     },
+     "stable": true,
+     "value": "1"
+    },
     "go": {
      "cases": {
       "B07": [
@@ -6376,7 +6936,48 @@
      "stable": true,
      "value": "没有"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B02": [
+       "1",
+       "2",
+       "3"
+      ],
+      "B07": [
+       "1",
+       "2",
+       "3"
+      ],
+      "B08": [
+       "1",
+       "2",
+       "3"
+      ],
+      "B09": [
+       "1",
+       "2",
+       "3"
+      ],
+      "B10": [
+       "1",
+       "2",
+       "3"
+      ],
+      "B12": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "没有",
+      "2": "没有",
+      "3": "没有"
+     },
+     "stable": true,
+     "value": "没有"
+    },
     "go": {
      "cases": {
       "B02": [
@@ -6774,7 +7375,33 @@
      "stable": true,
      "value": "都成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B08": [
+       "1",
+       "2",
+       "3"
+      ],
+      "B09": [
+       "1",
+       "2",
+       "3"
+      ],
+      "B10": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "都成功",
+      "2": "都成功",
+      "3": "都成功"
+     },
+     "stable": true,
+     "value": "都成功"
+    },
     "go": {
      "cases": {
       "B08": [
@@ -7031,7 +7658,23 @@
      "stable": true,
      "value": "各用各的凭据"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B11": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "各用各的凭据",
+      "2": "各用各的凭据",
+      "3": "各用各的凭据"
+     },
+     "stable": true,
+     "value": "各用各的凭据"
+    },
     "go": {
      "cases": {
       "B11": [
@@ -7216,7 +7859,23 @@
      "stable": true,
      "value": "各开各的隧道"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B12": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "各开各的隧道",
+      "2": "各开各的隧道",
+      "3": "各开各的隧道"
+     },
+     "stable": true,
+     "value": "各开各的隧道"
+    },
     "go": {
      "cases": {
       "B12": [
@@ -7409,7 +8068,23 @@
      "stable": true,
      "value": "2"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B13": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "1",
+      "3": "1"
+     },
+     "stable": true,
+     "value": "1"
+    },
     "go": {
      "cases": {
       "B13": [
@@ -7596,7 +8271,23 @@
      "stable": true,
      "value": "6"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "B14": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "1",
+      "3": "1"
+     },
+     "stable": true,
+     "value": "1"
+    },
     "go": {
      "cases": {
       "B14": [
@@ -7777,7 +8468,23 @@
      "stable": true,
      "value": "拿到 407 响应"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "C01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "报错，没提 407",
+      "2": "报错，没提 407",
+      "3": "报错，没提 407"
+     },
+     "stable": true,
+     "value": "报错，没提 407"
+    },
     "go": {
      "cases": {
       "C01": [
@@ -7958,7 +8665,23 @@
      "stable": true,
      "value": "报错，提到 407"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "C02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "报错，没提 407",
+      "2": "报错，没提 407",
+      "3": "报错，没提 407"
+     },
+     "stable": true,
+     "value": "报错，没提 407"
+    },
     "go": {
      "cases": {
       "C02": [
@@ -8139,7 +8862,23 @@
      "stable": true,
      "value": "1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "C03": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "1",
+      "3": "1"
+     },
+     "stable": true,
+     "value": "1"
+    },
     "go": {
      "cases": {
       "C03": [
@@ -8320,7 +9059,23 @@
      "stable": true,
      "value": "1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "C04": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "1",
+      "3": "1"
+     },
+     "stable": true,
+     "value": "1"
+    },
     "go": {
      "cases": {
       "C04": [
@@ -8501,7 +9256,23 @@
      "stable": true,
      "value": "报错，提到 407"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "C04": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "报错，没提 407",
+      "2": "报错，没提 407",
+      "3": "报错，没提 407"
+     },
+     "stable": true,
+     "value": "报错，没提 407"
+    },
     "go": {
      "cases": {
       "C04": [
@@ -8682,7 +9453,23 @@
      "stable": true,
      "value": "报错，提到 403"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "C05": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "报错，没提 403",
+      "2": "报错，没提 403",
+      "3": "报错，没提 403"
+     },
+     "stable": true,
+     "value": "报错，没提 403"
+    },
     "go": {
      "cases": {
       "C05": [
@@ -8863,7 +9650,23 @@
      "stable": true,
      "value": "拿到 403 响应"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "C08": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "拿到 403 响应",
+      "2": "拿到 403 响应",
+      "3": "拿到 403 响应"
+     },
+     "stable": true,
+     "value": "拿到 403 响应"
+    },
     "go": {
      "cases": {
       "C08": [
@@ -9044,7 +9847,23 @@
      "stable": true,
      "value": "不带"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "C06": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "不带",
+      "2": "不带",
+      "3": "不带"
+     },
+     "stable": true,
+     "value": "不带"
+    },
     "go": {
      "cases": {
       "C06": [
@@ -9225,7 +10044,23 @@
      "stable": true,
      "value": "不带"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "C07": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "不带",
+      "2": "不带",
+      "3": "不带"
+     },
+     "stable": true,
+     "value": "不带"
+    },
     "go": {
      "cases": {
       "C07": [
@@ -9406,7 +10241,23 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D01": [
@@ -9590,7 +10441,23 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D02": [
@@ -9800,7 +10667,23 @@
      "stable": true,
      "value": "变了"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D03": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D03": [
@@ -9984,7 +10867,23 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D04": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D04": [
@@ -10168,7 +11067,23 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D05": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D05": [
@@ -10352,7 +11267,23 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D06": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D06": [
@@ -10536,7 +11467,23 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D07": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D07": [
@@ -10720,7 +11667,23 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D08": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D08": [
@@ -10930,7 +11893,23 @@
      "stable": true,
      "value": "变了"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D09": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D09": [
@@ -11114,7 +12093,23 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D10": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D10": [
@@ -11298,7 +12293,23 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "D11": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "原样",
+      "2": "原样",
+      "3": "原样"
+     },
+     "stable": true,
+     "value": "原样"
+    },
     "go": {
      "cases": {
       "D11": [
@@ -11482,7 +12493,23 @@
      "stable": true,
      "value": "状态码"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "都看不到",
+      "2": "都看不到",
+      "3": "都看不到"
+     },
+     "stable": true,
+     "value": "都看不到"
+    },
     "go": {
      "cases": {
       "E01": [
@@ -11672,7 +12699,28 @@
      "stable": true,
      "value": "状态码、原因短语、响应头"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "caveats": [
+      "用的手段是 Playwright 的 page.on('requestfailed') 事件，它只给出一个错误名，没有响应的任何内容；Firefox 的 MOZ_LOG 不在 Playwright 的文档里，没有采用。这一格的“看不到”与“没有这样的手段”实质相同。"
+     ],
+     "footnotes": [
+      "手段：Playwright 的 page.on('requestfailed') 事件里的 request.failure().errorText，按发生时刻落在哪一步的时间窗里归属（并发的子步骤共用同一个时间窗）。Firefox 的 MOZ_LOG 不在 Playwright 的文档里，没有采用。"
+     ],
+     "per_repeat": {
+      "1": "都看不到",
+      "2": "都看不到",
+      "3": "都看不到"
+     },
+     "stable": true,
+     "value": "都看不到"
+    },
     "go": {
      "cases": {
       "E01": [
@@ -11871,7 +12919,23 @@
      "stable": true,
      "value": "状态码"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "都看不到",
+      "2": "都看不到",
+      "3": "都看不到"
+     },
+     "stable": true,
+     "value": "都看不到"
+    },
     "go": {
      "cases": {
       "E02": [
@@ -12052,7 +13116,23 @@
      "stable": true,
      "value": "1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E03": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "1",
+      "3": "1"
+     },
+     "stable": true,
+     "value": "1"
+    },
     "go": {
      "cases": {
       "E03": [
@@ -12233,7 +13313,23 @@
      "stable": true,
      "value": "看不到"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E04": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "看不到",
+      "2": "看不到",
+      "3": "看不到"
+     },
+     "stable": true,
+     "value": "看不到"
+    },
     "go": {
      "cases": {
       "E04": [
@@ -12423,7 +13519,28 @@
      "stable": true,
      "value": "看得到"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E04": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "caveats": [
+      "用的手段是 Playwright 的 page.on('requestfailed') 事件，它只给出一个错误名，没有响应的任何内容；Firefox 的 MOZ_LOG 不在 Playwright 的文档里，没有采用。这一格的“看不到”与“没有这样的手段”实质相同。"
+     ],
+     "footnotes": [
+      "手段：Playwright 的 page.on('requestfailed') 事件里的 request.failure().errorText，按发生时刻落在哪一步的时间窗里归属（并发的子步骤共用同一个时间窗）。Firefox 的 MOZ_LOG 不在 Playwright 的文档里，没有采用。"
+     ],
+     "per_repeat": {
+      "1": "看不到",
+      "2": "看不到",
+      "3": "看不到"
+     },
+     "stable": true,
+     "value": "看不到"
+    },
     "go": {
      "cases": {
       "E04": [
@@ -12628,7 +13745,23 @@
      "stable": true,
      "value": "状态码、正文"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E05": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "状态码、原因短语、响应头、正文",
+      "2": "状态码、原因短语、响应头、正文",
+      "3": "状态码、原因短语、响应头、正文"
+     },
+     "stable": true,
+     "value": "状态码、原因短语、响应头、正文"
+    },
     "go": {
      "cases": {
       "E05": [
@@ -12812,7 +13945,23 @@
      "stable": true,
      "value": "看不到"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E06": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "看得到",
+      "2": "看得到",
+      "3": "看得到"
+     },
+     "stable": true,
+     "value": "看得到"
+    },
     "go": {
      "cases": {
       "E06": [
@@ -12996,7 +14145,23 @@
      "stable": true,
      "value": "新连接"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E07": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "新连接",
+      "2": "新连接",
+      "3": "新连接"
+     },
+     "stable": true,
+     "value": "新连接"
+    },
     "go": {
      "cases": {
       "E07": [
@@ -13186,7 +14351,23 @@
      "stable": true,
      "value": "成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "E07": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "成功",
+      "2": "成功",
+      "3": "成功"
+     },
+     "stable": true,
+     "value": "成功"
+    },
     "go": {
      "cases": {
       "E07": [
@@ -13367,7 +14548,23 @@
      "stable": true,
      "value": "换新连接，成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "换新连接，成功",
+      "2": "换新连接，成功",
+      "3": "换新连接，成功"
+     },
+     "stable": true,
+     "value": "换新连接，成功"
+    },
     "go": {
      "cases": {
       "F01": [
@@ -13553,7 +14750,23 @@
      "stable": true,
      "value": "换新隧道，成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "换新隧道，成功",
+      "2": "换新隧道，成功",
+      "3": "换新隧道，成功"
+     },
+     "stable": true,
+     "value": "换新隧道，成功"
+    },
     "go": {
      "cases": {
       "F02": [
@@ -13738,7 +14951,23 @@
      "stable": true,
      "value": "2 次，成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F03": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "未触发",
+      "2": "2 次，成功",
+      "3": "2 次，成功"
+     },
+     "stable": false,
+     "value": "未触发 / 2 次，成功"
+    },
     "go": {
      "cases": {
       "F03": [
@@ -13928,7 +15157,23 @@
      "stable": true,
      "value": "2 次，成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F04": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "2 次，成功",
+      "2": "2 次，成功",
+      "3": "2 次，成功"
+     },
+     "stable": true,
+     "value": "2 次，成功"
+    },
     "go": {
      "cases": {
       "F04": [
@@ -14118,7 +15363,23 @@
      "stable": true,
      "value": "2 次，成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F05": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "2 次，成功",
+      "2": "2 次，成功",
+      "3": "2 次，成功"
+     },
+     "stable": true,
+     "value": "2 次，成功"
+    },
     "go": {
      "cases": {
       "F05": [
@@ -14311,7 +15572,23 @@
      "stable": true,
      "value": "2 次，成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F06": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "2 次，成功",
+      "2": "2 次，成功",
+      "3": "2 次，成功"
+     },
+     "stable": true,
+     "value": "2 次，成功"
+    },
     "go": {
      "cases": {
       "F06": [
@@ -14504,7 +15781,23 @@
      "stable": true,
      "value": "1 次，失败"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F07": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "2 次，成功",
+      "2": "2 次，成功",
+      "3": "2 次，成功"
+     },
+     "stable": true,
+     "value": "2 次，成功"
+    },
     "go": {
      "cases": {
       "F07": [
@@ -14688,7 +15981,23 @@
      "stable": true,
      "value": "1 次，失败"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F08": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "2 次，成功",
+      "2": "2 次，成功",
+      "3": "2 次，成功"
+     },
+     "stable": true,
+     "value": "2 次，成功"
+    },
     "go": {
      "cases": {
       "F08": [
@@ -14869,7 +16178,23 @@
      "stable": true,
      "value": "2 次，成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F09": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "未触发",
+      "2": "未触发",
+      "3": "2 次，成功"
+     },
+     "stable": false,
+     "value": "未触发 / 2 次，成功"
+    },
     "go": {
      "cases": {
       "F09": [
@@ -15059,7 +16384,23 @@
      "stable": true,
      "value": "2 次，成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F10": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "2 次，成功",
+      "2": "2 次，成功",
+      "3": "2 次，成功"
+     },
+     "stable": true,
+     "value": "2 次，成功"
+    },
     "go": {
      "cases": {
       "F10": [
@@ -15252,7 +16593,23 @@
      "stable": true,
      "value": "1 次，失败"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F11": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "2 次，成功",
+      "2": "2 次，成功",
+      "3": "2 次，成功"
+     },
+     "stable": true,
+     "value": "2 次，成功"
+    },
     "go": {
      "cases": {
       "F11": [
@@ -15433,7 +16790,23 @@
      "stable": true,
      "value": "2 次，成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "F12": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1 次，失败",
+      "2": "1 次，失败",
+      "3": "1 次，失败"
+     },
+     "stable": true,
+     "value": "1 次，失败"
+    },
     "go": {
      "cases": {
       "F12": [
@@ -15623,7 +16996,23 @@
      "stable": true,
      "value": "00,01"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "00",
+      "2": "00",
+      "3": "00"
+     },
+     "stable": true,
+     "value": "00"
+    },
     "go": {
      "cases": {
       "S01": [
@@ -15812,7 +17201,25 @@
      "stable": true,
      "value": "00,01,02"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S05": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S05": [
@@ -15999,7 +17406,23 @@
      "stable": true,
      "value": "域名"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "域名",
+      "2": "域名",
+      "3": "域名"
+     },
+     "stable": true,
+     "value": "域名"
+    },
     "go": {
      "cases": {
       "S01": [
@@ -16195,7 +17618,26 @@
      "stable": true,
      "value": "IPv6"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S03": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "caveats": [
+      "取值取决于本机 localhost 解析出来的第一个地址，换一台机器可能不同。"
+     ],
+     "footnotes": [],
+     "per_repeat": {
+      "1": "域名",
+      "2": "域名",
+      "3": "域名"
+     },
+     "stable": true,
+     "value": "域名"
+    },
     "go": {
      "cases": {
       "S03": [
@@ -16413,7 +17855,23 @@
      "stable": true,
      "value": "其他"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S04": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "把域名交给了代理",
+      "2": "把域名交给了代理",
+      "3": "把域名交给了代理"
+     },
+     "stable": true,
+     "value": "把域名交给了代理"
+    },
     "go": {
      "cases": {
       "S04": [
@@ -16605,7 +18063,23 @@
      "stable": true,
      "value": "TLS ClientHello"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S01": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "TLS ClientHello",
+      "2": "TLS ClientHello",
+      "3": "TLS ClientHello"
+     },
+     "stable": true,
+     "value": "TLS ClientHello"
+    },
     "go": {
      "cases": {
       "S01": [
@@ -16792,7 +18266,23 @@
      "stable": true,
      "value": "明文 HTTP"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S02": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "明文 HTTP",
+      "2": "明文 HTTP",
+      "3": "明文 HTTP"
+     },
+     "stable": true,
+     "value": "明文 HTTP"
+    },
     "go": {
      "cases": {
       "S02": [
@@ -16981,7 +18471,25 @@
      "stable": true,
      "value": "成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S05": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S05": [
@@ -17170,7 +18678,25 @@
      "stable": true,
      "value": "成功"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S06": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S06": [
@@ -17363,7 +18889,23 @@
      "stable": true,
      "value": "提到认证或方法"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S07": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "只说失败",
+      "2": "只说失败",
+      "3": "只说失败"
+     },
+     "stable": true,
+     "value": "只说失败"
+    },
     "go": {
      "cases": {
       "S07": [
@@ -17558,7 +19100,25 @@
      "stable": true,
      "value": "只说失败"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S08": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S08": [
@@ -17777,7 +19337,33 @@
      "stable": true,
      "value": "能区分"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S09": [
+       "1",
+       "2",
+       "3"
+      ],
+      "S10": [
+       "1",
+       "2",
+       "3"
+      ],
+      "S11": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "不能区分",
+      "2": "不能区分",
+      "3": "不能区分"
+     },
+     "stable": true,
+     "value": "不能区分"
+    },
     "go": {
      "cases": {
       "S09": [
@@ -18040,7 +19626,23 @@
      "stable": true,
      "value": "1"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S12": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "1",
+      "2": "2",
+      "3": "1"
+     },
+     "stable": false,
+     "value": "1 / 2"
+    },
     "go": {
      "cases": {
       "S12": [
@@ -18227,7 +19829,23 @@
      "stable": true,
      "value": "6"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S13": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [],
+     "per_repeat": {
+      "1": "6",
+      "2": "6",
+      "3": "6"
+     },
+     "stable": true,
+     "value": "6"
+    },
     "go": {
      "cases": {
       "S13": [
@@ -18416,7 +20034,25 @@
      "stable": true,
      "value": "各开各的连接"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S14": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browser.newContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S14": [
@@ -18610,7 +20246,25 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S15": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S15": [
@@ -18803,7 +20457,25 @@
      "stable": true,
      "value": "变了"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S16": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S16": [
@@ -18994,7 +20666,25 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S17": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S17": [
@@ -19185,7 +20875,25 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S18": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S18": [
@@ -19377,7 +21085,25 @@
      "stable": true,
      "value": "客户端报错"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S19": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S19": [
@@ -19573,7 +21299,25 @@
      "stable": true,
      "value": "变了"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S20": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S20": [
@@ -19764,7 +21508,25 @@
      "stable": true,
      "value": "原样"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S21": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S21": [
@@ -19959,7 +21721,25 @@
      "stable": true,
      "value": "变了"
     },
-    "firefox-pw": null,
+    "firefox-pw": {
+     "cases": {
+      "S22": [
+       "1",
+       "2",
+       "3"
+      ]
+     },
+     "footnotes": [
+      "不支持的原因：Playwright 不接受给 SOCKS5 代理配凭据：照常调用了一次，launch 抛出 \"Error: browserType.launchPersistentContext: Browser does not support socks5 proxy authentication\""
+     ],
+     "per_repeat": {
+      "1": "不支持",
+      "2": "不支持",
+      "3": "不支持"
+     },
+     "stable": true,
+     "value": "不支持"
+    },
     "go": {
      "cases": {
       "S22": [

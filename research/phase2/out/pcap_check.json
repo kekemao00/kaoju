@@ -47,6 +47,21 @@
    },
    "tcpdump_dropped_runs": 0
   },
+  "firefox-pw": {
+   "conns_compared": 389,
+   "driver_nonzero_exit_runs": 0,
+   "driver_timeout_runs": 0,
+   "fields_compared": 8732,
+   "fields_mismatched": 0,
+   "not_ok": [],
+   "runner_error_runs": 0,
+   "runs": 270,
+   "skipped": 0,
+   "status": {
+    "ok": 270
+   },
+   "tcpdump_dropped_runs": 0
+  },
   "go": {
    "conns_compared": 378,
    "driver_nonzero_exit_runs": 0,
@@ -171,10 +186,10 @@
  },
  "note": "由 runner/collect.py 从 raw/ 数出来；ok 是逐字节相同，prefix 是抓包多出仪器关连接之后的字节（见 PROTOCOL.md）",
  "total": {
-  "runs": 2922,
+  "runs": 3192,
   "skipped": 48,
   "status": {
-   "ok": 2910,
+   "ok": 3180,
    "prefix": 12
   }
  }

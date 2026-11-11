@@ -293,4 +293,6 @@ CI 把它们作为构件保存；比对结果（`out/pcap_check.json`）进仓�
   - “两个环境”一节说 `firefox-pw` 的数据“从 CI 取回后提交”。取回的办法：CI 把全部输出存成构件 `phase2-out`，
     日志末尾由 `runner/ci_summary.py` 打出这一列每一行的取值和原始记录的 SHA-256。本机的出口策略下载不了构件，
     原始记录要由人从运行页面下载构件后交回，放进 `out/raw/` 时用日志里的哈希核对。
+    实际入库的是 GitHub Actions 运行 42937077529 的 `raw/firefox-pw.jsonl.gz`（构件 zip 和这个文件的 SHA-256 都与日志一致），
+    只取这一个文件，其余列仍用本机的数据；来源记在 `out/versions.d/firefox-pw.json` 的 `provenance`。
   - `out/observations/` 不进仓库（约 26 MB，可由 `derive.py` 从 `out/raw/` 重新生成）。

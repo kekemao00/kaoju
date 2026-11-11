@@ -18,34 +18,34 @@
 一句话：会话不能绑在连接上，错误不能只写在响应头和正文里，用户名参数只能用一小撮安全字符。这三条是数据直接给出的。
 
 1. **凭据什么时候发，分两派。** 大多数客户端第一个请求就带凭据（`R30[curl,requests,go,node-fetch-env,node-http-env,node-undici,node-agents,node-axios]=先带`），
-   Chromium 和加了 `--proxy-anyauth` 的 curl 等 407（`R30[curl-anyauth,chromium-pw]=等 407 再带`）。
-   等 407 的两个都在原连接上重试（`R32[curl-anyauth,chromium-pw]=原连接`、`R33[curl-anyauth,chromium-pw]=原连接`），
-   407 带 `Connection: close` 也能走通（`R34[curl-anyauth,chromium-pw]=成功`、`R35[curl-anyauth,chromium-pw]=成功`）。
+   两个浏览器和加了 `--proxy-anyauth` 的 curl 等 407（`R30[curl-anyauth,chromium-pw,firefox-pw]=等 407 再带`）。
+   等 407 的三个都在原连接上重试（`R32[curl-anyauth,chromium-pw,firefox-pw]=原连接`、`R33[curl-anyauth,chromium-pw,firefox-pw]=原连接`），
+   407 带 `Connection: close` 也能走通（`R34[curl-anyauth,chromium-pw,firefox-pw]=成功`、`R35[curl-anyauth,chromium-pw,firefox-pw]=成功`）。
    代理不要求认证时，先带的那一派照样把凭据发出来（`R52[curl,requests,go,node-undici,node-agents,node-axios]=带`）。
-2. **密码错了没有客户端会反复试。** 全部 10 列都只带着凭据试一次（`R47[curl,curl-anyauth,requests,go,node-fetch-env,node-http-env,node-undici,node-agents,node-axios,chromium-pw]=1`）。
-3. **用户名的字节不一定原样到达。** 只含字母、数字、连字符、下划线、点的用户名，HTTP 入口上 10 列都原样（R60、R61），SOCKS5 入口上能配凭据的 6 列也都原样（R125）。
+2. **密码错了没有客户端会反复试。** 全部 11 列都只带着凭据试一次（`R47[curl,curl-anyauth,requests,go,node-fetch-env,node-http-env,node-undici,node-agents,node-axios,chromium-pw,firefox-pw]=1`）。
+3. **用户名的字节不一定原样到达。** 只含字母、数字、连字符、下划线、点的用户名，HTTP 入口上 11 列都原样（R60、R61），SOCKS5 入口上能配凭据的 6 列也都原样（R125）。
    出了这个范围就各有各的坑：curl 把 `-U` 里的百分号转义解开；requests 遇到非 Latin-1 的用户名直接抛异常；
    SOCKS5 下 requests 的用户名到 255 字节就坏了，undici 把百分号转义原样发出去；空密码在三个客户端上不能用。见“已知坑清单”第 3 组。
 4. **CONNECT 被拒时，调用方能看到的很少。** 响应头和正文在默认用法下大多看不到：
-   `R80[curl,curl-anyauth,node-fetch-env,node-undici]=状态码`、`R80[go]=原因短语`、`R80[chromium-pw]=都看不到`。
-   隧道建成时 200 里附加的头，10 列默认都看不到（R84）。503 带 `Retry-After` 没有一个客户端自动重试（R83）。
+   `R80[curl,curl-anyauth,node-fetch-env,node-undici]=状态码`、`R80[go]=原因短语`、`R80[chromium-pw,firefox-pw]=都看不到`。
+   隧道建成时 200 里附加的头，11 列默认都看不到（R84）。503 带 `Retry-After` 没有一个客户端自动重试（R83）。
 5. **连接复用差别很大，会话不能按连接算。** 同一个源连续 3 个 HTTPS 请求，有的开 1 条隧道，有的开 3 条
-   （`R10[curl,requests,go,chromium-pw]=1`、`R10[node-agents,node-axios]=3`）；6 个并发在源站只说 HTTP/1.1 时全部开 6 条（R15）。
+   （`R10[curl,requests,go,chromium-pw,firefox-pw]=1`、`R10[node-agents,node-axios]=3`）；6 个并发在源站只说 HTTP/1.1 时全部开 6 条（R15）。
 6. **连接被关以后，有的客户端会自己把请求再发一遍，POST 也发。** 复用的连接在请求发出后被代理关掉：
-   `R92[curl,go,chromium-pw]=2 次，成功`，POST 也一样的有 `R93[curl,curl-anyauth,chromium-pw]=2 次，成功`。
+   `R92[curl,go,chromium-pw]=2 次，成功`，POST 也一样的有 `R93[curl,curl-anyauth,chromium-pw,firefox-pw]=2 次，成功`。
    Go 只重发 GET（`R93[go]=1 次，失败`）。requests 都不重发（`R92[requests]=1 次，失败`）。
-   Firefox 在 CI 上的表现更进一步，连新连接上的第一个请求被关也重发（见“Firefox”一节，原始记录还没进仓库）。
-7. **Node 内置的 `fetch` 把明文请求也放进 CONNECT 隧道**（`R01[node-fetch-env]=CONNECT 到 80 端口`），其余 9 列的明文请求都是绝对形式。
+   Firefox 更进一步，连新连接上的第一个请求被关也重发（`R96[firefox-pw]=2 次，成功`），别的 10 列都不重发。
+7. **Node 内置的 `fetch` 把明文请求也放进 CONNECT 隧道**（`R01[node-fetch-env]=CONNECT 到 80 端口`），其余 10 列的明文请求都是绝对形式。
 8. **隧道首包都是 TLS ClientHello，但多数超过一个 TCP 包**（R06 全部是 TLS ClientHello；`R07[curl]=不超过 1460 字节`，
-   `R07[requests,go,node-undici,chromium-pw]=超过 1460 字节`）。
+   `R07[requests,go,node-undici,chromium-pw,firefox-pw]=超过 1460 字节`）。
 9. **Go 的一种写法会让两个用户共用一条隧道**（`R42[go]=用了别人的隧道`、`R124[go]=用了别人的连接`），前提见“已知坑清单”第 24 条。
-10. **SOCKS5 的认证不是人人都能配。** Playwright 拒绝给 SOCKS5 代理配凭据（`R117[chromium-pw]=不支持`），Node 的两种环境变量写法和 axios 根本没有 SOCKS5（`R110[node-fetch-env,node-http-env,node-axios]=不支持`）。
+10. **SOCKS5 的认证不是人人都能配。** Playwright 拒绝给 SOCKS5 代理配凭据，两个浏览器都是（`R117[chromium-pw,firefox-pw]=不支持`），Node 的两种环境变量写法和 axios 根本没有 SOCKS5（`R110[node-fetch-env,node-http-env,node-axios]=不支持`）。
 
-仪器和数据的可信度见“数据与仪器”。Firefox 一列在 CI 上跑出来了，但原始记录还没进仓库，单列在“Firefox”一节，上面 10 点都不含它。
+仪器和数据的可信度见“数据与仪器”。Firefox 一列只能在 CI 上跑，原始记录从 CI 的构件取回入库，来源见“Firefox”一节。
 
 <!-- BEGIN report_tables：由 research/phase2/tools/report_tables.py 生成，不要手改 -->
 
-**规模。** 用例 90 个（A 组 16、B 组 14、C 组 8、D 组 11、E 组 7、F 组 12、S 组 22），每个 3 遍；矩阵 104 行 × 11 列，其中有数据的 10 列，没有数据的列：`firefox-pw`。
+**规模。** 用例 90 个（A 组 16、B 组 14、C 组 8、D 组 11、E 组 7、F 组 12、S 组 22），每个 3 遍；矩阵 104 行 × 11 列，其中有数据的 11 列。
 
 **仪器自检。** 参照客户端 `rawref` 一列与手写答案比较 104 行，不一致 0 行，结论：通过。
 
@@ -63,7 +63,7 @@
 | `node-agents` | node 22.23.4；http-proxy-agent 9.1.0；https-proxy-agent 9.1.0；socks-proxy-agent 10.1.0；socks 2.8.10 | 2026-11-10T23:41:48Z | Ubuntu 24.04.5 LTS，内核 6.18.44-fc-v338 |
 | `node-axios` | node 22.23.4；axios 1.21.1；axios 自带的 https-proxy-agent 5.0.1；follow-redirects 1.16.3 | 2026-11-10T23:41:48Z | Ubuntu 24.04.5 LTS，内核 6.18.44-fc-v338 |
 | `chromium-pw` | playwright 1.63.0；browser_version 153.0.8010.12；node v22.23.4 | 2026-11-10T23:35:08Z | Ubuntu 24.04.5 LTS，内核 6.18.44-fc-v338 |
-| `firefox-pw` | （没有数据） | | |
+| `firefox-pw` | playwright 1.63.0；browser_version 155.0；node v22.23.4 | 2026-11-11T01:13:16Z | Ubuntu 24.04.5 LTS，内核 7.0.0-1017-azure |
 | `rawref` | rawref 1 | 2026-11-10T23:35:22Z | Ubuntu 24.04.5 LTS，内核 6.18.44-fc-v338 |
 
 **运行次数和抓包核对**（`out/pcap_check.json`）
@@ -73,6 +73,7 @@
 | `chromium-pw` | 270 | 0 | 270 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `curl` | 264 | 6 | 261 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `curl-anyauth` | 264 | 6 | 261 | 3 | 0 | 0 | 0 | 0 | 0 |
+| `firefox-pw` | 270 | 0 | 270 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `go` | 264 | 6 | 264 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `node-agents` | 264 | 6 | 264 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `node-axios` | 264 | 6 | 264 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -81,7 +82,7 @@
 | `node-undici` | 264 | 6 | 264 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `rawref` | 270 | 0 | 264 | 6 | 0 | 0 | 0 | 0 | 0 |
 | `requests` | 264 | 6 | 264 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 合计 | 2922 | 48 | 2910 | 12 | 0 | 0 | 0 | 0 | 0 |
+| 合计 | 3192 | 48 | 3180 | 12 | 0 | 0 | 0 | 0 | 0 |
 
 **实测与预期**（`out/expectation_diff.md`；预期写于实测之前）
 
@@ -97,10 +98,10 @@
 | `node-agents` | 104 | 104 | 0 | 0 |  |
 | `node-axios` | 104 | 104 | 0 | 0 |  |
 | `chromium-pw` | 104 | 103 | 1 | 0 | R89 |
-| `firefox-pw` | 0 | | | | （没有实测数据） |
-| 合计 | 1037 | 1020 | 17 | | |
+| `firefox-pw` | 103 | 96 | 7 | 1 | R11、R13、R81、R85、R92、R98、R122 |
+| 合计 | 1140 | 1116 | 24 | | |
 
-**矩阵里的格子。** 各遍取值不同（不稳定）的 0 格；落到“其他：”的 3 格；“不支持”的 86 格；挂了读数须知的 79 格（`caveats.json` 共 18 条）。
+**矩阵里的格子。** 各遍取值不同（不稳定）的 6 格；落到“其他：”的 3 格；“不支持”的 99 格；挂了读数须知的 82 格（`caveats.json` 共 19 条）。
 
 **规范条款**（`spec/clauses/`，引文由 `spec/check_quotes.py` 逐字核对）
 
@@ -125,12 +126,12 @@ PROTOCOL 的每个问题对应一项设计决定。第 3 阶段的设计文档�
 | 问题 | 设计决定 | 数据给出的回答 |
 | --- | --- | --- |
 | 凭据什么时候发，407 之后怎么重试 | 407 响应怎么写 | 两种客户端都要照顾：第一个请求就带凭据的要直接放行（9110-11.3-3 允许），不带的要回 407 并带 `Proxy-Authenticate`（9110-11.7.1-1 是 MUST）。407 要自带长度并保持连接（9112-9.3-8），等 407 的两列都在原连接上重试；带 `Connection: close` 也能用，但白白多一次握手。凭据错回 407，被策略拒绝回 403（9110-15.5.4-1），客户端都只试一次 |
-| 哪些客户端没法配凭据 | “端口即会话”照顾谁 | HTTP 代理的凭据，测过的 10 列都能配。SOCKS5 的凭据：Playwright 的 Chromium 配不了，Node 的环境变量写法和 axios 没有 SOCKS5。“端口即会话”首先是给浏览器走 SOCKS5 准备的 |
+| 哪些客户端没法配凭据 | “端口即会话”照顾谁 | HTTP 代理的凭据，测过的 11 列都能配。SOCKS5 的凭据：Playwright 驱动的两个浏览器都配不了，Node 的环境变量写法和 axios 没有 SOCKS5。“端口即会话”首先是给浏览器走 SOCKS5 准备的 |
 | 用户名的字节是不是原样 | 用户名参数的语法 | 只用字母、数字、连字符、下划线、点；不用冒号、百分号、加号、斜杠、@、空格和非 ASCII 字符；总长控制在 127 字节以内（requests 在 SOCKS5 下 255 字节已经出错，128 到 254 之间没有测，按它的缺陷推断同样会错，未验证）；不能要求空密码 |
 | 换用户名会不会串 | 会话绑定在哪一层 | 绑在每个请求（HTTP 明文）和每条隧道（CONNECT、SOCKS5）带来的凭据上，不绑在 TCP 连接上（9110-3.3-3 是 MUST NOT）。隧道建成以后里面走谁的流量网关看不见：Go 的一种写法会把第二个用户的请求放进第一个用户的隧道，网关防不了，只能写进文档 |
 | 请求经代理时长什么样 | 首字节分流；“隧道首包必须是 TLS” | 首字节分流成立：三种入口的第一个字节分别是 `G`（或别的方法首字母）、`C`、`0x05`（R23）。“隧道首包必须是 TLS”不能只看第一个 TCP 包能不能解析出完整的 ClientHello：8 列的 ClientHello 超过 1460 字节，要么只看记录头的 5 个字节，要么攒够一条记录再判。会误伤两类：Node 内置 `fetch` 的明文请求（CONNECT 到 80 端口）和 `ws://`（`R21[chromium-pw]=CONNECT 到 80 端口，隧道里明文升级`） |
 | 连接怎么复用 | 并发上限、空闲超时、会话计数 | 一个“会话”对应的连接数从 1 条到每请求 1 条都有，并发时普遍 6 条。单用户的并发连接上限不能低于 6；粘性会话按用户名里的会话 ID 计，不按连接计。空闲连接由代理先关，10 列都能换新连接继续（R90、R91，`node-fetch-env` 的 R90 没测到） |
-| 出错时调用方看得到什么 | 报错通道 | 状态码是唯一几乎都看得到的通道：CONNECT 失败时 8 列能看到状态码，Go 只给原因短语，Chromium 什么都不给。所以三样都要写：状态码选对，原因短语写成机器可读的短词（9112-4-1 说客户端应当忽略它，Go 偏偏只给它），`Proxy-Status`（RFC 9209）照发但不能指望有人看到。隧道建成时的 200 上附加的头默认没人看得到：“换绑并明确告知”不能靠它，要另给查询接口 |
+| 出错时调用方看得到什么 | 报错通道 | 状态码是唯一几乎都看得到的通道：CONNECT 失败时 11 列里 8 列能看到状态码，Go 只给原因短语，两个浏览器什么都不给。所以三样都要写：状态码选对，原因短语写成机器可读的短词（9112-4-1 说客户端应当忽略它，Go 偏偏只给它），`Proxy-Status`（RFC 9209）照发但不能指望有人看到。隧道建成时的 200 上附加的头默认没人看得到：“换绑并明确告知”不能靠它，要另给查询接口 |
 | 连接被关以后会不会重发 | 重放与空闲超时 | 网关自己不重放（9110-9.2.2-5 是 MUST NOT）还不够：curl 和 Chromium 会在复用连接被关时把 POST 再发一遍。网关关连接的时机因此要守两条：只关空闲的连接；请求已经转给上游以后出了错，回一个 502，而不是直接关掉客户端连接 |
 | 代理凭据会不会被带到源站 | 威胁模型 | 没有一列把代理凭据带进隧道或带到重定向后的源站（R39，两列有读数须知）。明文转发时网关自己要删掉 `Proxy-Authorization`（9110-11.7.2-2、9110-11.7.2-3）和 `Proxy-Connection`（明文请求里 5 列还在发这个非标准头，R02；CONNECT 里见 R04） |
 | SOCKS5 入口 | 控制通道和报错 | 配了凭据的客户端都同时提供“无认证”（`R111[requests,go,node-agents]=00,02`），入口必须自己选 02 才拿得到用户名。`socks5://` 不等于客户端自己解析：`R114[go,node-undici,chromium-pw]=把域名交给了代理`。应答码 2、4、5 多数客户端能区分（R121），值得如实填 |
@@ -162,19 +163,19 @@ PROTOCOL 的每个问题对应一项设计决定。第 3 阶段的设计文档�
 
 | 行 | 多数客户端 | 不一样的 |
 | --- | --- | --- |
-| R30、R31 第一个请求带不带凭据 | 先带 | `curl-anyauth`、`chromium-pw` 等 407 |
+| R30、R31 第一个请求带不带凭据 | 先带 | `curl-anyauth`、`chromium-pw`、`firefox-pw` 等 407 |
 | R45 没配凭据，明文 | 调用方拿到 407 响应 | `R45[node-fetch-env,node-undici]=报错，提到 407` |
-| R46 没配凭据，HTTPS | 报错，提到 407 | `R46[go,chromium-pw]=报错，没提 407`；`R46[node-agents,node-axios]=拿到 407 响应` |
+| R46 没配凭据，HTTPS | 报错，提到 407 | `R46[go,chromium-pw,firefox-pw]=报错，没提 407`；`R46[node-agents,node-axios]=拿到 407 响应` |
 | R10 同源连续 3 次 HTTPS 的隧道数 | 1 | `R10[node-fetch-env]=2`；`R10[node-agents,node-axios]=3` |
-| R14 6 个并发，源站支持 h2 | 6 条隧道 | `R14[curl,node-undici,chromium-pw]=1`（隧道里用 HTTP/2 多路复用） |
+| R14 6 个并发，源站支持 h2 | 6 条隧道 | `R14[curl,node-undici,chromium-pw,firefox-pw]=1`（隧道里用 HTTP/2 多路复用） |
 | R05 CONNECT 的 Host 头 | 同目标 | `R05[node-fetch-env,node-undici,node-axios]=不同`（Host 里没有端口） |
 | R20 2 MiB 的 POST 先发 `Expect: 100-continue` | 不发 | `R20[curl,curl-anyauth]=发` |
 | R43 带正文的 POST 遇到认证，正文发几遍 | 1 | `R43[curl-anyauth]=2` |
 | R44 6 个并发遇到认证，收到几个 407 | 0 | `R44[curl-anyauth]=6`；`R44[chromium-pw]=1`（有读数须知） |
 | R88 CONNECT 失败但代理没关连接 | 全部换新连接 | 无 |
-| R100 CONNECT 发出后代理不回应就关连接 | 1 次，失败 | `R100[node-fetch-env]=2 次，成功` |
+| R100 CONNECT 发出后代理不回应就关连接 | 1 次，失败 | `R100[node-fetch-env,firefox-pw]=2 次，成功` |
 | R110 SOCKS5 没配凭据时提供的方法 | 00 | `R110[curl,curl-anyauth]=00,01`（多报一个 GSSAPI） |
-| R113 `socks5://` 目标是 localhost 时的地址类型 | 各不相同 | `R113[curl]=IPv6`、`R113[requests,node-agents]=IPv4`、`R113[go,node-undici,chromium-pw]=域名`（取决于本机解析） |
+| R113 `socks5://` 目标是 localhost 时的地址类型 | 各不相同 | `R113[curl]=IPv6`、`R113[requests,node-agents]=IPv4`、`R113[go,node-undici,chromium-pw,firefox-pw]=域名`（取决于本机解析） |
 
 ## 已知坑清单
 
@@ -198,15 +199,16 @@ PROTOCOL 的每个问题对应一项设计决定。第 3 阶段的设计文档�
 
 5. **“一个会话一条连接”不成立。** 每个请求新开连接的有 `R11[node-agents]=3`、`R10[node-axios]=3`；一个源开两条的有 `R11[node-undici]=2`。
    规范不限制连接数（9112-9.4-1）。粘性会话只能按用户名里的会话 ID 认，不能按 TCP 连接认。
-6. **并发 6 个请求就是 6 条隧道**（R15，10 列相同），除非隧道里谈成了 HTTP/2（`R14[curl,node-undici,chromium-pw]=1`）。
+6. **并发 6 个请求就是 6 条隧道**（R15，11 列相同），除非隧道里谈成了 HTTP/2（`R14[curl,node-undici,chromium-pw,firefox-pw]=1`）。
    网关对单个用户的并发连接上限低于 6 会直接让浏览器类的负载失败；“按请求数轮换”在 HTTP/2 隧道上数不了请求，只能数隧道。
 7. **CONNECT 失败以后，没有客户端复用那条连接**（R88 全部是“新连接”），尽管规范说连接还是 HTTP 连接（9110-9.3.6-6）。
    网关对 CONNECT 回非 2xx 之后保留连接没有收益，可以直接带 `Connection: close`。
-8. **连接被关，客户端会自己重发，POST 也发。** `R93[curl,curl-anyauth,chromium-pw]=2 次，成功`、`R95[curl,curl-anyauth,chromium-pw]=2 次，成功`；
+8. **连接被关，客户端会自己重发，POST 也发。** `R93[curl,curl-anyauth,chromium-pw,firefox-pw]=2 次，成功`、`R95[curl,curl-anyauth,chromium-pw,firefox-pw]=2 次，成功`；
    复位（RST）也一样（`R98[curl,go,chromium-pw]=2 次，成功`）。规范说客户端不应自动重发非幂等请求（9110-9.2.2-3，SHOULD NOT）。
    后果：网关在转发了一个 POST 之后关掉客户端连接，源站可能收到两次。网关只在连接空闲时关；转发之后出错回 502。
-   新连接上的第一个请求被关则没有一列重发（`R96[curl,requests,go,chromium-pw]=1 次，失败`、R97）。
-9. **Node 内置 `fetch` 在 CONNECT 没有回应就被关时会再发一次 CONNECT**（`R100[node-fetch-env]=2 次，成功`），其余 9 列不会。
+   新连接上的第一个请求被关，只有 Firefox 重发（`R96[firefox-pw]=2 次，成功`、`R97[firefox-pw]=2 次，成功`），
+   别的列都不重发（`R96[curl,requests,go,chromium-pw]=1 次，失败`）。所以“只在空闲时关”对任何连接都要守，不只是复用的连接。
+9. **Node 内置 `fetch` 在 CONNECT 没有回应就被关时会再发一次 CONNECT**（`R100[node-fetch-env]=2 次，成功`），Firefox 也会（`R100[firefox-pw]=2 次，成功`），其余 9 列不会。
    CONNECT 本身没有副作用，但网关要是按“收到 CONNECT”计数或轮换，这里会多算一次。
 
 ### 第 3 组：用户名和密码的字节
@@ -222,7 +224,7 @@ PROTOCOL 的每个问题对应一项设计决定。第 3 阶段的设计文档�
     别的客户端是 `R129[curl,go,node-undici,node-agents]=客户端报错`）；规范的上限是 255 字节（1929-2-1）。
     SOCKS5 的空密码直接不提供用户名密码这种方法（`R131[requests]=客户端报错`）。
 13. **空密码不通用。** `R69[node-fetch-env]=客户端报错`、`R131[requests,node-undici]=客户端报错`。“密码留空”的用法不能出现在文档里。
-14. **冒号。** HTTP 代理下 10 列都原样拼接（R70），服务端按第一个冒号拆，冒号后面的部分进了密码（7617-2-9、7617-2-10）。
+14. **冒号。** HTTP 代理下 11 列都原样拼接（R70），服务端按第一个冒号拆，冒号后面的部分进了密码（7617-2-9、7617-2-10）。
     SOCKS5 下 curl 自己先按第一个冒号拆了（`R132[curl,curl-anyauth]=变了`）。用户名参数的分隔符不能用冒号。
 
 ### 第 4 组：请求的形状
@@ -247,8 +249,8 @@ PROTOCOL 的每个问题对应一项设计决定。第 3 阶段的设计文档�
     `R80[requests,node-http-env]=状态码、原因短语`；`R80[go]=原因短语`；`R80[chromium-pw]=都看不到`。403 也一样（R82）。
     主动打开调试手段以后多数能看到响应头（R81，三列有读数须知）。
     `Proxy-Status`（9209-2-1、9209-2.1.1-3）照发，给愿意开调试的人看；给程序看的信息放在状态码和原因短语里。
-21. **隧道建成时附加的响应头默认没人看得到**（R84，10 列都是“看不到”）。“这条隧道换绑到了哪个出口”这类信息不能只放在 CONNECT 的 200 上。
-22. **`Retry-After` 没人理**（R83，10 列都只发 1 次 CONNECT；9110-10.2.3-1 也没有要求客户端重试）。“稍后再试”不能当成自动恢复的手段。
+21. **隧道建成时附加的响应头默认没人看得到**（R84，11 列都是“看不到”）。“这条隧道换绑到了哪个出口”这类信息不能只放在 CONNECT 的 200 上。
+22. **`Retry-After` 没人理**（R83，11 列都只发 1 次 CONNECT；9110-10.2.3-1 也没有要求客户端重试）。“稍后再试”不能当成自动恢复的手段。
 23. **明文请求被拒时，Node 内置 `fetch` 什么都看不到，curl 默认只看到正文。** `R86[requests,go,chromium-pw]=状态码、原因短语、响应头、正文`；
     curl 那一格的“状态码”是驱动加的 `-w` 打出来的（读数须知）。
 
@@ -264,12 +266,12 @@ PROTOCOL 的每个问题对应一项设计决定。第 3 阶段的设计文档�
 26. **`socks5://` 不保证客户端自己解析。** `R114[go,node-undici,chromium-pw]=把域名交给了代理`；`R114[node-agents]=没连代理就报错`；
     curl 和 requests 是先连上代理、协商完认证，然后才在本机解析（`R114[curl,requests]=其他`，读数须知）。
     入口必须同时支持域名和 IP 两种地址类型（1928-4-4、1928-5-2），并对域名做与 HTTP 入口相同的目标检查。
-27. **SOCKS5 的报错多数说得清。** `R121[curl,requests,go,node-undici,node-agents]=能区分`（应答码 2、4、5），`R121[chromium-pw]=不能区分`。
+27. **SOCKS5 的报错多数说得清。** `R121[curl,requests,go,node-undici,node-agents]=能区分`（应答码 2、4、5），`R121[chromium-pw,firefox-pw]=不能区分`。
     认证失败后入口必须关连接（1929-2-5）。应答码值得如实填，对非浏览器的客户端有用。
 
 ## 与预期不符
 
-预期是每列实测之前只凭文档和源码写的（`research/phase2/expectations/`），实测之后不改。不符的 17 格归为三件事。
+预期是每列实测之前只凭文档和源码写的（`research/phase2/expectations/`），实测之后不改。不符的 24 格归为四件事。
 
 1. **undici 的连续请求不复用连接**（`node-fetch-env` 的 R10、R11、R36、R38，`node-undici` 的 R11、R122）。预期是 1 条，实测是 2 条。
    请求 1 的响应读完后，undici 要等一轮事件循环才把连接标成可用，紧接着发出的请求 2 于是新开一条，请求 3 回到第一条。
@@ -279,7 +281,11 @@ PROTOCOL 的每个问题对应一项设计决定。第 3 阶段的设计文档�
    实测是“未触发”：第二个请求落在新连接上，仪器“只在复用的连接上断开”的条件没满足。**这不是“不重发”，是没测到。**
    要测到需要三步以上的用例，属于改用例表，留给后续（见“已知局限”）。
 3. **Chromium 的 R89**（`R89[chromium-pw]=失败`，预期“成功”）。失败的是 Playwright 的 `page.goto`：上一步 CONNECT 失败后浏览器还在提交错误页，
-   紧跟着的导航被它打断。事件里第二个源的 CONNECT 得到了 200，源站也收到了请求。这一格说明不了“代理有没有被标坏”，预期没有被证伪，也没有被证实。
+   紧跟着的导航被它打断。事件里第二个源的 CONNECT 得到了 200，源站也收到了请求。这一格说明不了“代理有没有被标坏”，预期没有被证伪，也没有被证实。Firefox 这一格与预期相同（`R89[firefox-pw]=成功`）。
+4. **Firefox 的 7 格。** 其中 5 格是各遍取值不同：连接数 R11、R13、R122 有的遍 1 条、有的遍 2 条（预期 1 条）；
+   R92、R98 有的遍“未触发”、有的遍“2 次，成功”（预期“2 次，成功”），这是连接数不稳定的连带结果，与第 2 件同理。
+   不稳定的原因没有查，**未验证**。另 2 格是 R81、R85：预期“没有这样的手段”，实测是“看不到”，驱动拿 Playwright 的 `requestfailed` 事件当手段，
+   它没有给出更多信息，两种说法实质相同（读数须知）。
 
 ## 数据与仪器
 
@@ -290,10 +296,10 @@ PROTOCOL 的每个问题对应一项设计决定。第 3 阶段的设计文档�
   12 次 `prefix`（抓包比仪器的记录多出一段）是方案里写明的正常情况：仪器主动关连接以后，对方还在路上的字节仪器读不到。
 - **仪器自检。** 参照客户端 `rawref` 用裸套接字按写死的字节说话，它那一列与手写答案逐格相同（见生成的表）。
   自检有“牙齿”测试：故意改错答案或事件时自检会失败（`runner/test_selfcheck.py`）。
-- **稳定性。** 每个用例 3 遍，没有一个格子各遍取值不同。
-- **驱动审查。** 10 列的驱动由另一位审查者对着事件逐列抽查，没有发现驱动造成的取值；查出的“写法或口径两边都说得通”的地方全部写进了读数须知。
-- **Firefox。** `firefox-pw` 一列本机跑不了（下载不了 Playwright 的 Firefox），在 CI 上跑出来了：270 次运行，抓包核对全部逐字节相同。
-  它的原始记录在 CI 的构件里，还没进仓库，所以矩阵里这一列还是空的，见下面“Firefox”一节。
+- **稳定性。** 每个用例 3 遍。本机的 10 列没有一个格子各遍取值不同；不稳定的 6 格全在 Firefox 一列（CI 上跑的）。
+- **驱动审查。** 本机 10 列的驱动由另一位审查者对着事件逐列抽查（Firefox 的数据当时还没有，它的驱动没有经过这一轮审查），没有发现驱动造成的取值；查出的“写法或口径两边都说得通”的地方全部写进了读数须知。
+- **Firefox。** `firefox-pw` 一列本机跑不了（下载不了 Playwright 的 Firefox），数据来自 CI，来源和核对方法见下面“Firefox”一节。
+  生成的表里的运行次数和抓包核对含它的 270 次；它的“运行时刻”和“系统”是 CI 的。
 - **第二个环境。** GitHub Actions 上重跑全部列（运行 42937077529，约 39 分钟），仪器自检 104/104，抓包核对没有不一致。
   与仓库里的矩阵逐格比较 1040 格，相同 1037 格。不同的 3 格：
   R113 的 `requests` 和 `node-agents` 两格，CI 上是 IPv6，本机是 IPv4（这一行本来就取决于本机怎么解析 localhost，读数须知里写了）；
@@ -313,30 +319,25 @@ PROTOCOL 的每个问题对应一项设计决定。第 3 阶段的设计文档�
 - `go` 列首轮有 1 次运行被抓包核对判为不一致，原因是运行器并行时的端口竞争（已修，`runner/run.py` 的 `PortWindow`），那个用例重跑了 3 遍。
 - curl 两列的发行版包版本是正式运行之后在同一台机器上补记的。
 
-## Firefox（来自 CI，原始记录还没进仓库）
+## Firefox（来自 CI）
 
-来源：GitHub Actions 运行 42937077529（PR 的合并提交 `5b928c0`，分支头 `dd68f02`），Playwright 1.63.0 的 Firefox 155.0，
-Ubuntu 24.04.5，内核 7.0.0-1017-azure。原始记录 `raw/firefox-pw.jsonl.gz` 的 SHA-256 是
-`25371d7041a7871bc796c7f7f8f8dd42722c4b9ad555653812c180b8a8d55751`（199581 字节），在构件 `phase2-out` 里。
-云端工作区的出口策略下载不了构件，要由人下载后交回；入库之前，下面的取值只有 CI 日志为证，仓库里的脚本复算不了，
-所以没有写成 `R行[列]=值` 的形式，也不在 `report_tables.py --check` 的核对范围内。
+**来源。** GitHub Actions 运行 42937077529（第 1 次；PR 的合并提交 `5b928c0`，分支头 `dd68f02`），Playwright 1.63.0 的 Firefox 155.0，
+Ubuntu 24.04.5，内核 7.0.0-1017-azure。CI 的输出存在构件 `phase2-out` 里（构件 ID 13820409058），由用户下载后交回。
+入库时核对了两个哈希：zip 的 SHA-256 `c833b822b3ae4891f7d34999724bd7273a8962372bc0d154ca1db0493e4f5d44` 与 CI 上传时日志里打的一致；
+`raw/firefox-pw.jsonl.gz` 的 SHA-256 `25371d7041a7871bc796c7f7f8f8dd42722c4b9ad555653812c180b8a8d55751` 与 CI 日志里 `ci_summary.py` 打的一致。
+入库后在本机重新生成矩阵，Firefox 一列 104 格与 CI 自己生成的逐格相同。来源也记在 `out/versions.d/firefox-pw.json` 的 `provenance` 里。
+只有 `raw/firefox-pw.jsonl.gz` 一个文件取自构件，其余列仍是本机的数据。
 
-270 次运行，抓包核对 270 次逐字节相同，驱动没有超时。与预期比较 103 格，相符 96 格。有 6 个格子各遍取值不同（下面标“不稳定”）。
+**结果。** 270 次运行，抓包核对全部逐字节相同，驱动没有超时。与预期的比较见“与预期不符”第 4 件。
 
-- **认证与 Chromium 同一派**：等 407 再带凭据（R30、R31），在原连接上重试（R32、R33），407 带 `Connection: close` 也成功（R34、R35），
-  代理不要求认证就不带（R52、R53）。没配凭据时明文和 HTTPS 都是“报错，没提 407”（R45、R46；Chromium 的明文是把 407 交给页面）。
-- **重发比谁都积极**：复用连接上的 POST 被关，重发并成功（R93、R95）；新连接上的第一个请求被关也重发（R96、R97 都是“2 次，成功”；
-  本机 10 列里测到的都是“1 次，失败”）；CONNECT 没有回应就被关也再发一次（R100）。只有 HTTP/2 隧道被切断时不重发（R101“1 次，失败”）。
-  R92、R98 不稳定（有的遍“未触发”，有的遍“2 次，成功”）。
-- **报错几乎什么都看不到**：CONNECT 被拒时默认和加了手段都是“都看不到”（R80、R81、R82），隧道建成时附加的头看不到（R84、R85）。
-  R81、R85 的预期是“没有这样的手段”，实测是“看不到”：驱动用了 `requestfailed` 事件当手段，它没有给出更多信息，两种说法实质相同。
-- **连接数不稳定**：同源连续 3 次明文请求的代理连接数各遍是 1 或 2（R11），两个源交替是 1 或 2（R13），SOCKS5 下是 1 或 2（R122）；
-  要认证的明文连续 3 次，代理收到 5 或 6 个请求（R36）。预期是 1 条连接。原因没有查，**未验证**。
-- **CONNECT 失败后访问另一个源成功**（R89）。Chromium 那一格的“失败”是 Playwright 的导航被错误页打断，Firefox 没有遇到。
-- **SOCKS5**：Playwright 同样拒绝给 SOCKS5 配凭据（R111、R117 等“不支持”）；`socks5://` 把域名交给代理（R113、R114“域名”）；
-  报错不区分应答码（R121“不能区分”）。
-- 其余与 Chromium 相同的：明文是绝对形式（R01），ClientHello 超过 1460 字节（1894 字节），6 个并发在 HTTP/2 下 1 条隧道（R14），
-  `ws://` 走 CONNECT 到 80 端口（R21），用户名的字节在 HTTP 入口上全部原样（R60 到 R70）。
+- **认证与 Chromium 同一派。** 等 407 再带凭据（`R31[firefox-pw]=等 407 再带`），代理不要求认证就不带（`R52[firefox-pw]=不带`、`R53[firefox-pw]=不带`）。
+  没配凭据时，明文请求 Chromium 把 407 交给页面，Firefox 报错（`R45[chromium-pw]=拿到 407 响应`、`R45[firefox-pw]=报错，没提 407`）。
+- **重发比谁都积极。** 复用的和新开的连接被关都重发，CONNECT 没有回应也再发一次（见已知坑第 8、9 条）。
+  只有 HTTP/2 隧道被切断时不重发（`R101[firefox-pw]=1 次，失败`；Chromium 这一格重发）。
+- **报错几乎什么都看不到**（`R82[firefox-pw]=都看不到`、`R84[firefox-pw]=看不到`），和 Chromium 一样。
+- **CONNECT 失败后访问另一个源成功**（`R89[firefox-pw]=成功`），Chromium 那一格的失败是 Playwright 的导航被错误页打断，Firefox 没有遇到。
+- **SOCKS5**：`socks5://` 把域名交给代理（`R114[firefox-pw]=把域名交给了代理`）。
+- **ClientHello 1894 字节**，是 11 列里最大的（全表 R07 的脚注）。
 
 对设计的含义有一条要加重：**新连接上的请求被关也会被 Firefox 重发**，所以“转发之后出错回 502、不要直接关连接”对非幂等请求不是优化，是必须。
 
@@ -346,7 +347,7 @@ Ubuntu 24.04.5，内核 7.0.0-1017-azure。原始记录 `raw/firefox-pw.jsonl.gz
 - 每个客户端只测了一种写法。Go 的“每个用户一个 `Transport`”、requests 换 `HTTPAdapter`、Node 的其他代理库都没测。
 - 全在回环网卡上，没有丢包、延迟和 MTU。
 - 代理认证只测了 Basic；到代理本身的 TLS（`https://` 代理）、SOCKS4、HTTP/2 和 HTTP/3 的 CONNECT 没测。
-- Firefox 一列的原始记录还没进仓库，那一节的取值只有 CI 日志为证；它的 6 个不稳定的格子原因没有查。
+- Firefox 一列只在 CI 上跑过一次（另一台机器、另一个内核），它的 6 个不稳定的格子原因没有查；它的驱动没有经过对抗审查。
 - 浏览器由 Playwright 驱动。人手操作的浏览器遇到 407 会弹窗，这里测不到。
 - “已发出的请求所在的复用连接被关以后会不会重发”对 `node-undici` 和 `node-fetch-env` 没有测到（见“与预期不符”第 2 条）。
 - `node-fetch-env` 的明文请求走隧道，10 行对它没有测到（读数须知）。
@@ -356,9 +357,8 @@ Ubuntu 24.04.5，内核 7.0.0-1017-azure。原始记录 `raw/firefox-pw.jsonl.gz
 
 ## 下一步
 
-1. 把 CI 构件里 Firefox 一列的原始记录放进仓库（要人下载构件交回），重新生成矩阵，把“Firefox”一节改成可核对的引用。
-2. 第 3 阶段：设计文档。输入是本报告和 1B 报告各自的“对设计的含义”一表。
-3. 值得补测的（要先在 PROTOCOL 里记新版本）：三步以上的断连用例，补上 undici 的“会不会重发”；Go 每个用户一个 `Transport`。
+1. 第 3 阶段：设计文档。输入是本报告和 1B 报告各自的“对设计的含义”一表。
+2. 值得补测的（要先在 PROTOCOL 里记新版本）：三步以上的断连用例，补上 undici 的“会不会重发”；Go 每个用户一个 `Transport`；Firefox 连接数不稳定的原因。
 
 ## 复现
 

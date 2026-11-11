@@ -212,6 +212,16 @@
     "requests"
    ],
    "text": "“其他”指的是行表没有列出的一种情况：先连上代理、协商完认证方法，然后才在本机解析目标域名，解析失败就报错，没有发出 SOCKS5 请求。"
+  },
+  {
+   "rows": [
+    "R81",
+    "R85"
+   ],
+   "columns": [
+    "firefox-pw"
+   ],
+   "text": "用的手段是 Playwright 的 page.on('requestfailed') 事件，它只给出一个错误名，没有响应的任何内容；Firefox 的 MOZ_LOG 不在 Playwright 的文档里，没有采用。这一格的“看不到”与“没有这样的手段”实质相同。"
   }
  ]
 }

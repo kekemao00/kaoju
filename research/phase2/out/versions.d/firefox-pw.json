@@ -1,0 +1,39 @@
+{
+ "cmd": [
+  "sh",
+  "drivers/browser/run.sh",
+  "--browser",
+  "firefox"
+ ],
+ "desc": "Playwright 驱动的 Firefox（Playwright 的补丁构建）：写法同 chromium-pw，但用 launchPersistentContext 加一个现建的 profile（certutil 把测试 CA 加进 cert9.db）；本机没有这个浏览器，只在 CI 上跑",
+ "env": {
+  "arch": "x86_64",
+  "kernel": "7.0.0-1017-azure",
+  "nssdb": true,
+  "obsproxy": "obsproxy 1.0.0（事件格式第 1 版）",
+  "os": "Ubuntu 24.04.5 LTS",
+  "python": "3.13.18",
+  "run_at_utc": "2026-11-11T01:13:16Z",
+  "tcpdump": [
+   "tcpdump version 4.99.4",
+   "libpcap version 1.10.4 (with TPACKET_V3)",
+   "OpenSSL 3.0.13 30 Jan 2024"
+  ]
+ },
+ "provenance": {
+  "artifact": "phase2-out（构件 ID 13820409058，zip 的 SHA-256 c833b822b3ae4891f7d34999724bd7273a8962372bc0d154ca1db0493e4f5d44，与上传日志一致）",
+  "commit": "5b928c05637e90ce6accbab97e8833c1939cfea4（PR #8 的合并提交，分支头 dd68f027c743136acd35485c03c663e93f1114f3）",
+  "raw_sha256": "25371d7041a7871bc796c7f7f8f8dd42722c4b9ad555653812c180b8a8d55751（与 CI 日志里 ci_summary.py 打出的一致）",
+  "source": "GitHub Actions 运行 42937077529（第 1 次），工作流 .github/workflows/phase2.yml"
+ },
+ "versions": {
+  "browser": "firefox",
+  "browser_version": "155.0",
+  "certutil": "present",
+  "executables": [
+   "firefox-1543/firefox/firefox"
+  ],
+  "node": "v22.23.4",
+  "playwright": "1.63.0"
+ }
+}
