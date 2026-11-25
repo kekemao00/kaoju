@@ -1,6 +1,6 @@
 # 交接记录
 
-最后更新：2026-11-11（第 3 阶段收尾：用户把 `docs/design/08-open.md` 的待定事项交给 Claude 定了（决策 D19）；1B 数据的脱敏公开库做好了，等用户确认后发布（决策 D16、D18）；之后停下，等用户说开始第 4 阶段）。
+最后更新：2026-11-11（第 3 阶段收尾：用户把 `docs/design/08-open.md` 的待定事项交给 Claude 定了（决策 D19）；1B 数据的脱敏公开库已发布（决策 D16、D18）；之后停下，等用户说开始第 4 阶段）。
 
 这个文件记录“现在做到哪了、下一步是什么、踩过哪些坑”。不随进度变化的规矩在仓库根目录的 `CLAUDE.md`。
 **每次工作结束、状态有变化时，随 PR 更新本文件**，下一个会话才接得上。
@@ -46,7 +46,7 @@
 
 按顺序。
 
-1. **用户**：确认 1B 公开库可以发布，然后上传到 GitHub Release（`research/phase1b/PUBLIC.md`；文件和步骤在项目文件夹的 `phase1b-public/` 里，哈希见下面“1B 的数据和复现”）。发布不可撤回，要用户点头。用户同意以后 Claude 在 `PUBLIC.md` 里填上发布地址；发布以后删掉导出用的密钥。
+1. ~~**用户**：确认并发布 1B 公开库~~ 已完成（2026-11-11，[Release `phase1b-public-v1`](https://github.com/kekemao00/kaoju/releases/tag/phase1b-public-v1)，哈希在 `research/phase1b/public/RELEASE.md`；导出用的密钥已删）。
 2. **用户**：第 4 阶段开始时准备两台互相独立的主机（网关一台、judge 一台，原来的测量机可以当其中一台）和一到两个自有或付费的代理（`docs/design/08-open.md` 最后一节）。
 3. **先停下、提醒用户，不要自行开始。** 用户的要求（2026-11-11）：第 3 阶段收尾（第 1 项发布完）以后，明确告诉用户“第 4 阶段准备开始了”，
    请用户先重置额度、把模型切换到 Fable 5.2，等用户说“开始”再动手。
@@ -66,7 +66,7 @@
 - 原始数据不进仓库（含第三方地址；证据正文里有 judge 说明页上的联系方式）。用户手里有两份文件：
   `fieldtest pack` 打出的数据包（SHA-256 `158753ad60a64d48ca486a076491485f88798b0e619e2cc0d392409c21b42aa9`）和
   `state.json.gz`（SHA-256 `0901a41a9779cede7da1a824cc054800c8b6374f494d39d99bafb1872107a123`）。云端工作区是临时的，要复跑就请用户再传一次。
-- 脱敏的公开库（决策 D16、D18，`research/phase1b/PUBLIC.md`）：`phase1b-public-v1.sqlite.xz`，SHA-256 见 `research/phase1b/public/RELEASE.md`。导出用的密钥和记下中间结果的文件只在当时的云端工作区里，工作区回收后就没了（这是有意的：之后再导出要换新密钥、升版本号）。
+- 脱敏的公开库（决策 D16、D18，`research/phase1b/PUBLIC.md`）：`phase1b-public-v1.sqlite.xz`，2026-11-11 发布在 GitHub Release `phase1b-public-v1`（4 段），SHA-256 见 `research/phase1b/public/RELEASE.md`。导出用的密钥发布后已删，之后再导出要换新密钥、升版本号。
 - 复跑：`research/phase1b/README.md`“复现”一节。入库约 6 分钟，库 12 GB；全部模块的用时在 README 里。
 - 改了分析脚本就重跑 `run_all.sh --skip-ingest`、`crosscheck_as_summary_saw.py`，再跑 `check_report_numbers.py` 核对报告里的数。
 

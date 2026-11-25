@@ -8,11 +8,13 @@
 
 ## 一、公开的是什么、怎么用
 
-公开的是一个 SQLite 文件，作为发布附件放在仓库之外（GitHub Release，不进 git 历史）。它就是 `ingest.py` 建出的那个库的脱敏版本：
+公开的是一个 SQLite 文件，作为发布附件放在仓库之外（[GitHub Release `phase1b-public-v1`](https://github.com/kekemao00/kaoju/releases/tag/phase1b-public-v1)，不进 git 历史）。它就是 `ingest.py` 建出的那个库的脱敏版本：
 **表名、列名和真实库相同，分析模块一行不改就能在上面跑**；只是列少了，地址、主机名、哈希换成了假名，几列自由文本换成了“等价的代表值”。
 
 ```sh
-# 下载发布附件，核对 SHA-256（写在 public/RELEASE.md 里），解压
+# 下载发布附件（https://github.com/kekemao00/kaoju/releases/tag/phase1b-public-v1，4 段），合并，
+# 核对 SHA-256（写在 public/RELEASE.md 里，那里也有逐条的下载命令），解压
+cat phase1b-public-v1.sqlite.xz.part-? > phase1b-public-v1.sqlite.xz
 xz -d phase1b-public-v1.sqlite.xz
 # 在公开库上重算全部输出（4 核的机器上一个多小时；只要 Python 3.10 以上的标准库，不要 Go、不要证据文件、不联网）
 ./run_public.sh phase1b-public-v1.sqlite /tmp/phase1b-out
